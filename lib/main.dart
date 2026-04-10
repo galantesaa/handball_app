@@ -190,8 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 20),
-            padding: const EdgeInsets.fromLTRB(14, 48, 14, 16),
+            margin: const EdgeInsets.only(top: 18),
+            padding: const EdgeInsets.fromLTRB(14, 42, 14, 14),
             decoration: BoxDecoration(
               color: const Color(0xFF0D1520).withOpacity(0.26),
               borderRadius: BorderRadius.circular(24),
@@ -204,36 +204,36 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildContextLine(),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_proximo_partido.png',
                   title: 'Próximo partido',
                   subtitle: 'Fixture y agenda',
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_partidos_jugados.png',
                   title: 'Partidos jugados',
                   subtitle: 'Historial cargado',
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_estadisticas.png',
                   title: 'Estadísticas',
                   subtitle: 'Rendimiento y análisis',
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
                   height: 1,
                   color: Colors.white.withOpacity(0.08),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_equipos.png',
                   title: 'Equipo',
                   subtitle: 'Categorías y estructura',
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_jugador_campo.png',
                   title: 'Jugadores',
@@ -300,7 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(5),
       child: ClipOval(
         child: Image.asset(
-          'assets/images/san_fernando.png',
+          'assets/images/ballester.png',
           fit: BoxFit.contain,
         ),
       ),
@@ -387,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () {},
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFF142131).withOpacity(0.52),
           borderRadius: BorderRadius.circular(18),
