@@ -6,11 +6,13 @@ void main() async {
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    statusBarBrightness: Brightness.dark,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
+  );
 
   runApp(const GoalKeeperApp());
 }
@@ -67,9 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.82),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.82)),
           ),
           SafeArea(
             top: false,
@@ -117,11 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         IconButton(
           onPressed: () {},
-          icon: const Icon(
-            Icons.menu_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
+          icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
         ),
       ],
     );
@@ -160,10 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: const Text(
               'Crear institución',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 12),
@@ -171,10 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {},
             child: const Text(
               'Importar datos',
-              style: TextStyle(
-                color: Color(0xFFD7DCE3),
-                fontSize: 15,
-              ),
+              style: TextStyle(color: Color(0xFFD7DCE3), fontSize: 15),
             ),
           ),
         ],
@@ -193,11 +183,11 @@ class _HomeScreenState extends State<HomeScreen> {
             margin: const EdgeInsets.only(top: 18),
             padding: const EdgeInsets.fromLTRB(14, 42, 14, 14),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1520).withOpacity(0.26),
+              color: const Color(0xFF0D1520).withOpacity(0.18),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: const Color(0xFF3FA2FF).withOpacity(0.95),
-                width: 1.5,
+                width: 1.4,
               ),
             ),
             child: Column(
@@ -205,35 +195,35 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildContextLine(),
                 const SizedBox(height: 8),
+
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_proximo_partido.png',
                   title: 'Próximo partido',
                   subtitle: 'Fixture y agenda',
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_partidos_jugados.png',
                   title: 'Partidos jugados',
                   subtitle: 'Historial cargado',
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_estadisticas.png',
                   title: 'Estadísticas',
                   subtitle: 'Rendimiento y análisis',
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  height: 1,
-                  color: Colors.white.withOpacity(0.08),
-                ),
+
+                const SizedBox(height: 8),
+                Container(height: 1, color: Colors.white.withOpacity(0.06)),
                 const SizedBox(height: 6),
+
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_equipos.png',
                   title: 'Equipo',
                   subtitle: 'Categorías y estructura',
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_jugador_campo.png',
                   title: 'Jugadores',
@@ -254,40 +244,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInstitutionHeaderMounted() {
-  return Center(
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A1018).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildInstitutionBadge(),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                institucionNombre,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1.1,
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A1018).withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildInstitutionBadge(),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  institucionNombre,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildInstitutionBadge() {
     return Container(
@@ -297,11 +287,12 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: BoxShape.circle,
         color: Colors.white,
       ),
-      padding: const EdgeInsets.all(5),
-      child: ClipOval(
+      padding: const EdgeInsets.all(8),
+      child: Center(
         child: Image.asset(
-          'assets/images/ballester.png',
+          'assets/images/san_fernando.png',
           fit: BoxFit.contain,
+          alignment: Alignment.center,
         ),
       ),
     );
@@ -318,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return Padding(
             padding: EdgeInsets.only(
-              right: index == contexto.length - 1 ? 0 : 6,
+              right: index == contexto.length - 1 ? 0 : 4,
             ),
             child: _buildContextToken(
               text: value,
@@ -347,9 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF162132).withOpacity(0.78),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.06),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -387,25 +376,38 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () {},
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 0),
         decoration: BoxDecoration(
-          color: const Color(0xFF142131).withOpacity(0.52),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.04),
-          ),
+          color: const Color(0xFF0F1722).withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(
-              imagePath,
-              width: 132,
-              height: 132,
-              fit: BoxFit.contain,
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: Center(
+                child: Image.asset(
+                  imagePath,
+                  width: 110,
+                  height: 110,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -443,10 +445,7 @@ class _PressableTile extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
 
-  const _PressableTile({
-    required this.child,
-    required this.onTap,
-  });
+  const _PressableTile({required this.child, required this.onTap});
 
   @override
   State<_PressableTile> createState() => _PressableTileState();
@@ -465,9 +464,9 @@ class _PressableTileState extends State<_PressableTile> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           color: _pressed
-              ? const Color(0xFF27425F).withOpacity(0.28)
+              ? const Color(0xFF27425F).withOpacity(0.18)
               : Colors.transparent,
         ),
         child: widget.child,
