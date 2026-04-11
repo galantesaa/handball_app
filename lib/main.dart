@@ -207,7 +207,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: 'Partidos jugados',
                   subtitle: 'Historial cargado',
                 ),
-                const SizedBox(height: 3),
+
+                const SizedBox(height: 8),
+                Container(height: 1, color: Colors.white.withOpacity(0.06)),
+                const SizedBox(height: 6),
+
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_estadisticas.png',
                   title: 'Estadísticas',
