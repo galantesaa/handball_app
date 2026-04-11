@@ -193,9 +193,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildContextLine(),
+                _buildContextSection(),
                 const SizedBox(height: 8),
-
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_proximo_partido.png',
                   title: 'Próximo partido',
@@ -291,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: BoxShape.circle,
         color: Colors.white,
       ),
-      padding: const EdgeInsets.all(9),
+      padding: const EdgeInsets.all(7),
       child: Center(
         child: Image.asset(
           'assets/images/san_fernando.png',
@@ -332,36 +331,51 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildContextSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28).withOpacity(0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: _buildContextLine(),
+    );
+  }
+
   Widget _buildContextToken({
     required String text,
     required bool removable,
     VoidCallback? onRemove,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: const Color(0xFF162132).withOpacity(0.78),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        color: const Color(0xFF182338).withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.035)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             text,
             style: const TextStyle(
-              fontSize: 13.5,
-              color: Color(0xFFD9E2EE),
+              fontSize: 13,
+              color: Color(0xFFDCE4EF),
               fontWeight: FontWeight.w500,
+              height: 1.0,
             ),
           ),
           if (removable) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             GestureDetector(
               onTap: onRemove,
               child: const Icon(
                 Icons.close_rounded,
-                size: 15,
+                size: 14,
                 color: Color(0xFFC9D3E0),
               ),
             ),
@@ -377,7 +391,9 @@ class _HomeScreenState extends State<HomeScreen> {
     required String subtitle,
   }) {
     return _PressableTile(
-      onTap: () {},
+      onTap: () {
+        debugPrint('Tap en $title');
+      },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 0),
@@ -456,37 +472,43 @@ class _PressableTile extends StatefulWidget {
 }
 
 class _PressableTileState extends State<_PressableTile> {
-  bool _pressed = false;
+  bool _active = false;
+
+  void _triggerTapEffect() {
+    setState(() => _active = true);
+
+    Future.delayed(const Duration(milliseconds: 140), () {
+      if (mounted) {
+        setState(() => _active = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
+      onTapDown: (_) => _triggerTapEffect(),
       onTap: widget.onTap,
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 100),
-        scale: _pressed ? 0.97 : 1.0,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: _pressed
-                ? Colors.white.withOpacity(0.06)
-                : Colors.transparent,
-            boxShadow: _pressed
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : [],
-          ),
-          child: widget.child,
+        duration: const Duration(milliseconds: 120),
+        scale: _active ? 0.985 : 1.0,
+        child: Stack(
+          children: [
+            widget.child,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: _active
+                        ? Colors.white.withOpacity(0.10)
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
