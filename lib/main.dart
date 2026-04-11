@@ -498,11 +498,11 @@ class _PressableTileState extends State<_PressableTile> {
             Positioned.fill(
               child: IgnorePointer(
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
+                  duration: const Duration(milliseconds: 170),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
                     color: _active
-                        ? Colors.white.withOpacity(0.10)
+                        ? Colors.white.withOpacity(0.12)
                         : Colors.transparent,
                   ),
                 ),
