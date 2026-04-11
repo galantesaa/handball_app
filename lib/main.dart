@@ -45,7 +45,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool tieneInstitucion = true;
 
-  final String institucionNombre = 'San Fernando';
+  final String institucionNombre = 'San Fernando Handball';
   final bool hayMasDeUnaTemporada = false;
 
   final List<String> contexto = <String>[
@@ -287,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: BoxShape.circle,
         color: Colors.white,
       ),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(9),
       child: Center(
         child: Image.asset(
           'assets/images/san_fernando.png',
@@ -461,15 +461,29 @@ class _PressableTileState extends State<_PressableTile> {
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
       onTap: widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: _pressed
-              ? const Color(0xFF27425F).withOpacity(0.18)
-              : Colors.transparent,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 100),
+        scale: _pressed ? 0.97 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: _pressed
+                ? Colors.white.withOpacity(0.06)
+                : Colors.transparent,
+            boxShadow: _pressed
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : [],
+          ),
+          child: widget.child,
         ),
-        child: widget.child,
       ),
     );
   }
