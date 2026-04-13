@@ -1277,15 +1277,12 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   @override
   Widget build(BuildContext context) {
     final bool somosLocales = widget.partido['condicion'] == 'Local';
+///la logica es que el local siempre a la izquierda y el visitante a la derecha, entonces dependiendo de si somos locales o visitantes, asignamos los nombres y goles en consecuencia para que se muestren correctamente en el tanteador.
+    final String nombreLocal = somosLocales ? 'San Fernando' : widget.partido['rival'];
+    final String nombreVisitante = somosLocales ? widget.partido['rival'] : 'San Fernando';
 
-    // El lado izquierdo y derecho dependen de la condición.
-    final String nombreIzquierda =
-        somosLocales ? 'San Fernando' : widget.partido['rival'];
-    final String nombreDerecha =
-        somosLocales ? widget.partido['rival'] : 'San Fernando';
-
-    final int golesIzquierda = somosLocales ? golesSanFernando : golesRival;
-    final int golesDerecha = somosLocales ? golesRival : golesSanFernando;
+    final int golesLocal = somosLocales ? golesSanFernando : golesRival;
+    final int golesVisitante = somosLocales ? golesRival : golesSanFernando;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -1322,10 +1319,10 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                   const SizedBox(height: 18),
 
                   _buildScoreCard(
-                    nombreIzquierda: nombreIzquierda,
-                    nombreDerecha: nombreDerecha,
-                    golesIzquierda: golesIzquierda,
-                    golesDerecha: golesDerecha,
+                    nombreLocal: nombreLocal,
+                    nombreVisitante: nombreVisitante,
+                    golesLocal: golesLocal,
+                    golesVisitante: golesVisitante,
                   ),
 
                   const SizedBox(height: 16),
@@ -1420,16 +1417,11 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   // =========================
 
   Widget _buildScoreCard({
-  required String nombreIzquierda,
-  required String nombreDerecha,
-  required int golesIzquierda,
-  required int golesDerecha,
+  required String nombreLocal,
+  required String nombreVisitante,
+  required int golesLocal,
+  required int golesVisitante,
 }) {
-  final bool somosLocales = widget.partido['condicion'] == 'Local';
-
-  final String condicionIzquierda = somosLocales ? 'Local' : 'Visitante';
-  final String condicionDerecha = somosLocales ? 'Visitante' : 'Local';
-
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
@@ -1458,15 +1450,15 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           children: [
             Expanded(
               child: _buildTeamSide(
-                nombre: nombreIzquierda,
-                condicion: condicionIzquierda,
+                nombre: nombreLocal,
+                condicion: 'Local',
                 assetPath: 'assets/images/san_fernando.png',
               ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
-                '$golesIzquierda - $golesDerecha',
+                '$golesLocal - $golesVisitante',
                 style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
@@ -1476,8 +1468,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             ),
             Expanded(
               child: _buildTeamSide(
-                nombre: nombreDerecha,
-                condicion: condicionDerecha,
+                nombre: nombreVisitante,
+                condicion: 'Visitante',
                 assetPath: 'assets/images/san_fernando.png',
               ),
             ),
@@ -1487,7 +1479,6 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     ),
   );
 }
-
   Widget _buildTeamSide({
   required String nombre,
   required String condicion,
@@ -1512,7 +1503,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           shape: BoxShape.circle,
           color: Colors.white,
         ),
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(10),
         child: Center(
           child: Image.asset(
             assetPath,
@@ -1533,7 +1524,6 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     ],
   );
 }
-
   Widget _buildTimeChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
