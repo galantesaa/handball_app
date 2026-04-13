@@ -1783,6 +1783,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
 /// Pantalla operativa del partido.
 /// Acá se registran eventos rápidos del partido en curso.
+/// Pantalla operativa del partido.
+/// Acá se registran eventos rápidos del partido en curso.
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
   final String estadoInicial;
@@ -1882,16 +1884,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLiveHeader(),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
                   _buildLiveScoreCard(
-                    nombreLocal: nombreLocal,
-                    nombreVisitante: nombreVisitante,
                     golesLocal: golesLocal,
                     golesVisitante: golesVisitante,
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
                   _buildSectionTitle('Eventos rápidos'),
                   const SizedBox(height: 10),
@@ -1901,22 +1901,26 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       Expanded(
                         child: _buildEventButton(
                           text: 'Gol nuestro',
-                          onTap: () {
-                            setState(() {
-                              golesSanFernando++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    golesSanFernando++;
+                                  });
+                                },
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildEventButton(
                           text: 'Gol rival',
-                          onTap: () {
-                            setState(() {
-                              golesRival++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    golesRival++;
+                                  });
+                                },
                         ),
                       ),
                     ],
@@ -1928,22 +1932,26 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       Expanded(
                         child: _buildEventButton(
                           text: 'Atajada',
-                          onTap: () {
-                            setState(() {
-                              atajadas++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    atajadas++;
+                                  });
+                                },
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildEventButton(
                           text: 'Pérdida',
-                          onTap: () {
-                            setState(() {
-                              perdidas++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    perdidas++;
+                                  });
+                                },
                         ),
                       ),
                     ],
@@ -1955,22 +1963,26 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       Expanded(
                         child: _buildEventButton(
                           text: 'Penal',
-                          onTap: () {
-                            setState(() {
-                              penales++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    penales++;
+                                  });
+                                },
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildEventButton(
                           text: '2 min',
-                          onTap: () {
-                            setState(() {
-                              exclusiones2Min++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    exclusiones2Min++;
+                                  });
+                                },
                         ),
                       ),
                     ],
@@ -1982,22 +1994,26 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       Expanded(
                         child: _buildEventButton(
                           text: 'Amarilla',
-                          onTap: () {
-                            setState(() {
-                              amarillas++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    amarillas++;
+                                  });
+                                },
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildEventButton(
                           text: 'Roja',
-                          onTap: () {
-                            setState(() {
-                              rojas++;
-                            });
-                          },
+                          onTap: _isMatchFinalized()
+                              ? null
+                              : () {
+                                  setState(() {
+                                    rojas++;
+                                  });
+                                },
                         ),
                       ),
                     ],
@@ -2008,6 +2024,24 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   _buildPrimaryAction(
                     text: _getActionByMatchState(),
                     onTap: () {
+                      if (estadoPartido == 'finalizado') {
+                        Navigator.pop(
+                          context,
+                          {
+                            'estadoPartido': estadoPartido,
+                            'golesSanFernando': golesSanFernando,
+                            'golesRival': golesRival,
+                            'atajadas': atajadas,
+                            'penales': penales,
+                            'exclusiones2Min': exclusiones2Min,
+                            'amarillas': amarillas,
+                            'rojas': rojas,
+                            'perdidas': perdidas,
+                          },
+                        );
+                        return;
+                      }
+
                       setState(() {
                         if (estadoPartido == 'no_iniciado') {
                           estadoPartido = 'primer_tiempo';
@@ -2019,6 +2053,27 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                           estadoPartido = 'finalizado';
                         }
                       });
+
+                      // Si acaba de finalizar, vuelve automáticamente.
+                      if (estadoPartido == 'finalizado') {
+                        Future.delayed(const Duration(milliseconds: 150), () {
+                          if (!mounted) return;
+                          Navigator.pop(
+                            context,
+                            {
+                              'estadoPartido': estadoPartido,
+                              'golesSanFernando': golesSanFernando,
+                              'golesRival': golesRival,
+                              'atajadas': atajadas,
+                              'penales': penales,
+                              'exclusiones2Min': exclusiones2Min,
+                              'amarillas': amarillas,
+                              'rojas': rojas,
+                              'perdidas': perdidas,
+                            },
+                          );
+                        });
+                      }
                     },
                   ),
 
@@ -2052,40 +2107,31 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  /// Header contextual de la pantalla en vivo.
+  // =========================
+  // HEADER MINIMO
+  // =========================
+
   Widget _buildLiveHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${widget.partido['categoria']} · ${widget.partido['torneo']} · ${widget.partido['condicion']}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFFD4DCE7),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${widget.partido['fecha']} • ${widget.partido['hora']}',
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFFAAB4C3),
-          ),
-        ),
-      ],
+    return Text(
+      '${widget.partido['categoria']} · ${widget.partido['torneo']}',
+      style: const TextStyle(
+        fontSize: 14,
+        color: Color(0xFFD4DCE7),
+      ),
     );
   }
 
-  /// Card principal del tanteador en vivo.
+  // =========================
+  // TANTEADOR COMPACTO
+  // =========================
+
   Widget _buildLiveScoreCard({
-    required String nombreLocal,
-    required String nombreVisitante,
     required int golesLocal,
     required int golesVisitante,
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.90),
         borderRadius: BorderRadius.circular(22),
@@ -2099,12 +2145,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             alignment: Alignment.topCenter,
             child: _buildTimeChip(_getTimeChipText()),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+
           Row(
             children: [
               Expanded(
-                child: _buildTeamSide(
-                  nombre: nombreLocal,
+                child: _buildCompactTeamSide(
                   condicion: 'Local',
                   assetPath: 'assets/images/san_fernando.png',
                 ),
@@ -2114,15 +2160,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 child: Text(
                   '$golesLocal - $golesVisitante',
                   style: const TextStyle(
-                    fontSize: 30,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
               ),
               Expanded(
-                child: _buildTeamSide(
-                  nombre: nombreVisitante,
+                child: _buildCompactTeamSide(
                   condicion: 'Visitante',
                   assetPath: 'assets/images/san_fernando.png',
                 ),
@@ -2134,9 +2179,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  /// Lado de equipo en el tanteador.
-  Widget _buildTeamSide({
-    required String nombre,
+  Widget _buildCompactTeamSide({
     required String condicion,
     required String assetPath,
   }) {
@@ -2153,13 +2196,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         ),
         const SizedBox(height: 8),
         Container(
-          width: 62,
-          height: 62,
+          width: 52,
+          height: 52,
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
           ),
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(9),
           child: Center(
             child: Image.asset(
               assetPath,
@@ -2167,21 +2210,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          nombre,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
       ],
     );
   }
 
-  /// Chip del tiempo / estado actual.
   Widget _buildTimeChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -2200,6 +2232,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
+  // =========================
+  // TEXTOS Y BOTONES
+  // =========================
+
   Widget _buildSectionTitle(String text) {
     return Text(
       text,
@@ -2211,29 +2247,31 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  /// Botón chico para sumar un evento.
   Widget _buildEventButton({
     required String text,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF182338).withOpacity(0.75),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.04),
+      child: Opacity(
+        opacity: onTap == null ? 0.45 : 1,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF182338).withOpacity(0.75),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.04),
+            ),
           ),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+          child: Center(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -2241,7 +2279,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  /// Botón principal.
   Widget _buildPrimaryAction({
     required String text,
     required VoidCallback onTap,
@@ -2270,7 +2307,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  /// Botón outlined.
   Widget _buildOutlinedAction({
     required String text,
     required VoidCallback onTap,
@@ -2300,7 +2336,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  /// Texto dinámico del botón principal según el estado.
+  // =========================
+  // ESTADO DEL PARTIDO
+  // =========================
+
+  bool _isMatchFinalized() => estadoPartido == 'finalizado';
+
   String _getActionByMatchState() {
     switch (estadoPartido) {
       case 'no_iniciado':
@@ -2318,7 +2359,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
   }
 
-  /// Texto del chip superior.
   String _getTimeChipText() {
     switch (estadoPartido) {
       case 'no_iniciado':
@@ -2336,6 +2376,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
   }
 }
+ 
 /// Placeholder de partidos jugados.
 class HistorialScreen extends StatelessWidget {
   const HistorialScreen({super.key});
