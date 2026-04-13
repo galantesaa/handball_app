@@ -1226,9 +1226,7 @@ class FixtureScreen extends StatelessWidget {
 }
 
 /// Pantalla intermedia: centro de control del partido.
-/// Más adelante va a evolucionar antes de ir a "partido en vivo".
-/// Pantalla intermedia: centro de control del partido.
-/// Desde acá se ve el estado general y se entra al módulo de carga en vivo.
+/// Desde acá se ve el estado general, el tanteador y se entra al módulo en vivo.
 class PartidoEnJuegoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
@@ -1242,20 +1240,45 @@ class PartidoEnJuegoScreen extends StatefulWidget {
 }
 
 class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
-  /// Estado mock actual del partido.
-  /// Más adelante esto va a venir de datos reales.
+  // =========================
+  // DATOS MOCK DEL PARTIDO
+  // =========================
+
+  /// Tanteador actual mock.
   int golesSanFernando = 10;
   int golesRival = 7;
-  int atajadas = 9;
-  int eventosCargados = 16;
 
-  /// Tiempo actual del partido.
-  String tiempoActual = '2T';
+  /// Métricas mock del resumen.
+  int atajadas = 9;
+  int golesRecibidos = 7;
+  int perdidas = 5;
+
+  /// Exclusiones temporales (2 minutos).
+  int exclusiones2Min = 3;
+
+  /// Amarilla: advertencia.
+  int amarillas = 2;
+
+  /// Rojas: exclusión definitiva del partido.
+  int rojas = 1;
+
+    /// Penales cobrados en contra o a favor.
+  int penales = 2;
+
+  /// Estado actual del partido.
+  /// Valores posibles mock:
+  /// - no_iniciado
+  /// - primer_tiempo
+  /// - entretiempo
+  /// - segundo_tiempo
+  /// - finalizado
+  String estadoPartido = 'segundo_tiempo';
 
   @override
   Widget build(BuildContext context) {
     final bool somosLocales = widget.partido['condicion'] == 'Local';
 
+    // El lado izquierdo y derecho dependen de la condición.
     final String nombreIzquierda =
         somosLocales ? 'San Fernando' : widget.partido['rival'];
     final String nombreDerecha =
@@ -1273,7 +1296,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       ),
       body: Stack(
         children: [
-          // Fondo
+          // Fondo general
           Positioned.fill(
             child: Image.asset(
               'assets/images/fondohd.jpeg',
@@ -1282,7 +1305,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             ),
           ),
 
-          // Oscurecedor
+          // Overlay oscuro
           Positioned.fill(
             child: Container(
               color: const Color(0xFF05080D).withOpacity(0.86),
@@ -1308,9 +1331,9 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                   const SizedBox(height: 16),
 
                   _buildPrimaryAction(
-                    text: 'Ir a partido en vivo',
+                    text: _getPrimaryActionText(),
                     onTap: () {
-                      debugPrint('Ir a partido en vivo');
+                      debugPrint(_getPrimaryActionText());
                     },
                   ),
 
@@ -1347,23 +1370,6 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                   const SizedBox(height: 18),
 
                   _buildOutlinedAction(
-                    text: 'Cambiar tiempo',
-                    onTap: () {
-                      setState(() {
-                        if (tiempoActual == '1T') {
-                          tiempoActual = '2T';
-                        } else if (tiempoActual == '2T') {
-                          tiempoActual = 'Final';
-                        } else {
-                          tiempoActual = '1T';
-                        }
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  _buildOutlinedAction(
                     text: 'Finalizar partido',
                     onTap: () {
                       debugPrint('Finalizar partido');
@@ -1378,139 +1384,156 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     );
   }
 
-  /// Header contextual del centro de control.
+  // =========================
+  // HEADER SUPERIOR
+  // =========================
+
+  /// Encabezado contextual del centro de control.
+  /// Sacamos el nombre grande del rival porque ya aparece en el tanteador.
+  /// sacamos fecha y hora, solo dejamos centro de control y ruta
   Widget _buildControlHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.partido['rival'],
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Centro de control',
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
         ),
-        const SizedBox(height: 4),
-        Text(
-          '${widget.partido['categoria']} · ${widget.partido['torneo']} · ${widget.partido['condicion']}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFFD4DCE7),
-          ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        '${widget.partido['categoria']} · ${widget.partido['torneo']}',
+        style: const TextStyle(
+          fontSize: 14,
+          color: Color(0xFFD4DCE7),
         ),
-        const SizedBox(height: 2),
-        Text(
-          '${widget.partido['fecha']} • ${widget.partido['hora']}',
-          style: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFFAAB4C3),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
-  /// Card principal del marcador.
+  // =========================
+  // TANTEADOR PRINCIPAL
+  // =========================
+
   Widget _buildScoreCard({
-    required String nombreIzquierda,
-    required String nombreDerecha,
-    required int golesIzquierda,
-    required int golesDerecha,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.90),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.22),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: _buildTimeChip(tiempoActual),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTeamSide(
-                  nombre: nombreIzquierda,
-                  assetPath: 'assets/images/san_fernando.png',
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  '$golesIzquierda - $golesDerecha',
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _buildTeamSide(
-                  nombre: nombreDerecha,
-                  assetPath: 'assets/images/san_fernando.png',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  required String nombreIzquierda,
+  required String nombreDerecha,
+  required int golesIzquierda,
+  required int golesDerecha,
+}) {
+  final bool somosLocales = widget.partido['condicion'] == 'Local';
 
-  /// Bloque lateral de cada equipo en el marcador.
-  Widget _buildTeamSide({
-    required String nombre,
-    required String assetPath,
-  }) {
-    return Column(
-      children: [
-        Container(
-          width: 62,
-          height: 62,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-          padding: const EdgeInsets.all(8),
-          child: Center(
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          nombre,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+  final String condicionIzquierda = somosLocales ? 'Local' : 'Visitante';
+  final String condicionDerecha = somosLocales ? 'Visitante' : 'Local';
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.90),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.04),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.22),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
         ),
       ],
-    );
-  }
+    ),
+    child: Column(
+      children: [
+        Align(
+          alignment: Alignment.topCenter,
+          child: _buildTimeChip(_getTimeChipText()),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTeamSide(
+                nombre: nombreIzquierda,
+                condicion: condicionIzquierda,
+                assetPath: 'assets/images/san_fernando.png',
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                '$golesIzquierda - $golesDerecha',
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            Expanded(
+              child: _buildTeamSide(
+                nombre: nombreDerecha,
+                condicion: condicionDerecha,
+                assetPath: 'assets/images/san_fernando.png',
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
-  /// Chip del tiempo actual.
+  Widget _buildTeamSide({
+  required String nombre,
+  required String condicion,
+  required String assetPath,
+}) {
+  return Column(
+    children: [
+      Text(
+        condicion,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Container(
+        width: 62,
+        height: 62,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Center(
+          child: Image.asset(
+            assetPath,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        nombre,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ],
+  );
+}
+
   Widget _buildTimeChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1529,7 +1552,44 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     );
   }
 
-  /// Botón principal azul.
+  // =========================
+  // BOTÓN PRINCIPAL DINÁMICO
+  // =========================
+
+  String _getPrimaryActionText() {
+    switch (estadoPartido) {
+      case 'no_iniciado':
+        return 'Iniciar 1T';
+      case 'primer_tiempo':
+        return 'Continuar 1T';
+      case 'entretiempo':
+        return 'Iniciar 2T';
+      case 'segundo_tiempo':
+        return 'Continuar 2T';
+      case 'finalizado':
+        return 'Ver resumen final';
+      default:
+        return 'Ir a partido en vivo';
+    }
+  }
+
+  String _getTimeChipText() {
+    switch (estadoPartido) {
+      case 'no_iniciado':
+        return 'Previo';
+      case 'primer_tiempo':
+        return '1T';
+      case 'entretiempo':
+        return 'Entretiempo';
+      case 'segundo_tiempo':
+        return '2T';
+      case 'finalizado':
+        return 'Final';
+      default:
+        return 'En juego';
+    }
+  }
+
   Widget _buildPrimaryAction({
     required String text,
     required VoidCallback onTap,
@@ -1558,7 +1618,10 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     );
   }
 
-  /// Botones chicos intermedios.
+  // =========================
+  // ACCIONES SECUNDARIAS
+  // =========================
+
   Widget _buildMiniAction({
     required String text,
     required IconData icon,
@@ -1594,68 +1657,6 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     );
   }
 
-  /// Resumen preliminar del partido actual.
-  Widget _buildQuickSummaryCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.82),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Resumen rápido',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryRow('Goles San Fernando', '$golesSanFernando'),
-          _buildSummaryRow('Goles rival', '$golesRival'),
-          _buildSummaryRow('Atajadas', '$atajadas'),
-          _buildSummaryRow('Eventos cargados', '$eventosCargados'),
-        ],
-      ),
-    );
-  }
-
-  /// Fila simple del resumen.
-  Widget _buildSummaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 13,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Botón outlined.
   Widget _buildOutlinedAction({
     required String text,
     required VoidCallback onTap,
@@ -1681,6 +1682,79 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+      ),
+    );
+  }
+
+  // =========================
+  // RESUMEN RÁPIDO
+  // =========================
+
+  /// Resumen mock más útil a nivel diseño y concepto.
+  Widget _buildQuickSummaryCard() {
+  final double eficaciaArquero = (atajadas + golesRecibidos) == 0
+      ? 0
+      : (atajadas / (atajadas + golesRecibidos)) * 100;
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.82),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: Colors.white.withOpacity(0.04),
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Resumen rápido',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryRow(
+          'Eficacia arquero',
+          '${eficaciaArquero.toStringAsFixed(1)}%',
+        ),
+        _buildSummaryRow('Pérdidas', '$perdidas'),
+        _buildSummaryRow('Penales', '$penales'),
+        _buildSummaryRow('Exclusiones 2 min', '$exclusiones2Min'),
+        _buildSummaryRow('Tarjetas amarillas', '$amarillas'),
+        _buildSummaryRow('Tarjetas rojas', '$rojas'),
+      ],
+    ),
+  );
+}
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
