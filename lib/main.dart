@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Punto de entrada de la app.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Permite dibujar detrás de la barra superior del sistema.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
+  // Configuración visual de la status bar.
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -17,6 +20,7 @@ void main() async {
   runApp(const GoalKeeperApp());
 }
 
+/// Widget raíz de la aplicación.
 class GoalKeeperApp extends StatelessWidget {
   const GoalKeeperApp({super.key});
 
@@ -35,6 +39,7 @@ class GoalKeeperApp extends StatelessWidget {
   }
 }
 
+/// Pantalla principal.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -43,11 +48,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// Estado simple para mostrar si hay institución cargada o no.
   bool tieneInstitucion = true;
 
+  /// Nombre visible de la institución.
   final String institucionNombre = 'San Fernando Handball';
+
+  /// Si solo existe una temporada, el primer chip no debería borrarse.
   final bool hayMasDeUnaTemporada = false;
 
+  /// Ruta / contexto actual activo.
   final List<String> contexto = <String>[
     '2026',
     'Local',
@@ -61,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
+          // Fondo principal
           Positioned.fill(
             child: Image.asset(
               'assets/images/fondohd.jpeg',
@@ -68,11 +79,14 @@ class _HomeScreenState extends State<HomeScreen> {
               alignment: Alignment.center,
             ),
           ),
+
+          // Oscurece el fondo para mejorar la legibilidad
           Positioned.fill(
             child: Container(
               color: const Color(0xFF05080D).withOpacity(0.82),
             ),
           ),
+
           SafeArea(
             top: false,
             bottom: true,
@@ -95,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Navegación central de la home.
   void _openSection(BuildContext context, String title) {
     Navigator.push(
       context,
@@ -122,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Header superior con logo, texto y menú.
   Widget _buildTopIdentityRow() {
     return Row(
       children: [
@@ -156,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Estado vacío: aún no hay institución creada.
   Widget _buildEstadoSinInstitucion(BuildContext context) {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.68,
@@ -189,7 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: const Text(
               'Crear institución',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -208,6 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Estado principal de la home cuando ya hay institución activa.
   Widget _buildEstadoConInstitucion() {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -278,6 +299,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
+          // Bloque montado con escudo + institución
           Positioned(
             top: -10,
             left: 18,
@@ -289,6 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Cabecera montada sobre el recuadro principal.
   Widget _buildInstitutionHeaderMounted() {
     return Center(
       child: Container(
@@ -325,6 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Círculo blanco con escudo de institución.
   Widget _buildInstitutionBadge() {
     return Container(
       width: 48,
@@ -344,6 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Contenedor de la ruta actual (temporada, torneo, categoría, etc.).
   Widget _buildContextSection() {
     return Container(
       width: double.infinity,
@@ -359,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Línea horizontal de chips.
   Widget _buildContextLine() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -389,6 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Chip individual de contexto.
   Widget _buildContextToken({
     required String text,
     required bool removable,
@@ -432,6 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Card clickeable de la home.
   Widget _buildActionTile({
     required String imagePath,
     required String title,
@@ -510,6 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+/// Widget reusable para dar feedback táctil a las cards.
 class _PressableTile extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -567,6 +597,8 @@ class _PressableTileState extends State<_PressableTile> {
   }
 }
 
+/// Pantalla de próximo partido.
+/// Hoy es opción A, pero pensada para crecer hacia fixture real.
 class ProximoPartidoScreen extends StatefulWidget {
   const ProximoPartidoScreen({super.key});
 
@@ -577,6 +609,7 @@ class ProximoPartidoScreen extends StatefulWidget {
 class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   bool hayPartido = true;
 
+  /// Partido principal visible arriba.
   final Map<String, dynamic> proximoPartido = {
     'rival': 'Argentinos Juniors',
     'fecha': 'Sabado 18/04',
@@ -587,6 +620,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     'estado': 'Pendiente',
   };
 
+  /// Cola de siguientes partidos.
   final List<Map<String, String>> siguientesPartidos = [
     {
       'rival': 'River Plate',
@@ -653,22 +687,47 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildMatchCard(),
         const SizedBox(height: 16),
         _buildUpcomingList(),
+        const SizedBox(height: 10),
+
+        _buildSecondaryAction(
+          text: 'Ver fixture completo',
+          icon: Icons.calendar_month_outlined,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FixtureScreen(
+                  categoria: proximoPartido['categoria'],
+                  torneo: proximoPartido['torneo'],
+                ),
+              ),
+            );
+          },
+        ),
+
         const SizedBox(height: 20),
         _buildPrimaryAction(
           text: 'Iniciar partido',
           onTap: () {
-            debugPrint('Iniciar partido');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PartidoEnJuegoScreen(
+                  partido: proximoPartido,
+                ),
+              ),
+            );
           },
         ),
         const SizedBox(height: 10),
-        _buildSecondaryAction(
+        _buildOutlinedAction(
           text: 'Editar partido',
           onTap: () {
             debugPrint('Editar partido');
           },
         ),
         const SizedBox(height: 10),
-        _buildSecondaryAction(
+        _buildOutlinedAction(
           text: 'Marcar como jugado',
           onTap: () {
             debugPrint('Marcar como jugado');
@@ -720,6 +779,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Título y subtítulo superior.
   Widget _buildScreenHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,6 +804,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Card principal del partido destacado.
   Widget _buildMatchCard() {
     return Container(
       width: double.infinity,
@@ -785,17 +846,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           ),
           const SizedBox(height: 6),
           _buildHeadToHeadButton(),
-          const SizedBox(height: 12),
-          _buildInfoRow('Fecha', proximoPartido['fecha']),
-          _buildInfoRow('Hora', proximoPartido['hora']),
-          _buildInfoRow('Condición', proximoPartido['condicion']),
-          _buildInfoRow('Torneo', proximoPartido['torneo']),
-          _buildInfoRow('Categoría', proximoPartido['categoria']),
+          const SizedBox(height: 10),
+          _buildInfoRow(
+  'Fecha',
+  '${proximoPartido['fecha']} • ${proximoPartido['hora']}',
+),
+_buildInfoRow('Condición', proximoPartido['condicion']),
         ],
       ),
     );
   }
 
+  /// Lista compacta de los siguientes partidos.
   Widget _buildUpcomingList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -819,82 +881,92 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Item individual de la lista de próximos.
+  /// Al tocar uno, sube a principal y el principal baja a la lista.
   Widget _buildUpcomingItem(Map<String, String> partido) {
-  return GestureDetector(
-    onTap: () {
-      setState(() {
-        final partidoActualAnterior = Map<String, dynamic>.from(proximoPartido);
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          final partidoActualAnterior = {
+            'rival': proximoPartido['rival'].toString(),
+            'fecha': proximoPartido['fecha'].toString(),
+            'hora': proximoPartido['hora'].toString(),
+            'condicion': proximoPartido['condicion'].toString(),
+          };
 
-        proximoPartido['rival'] = partido['rival']!;
-        proximoPartido['fecha'] = partido['fecha']!;
-        proximoPartido['hora'] = partido['hora']!;
-        proximoPartido['condicion'] = partido['condicion']!;
-        proximoPartido['estado'] = 'Pendiente';
+          final nuevosSiguientes =
+              siguientesPartidos.where((p) => p != partido).toList();
 
-        siguientesPartidos.remove(partido);
-        siguientesPartidos.insert(0, {
-          'rival': partidoActualAnterior['rival'].toString(),
-          'fecha': partidoActualAnterior['fecha'].toString(),
-          'hora': partidoActualAnterior['hora'].toString(),
-          'condicion': partidoActualAnterior['condicion'].toString(),
+          nuevosSiguientes.add(partidoActualAnterior);
+
+          proximoPartido['rival'] = partido['rival']!;
+          proximoPartido['fecha'] = partido['fecha']!;
+          proximoPartido['hora'] = partido['hora']!;
+          proximoPartido['condicion'] = partido['condicion']!;
+          proximoPartido['estado'] = 'Pendiente';
+
+          siguientesPartidos
+            ..clear()
+            ..addAll(nuevosSiguientes);
         });
-      });
-    },
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1A2B).withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            padding: const EdgeInsets.all(6),
-            child: Center(
-              child: Image.asset(
-                'assets/images/san_fernando.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              partido['rival']!,
-              style: const TextStyle(
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1A2B).withOpacity(0.6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+              ),
+              padding: const EdgeInsets.all(6),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/san_fernando.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
-          ),
-          Text(
-            '${partido['fecha']} • ${partido['hora']}',
-            style: const TextStyle(
-              color: Color(0xFFAAB4C3),
-              fontSize: 12,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                partido['rival']!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            partido['condicion']!,
-            style: const TextStyle(
-              color: Color(0xFF4DA3FF),
-              fontSize: 12,
+            Text(
+              '${partido['fecha']} • ${partido['hora']}',
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 12,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Text(
+              partido['condicion']!,
+              style: const TextStyle(
+                color: Color(0xFF4DA3FF),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  /// Escudo principal del rival.
   Widget _buildTeamBadge() {
     return Container(
       width: 58,
@@ -906,13 +978,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       padding: const EdgeInsets.all(8),
       child: Center(
         child: Image.asset(
-          'assets/images/argentinos.png',
+          'assets/images/san_fernando.png',
           fit: BoxFit.contain,
         ),
       ),
     );
   }
 
+  /// Chip de estado del partido.
   Widget _buildStatusChip(String status) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -931,6 +1004,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Botón de historial vs rival actual.
   Widget _buildHeadToHeadButton() {
     return GestureDetector(
       onTap: () {
@@ -975,6 +1049,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Fila simple de dato + valor.
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1006,6 +1081,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Botón principal azul.
   Widget _buildPrimaryAction({
     required String text,
     required VoidCallback onTap,
@@ -1034,7 +1110,48 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  /// Botón secundario tipo card, usado para "Ver fixture completo".
   Widget _buildSecondaryAction({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1A2B).withOpacity(0.6),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white70, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDAE2EE),
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Botón outlined para acciones secundarias de partido.
+  Widget _buildOutlinedAction({
     required String text,
     required VoidCallback onTap,
   }) {
@@ -1064,6 +1181,512 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 }
 
+/// Pantalla básica de fixture completo.
+class FixtureScreen extends StatelessWidget {
+  final String categoria;
+  final String torneo;
+
+  const FixtureScreen({
+    super.key,
+    required this.categoria,
+    required this.torneo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B1320),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Fixture'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$categoria • $torneo',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Fixture completo (próximo paso)',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pantalla intermedia: centro de control del partido.
+/// Más adelante va a evolucionar antes de ir a "partido en vivo".
+/// Pantalla intermedia: centro de control del partido.
+/// Desde acá se ve el estado general y se entra al módulo de carga en vivo.
+class PartidoEnJuegoScreen extends StatefulWidget {
+  final Map<String, dynamic> partido;
+
+  const PartidoEnJuegoScreen({
+    super.key,
+    required this.partido,
+  });
+
+  @override
+  State<PartidoEnJuegoScreen> createState() => _PartidoEnJuegoScreenState();
+}
+
+class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
+  /// Estado mock actual del partido.
+  /// Más adelante esto va a venir de datos reales.
+  int golesSanFernando = 10;
+  int golesRival = 7;
+  int atajadas = 9;
+  int eventosCargados = 16;
+
+  /// Tiempo actual del partido.
+  String tiempoActual = '2T';
+
+  @override
+  Widget build(BuildContext context) {
+    final bool somosLocales = widget.partido['condicion'] == 'Local';
+
+    final String nombreIzquierda =
+        somosLocales ? 'San Fernando' : widget.partido['rival'];
+    final String nombreDerecha =
+        somosLocales ? widget.partido['rival'] : 'San Fernando';
+
+    final int golesIzquierda = somosLocales ? golesSanFernando : golesRival;
+    final int golesDerecha = somosLocales ? golesRival : golesSanFernando;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Partido en curso'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          // Fondo
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+
+          // Oscurecedor
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF05080D).withOpacity(0.86),
+            ),
+          ),
+
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildControlHeader(),
+                  const SizedBox(height: 18),
+
+                  _buildScoreCard(
+                    nombreIzquierda: nombreIzquierda,
+                    nombreDerecha: nombreDerecha,
+                    golesIzquierda: golesIzquierda,
+                    golesDerecha: golesDerecha,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  _buildPrimaryAction(
+                    text: 'Ir a partido en vivo',
+                    onTap: () {
+                      debugPrint('Ir a partido en vivo');
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiniAction(
+                          text: 'Plantel',
+                          icon: Icons.groups_rounded,
+                          onTap: () {
+                            debugPrint('Abrir plantel');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildMiniAction(
+                          text: 'Resumen',
+                          icon: Icons.bar_chart_rounded,
+                          onTap: () {
+                            debugPrint('Abrir resumen');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  _buildQuickSummaryCard(),
+
+                  const SizedBox(height: 18),
+
+                  _buildOutlinedAction(
+                    text: 'Cambiar tiempo',
+                    onTap: () {
+                      setState(() {
+                        if (tiempoActual == '1T') {
+                          tiempoActual = '2T';
+                        } else if (tiempoActual == '2T') {
+                          tiempoActual = 'Final';
+                        } else {
+                          tiempoActual = '1T';
+                        }
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _buildOutlinedAction(
+                    text: 'Finalizar partido',
+                    onTap: () {
+                      debugPrint('Finalizar partido');
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Header contextual del centro de control.
+  Widget _buildControlHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.partido['rival'],
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${widget.partido['categoria']} · ${widget.partido['torneo']} · ${widget.partido['condicion']}',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFFD4DCE7),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${widget.partido['fecha']} • ${widget.partido['hora']}',
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFFAAB4C3),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Card principal del marcador.
+  Widget _buildScoreCard({
+    required String nombreIzquierda,
+    required String nombreDerecha,
+    required int golesIzquierda,
+    required int golesDerecha,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: _buildTimeChip(tiempoActual),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: nombreIzquierda,
+                  assetPath: 'assets/images/san_fernando.png',
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  '$golesIzquierda - $golesDerecha',
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: nombreDerecha,
+                  assetPath: 'assets/images/san_fernando.png',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bloque lateral de cada equipo en el marcador.
+  Widget _buildTeamSide({
+    required String nombre,
+    required String assetPath,
+  }) {
+    return Column(
+      children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Center(
+            child: Image.asset(
+              assetPath,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          nombre,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Chip del tiempo actual.
+  Widget _buildTimeChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2B44).withOpacity(0.95),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFFDCE4EF),
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  /// Botón principal azul.
+  Widget _buildPrimaryAction({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Botones chicos intermedios.
+  Widget _buildMiniAction({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF182338).withOpacity(0.75),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.04),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: Colors.white70),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Resumen preliminar del partido actual.
+  Widget _buildQuickSummaryCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.04),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Resumen rápido',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryRow('Goles San Fernando', '$golesSanFernando'),
+          _buildSummaryRow('Goles rival', '$golesRival'),
+          _buildSummaryRow('Atajadas', '$atajadas'),
+          _buildSummaryRow('Eventos cargados', '$eventosCargados'),
+        ],
+      ),
+    );
+  }
+
+  /// Fila simple del resumen.
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Botón outlined.
+  Widget _buildOutlinedAction({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.08),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Placeholder de partidos jugados.
 class HistorialScreen extends StatelessWidget {
   const HistorialScreen({super.key});
 
@@ -1078,6 +1701,7 @@ class HistorialScreen extends StatelessWidget {
   }
 }
 
+/// Placeholder de estadísticas.
 class EstadisticasScreen extends StatelessWidget {
   const EstadisticasScreen({super.key});
 
@@ -1092,6 +1716,7 @@ class EstadisticasScreen extends StatelessWidget {
   }
 }
 
+/// Placeholder de equipos.
 class EquiposScreen extends StatelessWidget {
   const EquiposScreen({super.key});
 
@@ -1106,6 +1731,7 @@ class EquiposScreen extends StatelessWidget {
   }
 }
 
+/// Placeholder de jugadores.
 class JugadoresScreen extends StatelessWidget {
   const JugadoresScreen({super.key});
 
