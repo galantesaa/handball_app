@@ -1354,6 +1354,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         estadoPartido = resultado['estadoPartido'] as String;
         golesSanFernando = resultado['golesSanFernando'] as int;
         golesRival = resultado['golesRival'] as int;
+        golesRecibidos = resultado['golesRecibidos'] as int;
         atajadas = resultado['atajadas'] as int;
         penales = resultado['penales'] as int;
         exclusiones2Min = resultado['exclusiones2Min'] as int;
@@ -1783,8 +1784,6 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
 /// Pantalla operativa del partido.
 /// Acá se registran eventos rápidos del partido en curso.
-/// Pantalla operativa del partido.
-/// Acá se registran eventos rápidos del partido en curso.
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
   final String estadoInicial;
@@ -1816,9 +1815,14 @@ class PartidoEnVivoScreen extends StatefulWidget {
 }
 
 class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
+  // =========================
+  // ESTADO INTERNO DEL PARTIDO
+  // =========================
+
   late String estadoPartido;
   late int golesSanFernando;
   late int golesRival;
+  late int golesRecibidos;
   late int atajadas;
   late int penales;
   late int exclusiones2Min;
@@ -1832,6 +1836,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     estadoPartido = widget.estadoInicial;
     golesSanFernando = widget.golesSanFernandoInicial;
     golesRival = widget.golesRivalInicial;
+
+    // Esto es clave para la eficacia del arquero:
+    // los goles recibidos arrancan igual que los goles del rival.
+    golesRecibidos = widget.golesRivalInicial;
+
     atajadas = widget.atajadasInicial;
     penales = widget.penalesInicial;
     exclusiones2Min = widget.exclusiones2MinInicial;
@@ -1843,11 +1852,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   @override
   Widget build(BuildContext context) {
     final bool somosLocales = widget.partido['condicion'] == 'Local';
-
-    final String nombreLocal =
-        somosLocales ? 'San Fernando' : widget.partido['rival'];
-    final String nombreVisitante =
-        somosLocales ? widget.partido['rival'] : 'San Fernando';
 
     final int golesLocal = somosLocales ? golesSanFernando : golesRival;
     final int golesVisitante = somosLocales ? golesRival : golesSanFernando;
@@ -1870,7 +1874,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             ),
           ),
 
-          // Overlay
+          // Overlay oscuro
           Positioned.fill(
             child: Container(
               color: const Color(0xFF05080D).withOpacity(0.88),
@@ -1919,6 +1923,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                               : () {
                                   setState(() {
                                     golesRival++;
+                                    golesRecibidos++;
                                   });
                                 },
                         ),
@@ -2031,6 +2036,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                             'estadoPartido': estadoPartido,
                             'golesSanFernando': golesSanFernando,
                             'golesRival': golesRival,
+                            'golesRecibidos': golesRecibidos,
                             'atajadas': atajadas,
                             'penales': penales,
                             'exclusiones2Min': exclusiones2Min,
@@ -2064,6 +2070,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                               'estadoPartido': estadoPartido,
                               'golesSanFernando': golesSanFernando,
                               'golesRival': golesRival,
+                              'golesRecibidos': golesRecibidos,
                               'atajadas': atajadas,
                               'penales': penales,
                               'exclusiones2Min': exclusiones2Min,
@@ -2088,6 +2095,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                           'estadoPartido': estadoPartido,
                           'golesSanFernando': golesSanFernando,
                           'golesRival': golesRival,
+                          'golesRecibidos': golesRecibidos,
                           'atajadas': atajadas,
                           'penales': penales,
                           'exclusiones2Min': exclusiones2Min,
@@ -2146,7 +2154,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             child: _buildTimeChip(_getTimeChipText()),
           ),
           const SizedBox(height: 14),
-
           Row(
             children: [
               Expanded(
@@ -2376,7 +2383,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
   }
 }
- 
+
 /// Placeholder de partidos jugados.
 class HistorialScreen extends StatelessWidget {
   const HistorialScreen({super.key});
