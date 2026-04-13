@@ -587,6 +587,27 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     'estado': 'Pendiente',
   };
 
+  final List<Map<String, String>> siguientesPartidos = [
+    {
+      'rival': 'River Plate',
+      'fecha': 'Sab 25/04',
+      'hora': '15:30',
+      'condicion': 'Visitante',
+    },
+    {
+      'rival': 'SEDALO',
+      'fecha': 'Sab 02/05',
+      'hora': '13:00',
+      'condicion': 'Local',
+    },
+    {
+      'rival': 'Ferro',
+      'fecha': 'Sab 08/05',
+      'hora': '13:00',
+      'condicion': 'Visitante',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -611,7 +632,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             ),
           ),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: hayPartido
                   ? _buildEstadoConPartido()
@@ -630,7 +651,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildScreenHeader(),
         const SizedBox(height: 22),
         _buildMatchCard(),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
+        _buildUpcomingList(),
+        const SizedBox(height: 20),
         _buildPrimaryAction(
           text: 'Iniciar partido',
           onTap: () {
@@ -660,42 +683,39 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildScreenHeader(),
-        const Spacer(),
-        Center(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: const Color(0xFF111A28).withOpacity(0.78),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.04),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'No hay un próximo partido cargado',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _buildPrimaryAction(
-                  text: 'Crear partido',
-                  onTap: () {
-                    debugPrint('Crear partido');
-                  },
-                ),
-              ],
+        const SizedBox(height: 24),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111A28).withOpacity(0.78),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.04),
             ),
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'No hay un próximo partido cargado',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _buildPrimaryAction(
+                text: 'Crear partido',
+                onTap: () {
+                  debugPrint('Crear partido');
+                },
+              ),
+            ],
+          ),
         ),
-        const Spacer(),
       ],
     );
   }
@@ -776,6 +796,105 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  Widget _buildUpcomingList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Siguientes partidos',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...siguientesPartidos.map((partido) {
+          return _buildUpcomingItem(partido);
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildUpcomingItem(Map<String, String> partido) {
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        final partidoActualAnterior = Map<String, dynamic>.from(proximoPartido);
+
+        proximoPartido['rival'] = partido['rival']!;
+        proximoPartido['fecha'] = partido['fecha']!;
+        proximoPartido['hora'] = partido['hora']!;
+        proximoPartido['condicion'] = partido['condicion']!;
+        proximoPartido['estado'] = 'Pendiente';
+
+        siguientesPartidos.remove(partido);
+        siguientesPartidos.insert(0, {
+          'rival': partidoActualAnterior['rival'].toString(),
+          'fecha': partidoActualAnterior['fecha'].toString(),
+          'hora': partidoActualAnterior['hora'].toString(),
+          'condicion': partidoActualAnterior['condicion'].toString(),
+        });
+      });
+    },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A2B).withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            padding: const EdgeInsets.all(6),
+            child: Center(
+              child: Image.asset(
+                'assets/images/san_fernando.png',
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              partido['rival']!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            '${partido['fecha']} • ${partido['hora']}',
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            partido['condicion']!,
+            style: const TextStyle(
+              color: Color(0xFF4DA3FF),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
   Widget _buildTeamBadge() {
     return Container(
       width: 58,
