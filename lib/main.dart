@@ -69,7 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.82)),
+            child: Container(
+              color: const Color(0xFF05080D).withOpacity(0.82),
+            ),
           ),
           SafeArea(
             top: false,
@@ -144,7 +146,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         IconButton(
           onPressed: () {},
-          icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+          icon: const Icon(
+            Icons.menu_rounded,
+            color: Colors.white,
+            size: 28,
+          ),
         ),
       ],
     );
@@ -191,7 +197,10 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {},
             child: const Text(
               'Importar datos',
-              style: TextStyle(color: Color(0xFFD7DCE3), fontSize: 15),
+              style: TextStyle(
+                color: Color(0xFFD7DCE3),
+                fontSize: 15,
+              ),
             ),
           ),
         ],
@@ -236,7 +245,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 const SizedBox(height: 8),
-                Container(height: 1, color: Colors.white.withOpacity(0.06)),
+                Container(
+                  height: 1,
+                  color: Colors.white.withOpacity(0.06),
+                ),
                 const SizedBox(height: 6),
 
                 _buildActionTile(
@@ -246,7 +258,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 const SizedBox(height: 8),
-                Container(height: 1, color: Colors.white.withOpacity(0.06)),
+                Container(
+                  height: 1,
+                  color: Colors.white.withOpacity(0.06),
+                ),
                 const SizedBox(height: 6),
 
                 _buildActionTile(
@@ -336,7 +351,9 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF111A28).withOpacity(0.55),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.03)),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.03),
+        ),
       ),
       child: _buildContextLine(),
     );
@@ -382,7 +399,9 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF182338).withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.035)),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.035),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -435,7 +454,9 @@ class _HomeScreenState extends State<HomeScreen> {
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.03),
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -493,7 +514,10 @@ class _PressableTile extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
 
-  const _PressableTile({required this.child, required this.onTap});
+  const _PressableTile({
+    required this.child,
+    required this.onTap,
+  });
 
   @override
   State<_PressableTile> createState() => _PressableTileState();
@@ -543,14 +567,380 @@ class _PressableTileState extends State<_PressableTile> {
   }
 }
 
-class ProximoPartidoScreen extends StatelessWidget {
+class ProximoPartidoScreen extends StatefulWidget {
   const ProximoPartidoScreen({super.key});
+
+  @override
+  State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
+}
+
+class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
+  bool hayPartido = true;
+
+  final Map<String, dynamic> proximoPartido = {
+    'rival': 'Argentinos Juniors',
+    'fecha': 'Sabado 18/04',
+    'hora': '13:00',
+    'condicion': 'Local',
+    'torneo': 'Local Apertura',
+    'categoria': 'Cadetes',
+    'estado': 'Pendiente',
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Próximo partido')),
-      body: const Center(child: Text('Pantalla Próximo Partido')),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Próximo partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF05080D).withOpacity(0.84),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: hayPartido
+                  ? _buildEstadoConPartido()
+                  : _buildEstadoSinPartido(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEstadoConPartido() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildScreenHeader(),
+        const SizedBox(height: 22),
+        _buildMatchCard(),
+        const SizedBox(height: 18),
+        _buildPrimaryAction(
+          text: 'Iniciar partido',
+          onTap: () {
+            debugPrint('Iniciar partido');
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildSecondaryAction(
+          text: 'Editar partido',
+          onTap: () {
+            debugPrint('Editar partido');
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildSecondaryAction(
+          text: 'Marcar como jugado',
+          onTap: () {
+            debugPrint('Marcar como jugado');
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEstadoSinPartido() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildScreenHeader(),
+        const Spacer(),
+        Center(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111A28).withOpacity(0.78),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'No hay un próximo partido cargado',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildPrimaryAction(
+                  text: 'Crear partido',
+                  onTap: () {
+                    debugPrint('Crear partido');
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Spacer(),
+      ],
+    );
+  }
+
+  Widget _buildScreenHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'San Fernando Handball',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${proximoPartido['categoria']} · ${proximoPartido['torneo']}',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFFD4DCE7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatchCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatusChip(proximoPartido['estado']),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _buildTeamBadge(),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  proximoPartido['rival'],
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _buildHeadToHeadButton(),
+          const SizedBox(height: 12),
+          _buildInfoRow('Fecha', proximoPartido['fecha']),
+          _buildInfoRow('Hora', proximoPartido['hora']),
+          _buildInfoRow('Condición', proximoPartido['condicion']),
+          _buildInfoRow('Torneo', proximoPartido['torneo']),
+          _buildInfoRow('Categoría', proximoPartido['categoria']),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamBadge() {
+    return Container(
+      width: 58,
+      height: 58,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Center(
+        child: Image.asset(
+          'assets/images/argentinos.png',
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338).withOpacity(0.95),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFFDCE4EF),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeadToHeadButton() {
+    return GestureDetector(
+      onTap: () {
+        debugPrint('Ver historial vs rival');
+      },
+      child: Container(
+        margin: const EdgeInsets.only(top: 10, bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF182338).withOpacity(0.85),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.04),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.history,
+              size: 18,
+              color: Color(0xFFDCE4EF),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Historial vs ${proximoPartido['rival']}',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  color: Color(0xFFDCE4EF),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: Color(0xFF8FA3BF),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrimaryAction({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryAction({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.08),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -562,7 +952,9 @@ class HistorialScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Partidos Jugados')),
-      body: const Center(child: Text('Pantalla Partidos Jugados')),
+      body: const Center(
+        child: Text('Pantalla Partidos Jugados'),
+      ),
     );
   }
 }
@@ -574,7 +966,9 @@ class EstadisticasScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Estadísticas')),
-      body: const Center(child: Text('Pantalla Estadísticas')),
+      body: const Center(
+        child: Text('Pantalla Estadísticas'),
+      ),
     );
   }
 }
@@ -586,7 +980,9 @@ class EquiposScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Equipos')),
-      body: const Center(child: Text('Pantalla Equipos')),
+      body: const Center(
+        child: Text('Pantalla Equipos'),
+      ),
     );
   }
 }
@@ -598,7 +994,9 @@ class JugadoresScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Jugadores')),
-      body: const Center(child: Text('Pantalla Jugadores')),
+      body: const Center(
+        child: Text('Pantalla Jugadores'),
+      ),
     );
   }
 }
