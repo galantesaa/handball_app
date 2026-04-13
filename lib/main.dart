@@ -93,6 +93,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openSection(BuildContext context, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          switch (title) {
+            case 'Próximo partido':
+              return const ProximoPartidoScreen();
+            case 'Partidos jugados':
+              return const HistorialScreen();
+            case 'Estadísticas':
+              return const EstadisticasScreen();
+            case 'Equipo':
+              return const EquiposScreen();
+            case 'Jugadores':
+              return const JugadoresScreen();
+            default:
+              return Scaffold(
+                appBar: AppBar(title: Text(title)),
+                body: Center(child: Text('Pantalla $title')),
+              );
+          }
+        },
+      ),
+    );
+  }
+
   Widget _buildTopIdentityRow() {
     return Row(
       children: [
@@ -195,6 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildContextSection(),
                 const SizedBox(height: 8),
+
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_proximo_partido.png',
                   title: 'Próximo partido',
@@ -290,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: BoxShape.circle,
         color: Colors.white,
       ),
-      padding: const EdgeInsets.all(7),
+      padding: const EdgeInsets.all(8),
       child: Center(
         child: Image.asset(
           'assets/images/san_fernando.png',
@@ -298,6 +326,19 @@ class _HomeScreenState extends State<HomeScreen> {
           alignment: Alignment.center,
         ),
       ),
+    );
+  }
+
+  Widget _buildContextSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28).withOpacity(0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: _buildContextLine(),
     );
   }
 
@@ -328,19 +369,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }).toList(),
       ),
-    );
-  }
-
-  Widget _buildContextSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111A28).withOpacity(0.55),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.03)),
-      ),
-      child: _buildContextLine(),
     );
   }
 
@@ -392,17 +420,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return _PressableTile(
       onTap: () {
-        debugPrint('Tap en $title');
+        _openSection(context, title);
       },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 0),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F1722).withValues(alpha: 0.88),
+          color: const Color(0xFF0F1722).withOpacity(0.88),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: Colors.black.withOpacity(0.25),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -424,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -433,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 17.8,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
@@ -442,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Color(0xFFAAB4C3),
                     ),
                   ),
@@ -511,6 +539,66 @@ class _PressableTileState extends State<_PressableTile> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class ProximoPartidoScreen extends StatelessWidget {
+  const ProximoPartidoScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Próximo partido')),
+      body: const Center(child: Text('Pantalla Próximo Partido')),
+    );
+  }
+}
+
+class HistorialScreen extends StatelessWidget {
+  const HistorialScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Partidos Jugados')),
+      body: const Center(child: Text('Pantalla Partidos Jugados')),
+    );
+  }
+}
+
+class EstadisticasScreen extends StatelessWidget {
+  const EstadisticasScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Estadísticas')),
+      body: const Center(child: Text('Pantalla Estadísticas')),
+    );
+  }
+}
+
+class EquiposScreen extends StatelessWidget {
+  const EquiposScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Equipos')),
+      body: const Center(child: Text('Pantalla Equipos')),
+    );
+  }
+}
+
+class JugadoresScreen extends StatelessWidget {
+  const JugadoresScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Jugadores')),
+      body: const Center(child: Text('Pantalla Jugadores')),
     );
   }
 }
