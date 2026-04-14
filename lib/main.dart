@@ -1211,7 +1211,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   int amarillas = 2;
   int rojas = 1;
 
-  String estadoPartido = 'segundo_tiempo';
+  String estadoPartido = 'primer_tiempo';
 
   @override
   Widget build(BuildContext context) {
@@ -1420,7 +1420,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                 child: _buildTeamSide(
                   nombre: nombreVisitante,
                   condicion: 'Visitante',
-                  assetPath: 'assets/images/san_fernando.png',
+                  assetPath: 'assets/images/argentinos.png',
                 ),
               ),
             ],
@@ -1765,7 +1765,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
     return WillPopScope(
       onWillPop: () async {
-        _popWithResult();
+        _goBack();
         return false;
       },
       child: Scaffold(
@@ -1776,19 +1776,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: _popWithResult,
+            onPressed: _goBack,
           ),
-          actions: [
-            IconButton(
-              onPressed: _isMatchFinalized()
-                  ? null
-                  : () {
-                      debugPrint('Abrir sanción');
-                    },
-              icon: const Icon(Icons.gavel_rounded),
-              tooltip: 'Sanción',
-            ),
-          ],
         ),
         body: Stack(
           children: [
@@ -1838,7 +1827,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Pérdida',
-                            onTap: _isMatchFinalized()
+                            onTap: _isPlayLocked()
                                 ? null
                                 : () {
                                     setState(() {
@@ -1851,7 +1840,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Sanción',
-                            onTap: _isMatchFinalized()
+                            onTap: _isPlayLocked()
                                 ? null
                                 : () {
                                     debugPrint('Abrir selección de sanción');
@@ -1866,15 +1855,41 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: _buildPrimaryAction(
-                        text: _getActionByMatchState(),
-                        onTap: _handleMatchState,
+                        text: _getActionText(),
+                        onTap: _handleMainAction,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
+
+            if (estadoPartido == 'entretiempo')
+              _buildCenteredOverlay('Entretiempo'),
+
+            if (estadoPartido == 'entretiempo_alargue')
+              _buildCenteredOverlay('Entretiempo alargue'),
           ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildCenteredOverlay(String text) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C2B44).withOpacity(0.96),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -1884,8 +1899,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     required int golesLocal,
     required int golesVisitante,
   }) {
-    final bool mostrarChipTiempo = estadoPartido != 'entretiempo';
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -1901,23 +1914,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           const SizedBox(width: 8),
           _buildMiniShield(),
           const Spacer(),
-          if (mostrarChipTiempo) _buildTimeChip(_getTimeChipText()),
-          if (mostrarChipTiempo) const SizedBox(width: 12),
-          Opacity(
-            opacity: estadoPartido == 'entretiempo' ? 0.42 : 1,
-            child: Text(
-              '$golesLocal - $golesVisitante',
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+          Text(
+            '$golesLocal - $golesVisitante',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
           ),
-          if (estadoPartido == 'entretiempo') ...[
-            const SizedBox(width: 12),
-            _buildTimeChip('Entretiempo'),
-          ],
           const Spacer(),
           _buildMiniShield(),
           const SizedBox(width: 8),
@@ -1963,24 +1967,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  Widget _buildTimeChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C2B44).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Color(0xFFDCE4EF),
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
   Widget _buildModeSwitch() {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -1998,7 +1984,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               label: 'Defensa',
               isSelected: modo == 'defensa',
               onTap: () {
-                if (_isMatchFinalized()) return;
+                if (_isPlayLocked()) return;
                 setState(() {
                   modo = 'defensa';
                   zonaTiro = null;
@@ -2012,7 +1998,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               label: 'Ataque',
               isSelected: modo == 'ataque',
               onTap: () {
-                if (_isMatchFinalized()) return;
+                if (_isPlayLocked()) return;
                 setState(() {
                   modo = 'ataque';
                   zonaTiro = null;
@@ -2085,25 +2071,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   Widget _buildShotZones() {
     return Row(
       children: [
-        Expanded(
-          child: _buildShotZone('EI', 'Extremo izquierdo'),
-        ),
+        Expanded(child: _buildShotZone('EI', 'Extremo izquierdo')),
         const SizedBox(width: 6),
-        Expanded(
-          child: _buildShotZone('LI', 'Lateral izquierdo'),
-        ),
+        Expanded(child: _buildShotZone('LI', 'Lateral izquierdo')),
         const SizedBox(width: 6),
-        Expanded(
-          child: _buildShotZone('C', 'Central'),
-        ),
+        Expanded(child: _buildShotZone('C', 'Central')),
         const SizedBox(width: 6),
-        Expanded(
-          child: _buildShotZone('LD', 'Lateral derecho'),
-        ),
+        Expanded(child: _buildShotZone('LD', 'Lateral derecho')),
         const SizedBox(width: 6),
-        Expanded(
-          child: _buildShotZone('ED', 'Extremo derecho'),
-        ),
+        Expanded(child: _buildShotZone('ED', 'Extremo derecho')),
       ],
     );
   }
@@ -2112,7 +2088,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     final bool isSelected = zonaTiro == fullLabel;
 
     return GestureDetector(
-      onTap: _isMatchFinalized()
+      onTap: _isPlayLocked()
           ? null
           : () {
               setState(() {
@@ -2196,7 +2172,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: _isMatchFinalized()
+        onTap: _isPlayLocked()
             ? null
             : () {
                 setState(() {
@@ -2283,10 +2259,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               _floatingOption('Desviado', () {
                 _clearSelection();
                 Navigator.pop(context);
-              }),
-              _floatingOption('Penal', () {
-                Navigator.pop(context);
-                _showPenalDialog();
               }),
             ],
           ),
@@ -2392,7 +2364,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   bool _isMatchFinalized() => estadoPartido == 'finalizado';
 
-  String _getActionByMatchState() {
+  bool _isPlayLocked() {
+    return estadoPartido == 'no_iniciado' ||
+        estadoPartido == 'entretiempo' ||
+        estadoPartido == 'entretiempo_alargue' ||
+        estadoPartido == 'finalizado';
+  }
+
+  bool _isDraw() => golesSanFernando == golesRival;
+
+  String _getActionText() {
     switch (estadoPartido) {
       case 'no_iniciado':
         return 'Iniciar 1T';
@@ -2401,7 +2382,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       case 'entretiempo':
         return 'Iniciar 2T';
       case 'segundo_tiempo':
-        return 'Finalizar 2T';
+        return 'Finalizar partido';
+      case 'primer_tiempo_alargue':
+        return 'Finalizar 1T alargue';
+      case 'entretiempo_alargue':
+        return 'Iniciar 2T alargue';
+      case 'segundo_tiempo_alargue':
+        return 'Finalizar partido';
+      case 'penales':
+        return 'Finalizar partido';
       case 'finalizado':
         return 'Partido finalizado';
       default:
@@ -2409,65 +2398,162 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
   }
 
-  String _getTimeChipText() {
-    switch (estadoPartido) {
-      case 'no_iniciado':
-        return 'Previo';
-      case 'primer_tiempo':
-        return '1T';
-      case 'entretiempo':
-        return 'Entretiempo';
-      case 'segundo_tiempo':
-        return '2T';
-      case 'finalizado':
-        return 'Final';
-      default:
-        return 'En juego';
-    }
-  }
-
-  void _handleMatchState() {
+  void _handleMainAction() {
     if (estadoPartido == 'finalizado') {
-      _popWithResult();
+      _goBack();
       return;
     }
 
-    setState(() {
-      if (estadoPartido == 'no_iniciado') {
-        estadoPartido = 'primer_tiempo';
-      } else if (estadoPartido == 'primer_tiempo') {
-        estadoPartido = 'entretiempo';
-      } else if (estadoPartido == 'entretiempo') {
-        estadoPartido = 'segundo_tiempo';
-      } else if (estadoPartido == 'segundo_tiempo') {
-        estadoPartido = 'finalizado';
-      }
-    });
+    if (estadoPartido == 'no_iniciado') {
+      setState(() => estadoPartido = 'primer_tiempo');
+      return;
+    }
 
-    if (estadoPartido == 'finalizado') {
-      Future.delayed(const Duration(milliseconds: 150), () {
-        if (!mounted) return;
-        _popWithResult();
-      });
+    if (estadoPartido == 'primer_tiempo') {
+      setState(() => estadoPartido = 'entretiempo');
+      return;
+    }
+
+    if (estadoPartido == 'entretiempo') {
+      setState(() => estadoPartido = 'segundo_tiempo');
+      return;
+    }
+
+    if (estadoPartido == 'segundo_tiempo') {
+      if (_isDraw()) {
+        _showEndOptions();
+      } else {
+        _finalizarPartido();
+      }
+      return;
+    }
+
+    if (estadoPartido == 'primer_tiempo_alargue') {
+      setState(() => estadoPartido = 'entretiempo_alargue');
+      return;
+    }
+
+    if (estadoPartido == 'entretiempo_alargue') {
+      setState(() => estadoPartido = 'segundo_tiempo_alargue');
+      return;
+    }
+
+    if (estadoPartido == 'segundo_tiempo_alargue') {
+      if (_isDraw()) {
+        _showPenalesOrEnd();
+      } else {
+        _finalizarPartido();
+      }
+      return;
+    }
+
+    if (estadoPartido == 'penales') {
+      _finalizarPartido();
+      return;
     }
   }
 
-  void _popWithResult() {
-    Navigator.pop(
-      context,
-      {
-        'estadoPartido': estadoPartido,
-        'golesSanFernando': golesSanFernando,
-        'golesRival': golesRival,
-        'golesRecibidos': golesRecibidos,
-        'atajadas': atajadas,
-        'penales': penales,
-        'exclusiones2Min': exclusiones2Min,
-        'amarillas': amarillas,
-        'rojas': rojas,
-        'perdidas': perdidas,
+  void _showEndOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetButton('Ir a alargue', () {
+                Navigator.pop(context);
+                setState(() => estadoPartido = 'primer_tiempo_alargue');
+              }),
+              const SizedBox(height: 10),
+              _sheetButton('Ir a penales', () {
+                Navigator.pop(context);
+                setState(() => estadoPartido = 'penales');
+              }),
+              const SizedBox(height: 10),
+              _sheetButton('Finalizar partido', () {
+                Navigator.pop(context);
+                _finalizarPartido();
+              }),
+            ],
+          ),
+        );
       },
     );
+  }
+
+  void _showPenalesOrEnd() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _sheetButton('Ir a penales', () {
+                Navigator.pop(context);
+                setState(() => estadoPartido = 'penales');
+              }),
+              const SizedBox(height: 10),
+              _sheetButton('Finalizar partido', () {
+                Navigator.pop(context);
+                _finalizarPartido();
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _sheetButton(String text, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(text),
+      ),
+    );
+  }
+
+  void _finalizarPartido() {
+    setState(() => estadoPartido = 'finalizado');
+
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (!mounted) return;
+      _goBack();
+    });
+  }
+
+  void _goBack() {
+    Navigator.pop(context, {
+      'estadoPartido': estadoPartido,
+      'golesSanFernando': golesSanFernando,
+      'golesRival': golesRival,
+      'atajadas': atajadas,
+      'perdidas': perdidas,
+      'penales': penales,
+      'exclusiones2Min': exclusiones2Min,
+      'amarillas': amarillas,
+      'rojas': rojas,
+    });
   }
 
   void _showPenalDialog() {
@@ -2499,7 +2585,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                     golesSanFernando++;
                   } else {
                     golesRival++;
-                    golesRecibidos++;
                   }
                 });
                 Navigator.pop(context);
