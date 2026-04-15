@@ -1162,8 +1162,9 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
   List<Map<String, dynamic>> eventos = [];
 
-  // null = todavía no se eligió ataque/defensa
   String? modoActual;
+  String? modoInicioPrimerTiempo;
+  String? modoInicioPrimerTiempoAlargue;
 
   bool get _partidoFinalizado => estadoPartido == 'finalizado';
   bool get _somosLocales => widget.partido['condicion'] == 'Local';
@@ -1210,6 +1211,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           penalesConvertidosRivalInicial: penalesConvertidosRival,
           eventosIniciales: eventos,
           modoInicial: modoActual,
+          modoInicioPrimerTiempo: modoInicioPrimerTiempo,
+          modoInicioPrimerTiempoAlargue: modoInicioPrimerTiempoAlargue,
         ),
       ),
     );
@@ -1221,6 +1224,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             (resultado['golesSanFernando'] ?? golesSanFernando) as int;
         golesRival = (resultado['golesRival'] ?? golesRival) as int;
         golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
+
         atajadas = (resultado['atajadas'] ?? atajadas) as int;
         penales = (resultado['penales'] ?? penales) as int;
         exclusiones2Min =
@@ -1228,6 +1232,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         amarillas = (resultado['amarillas'] ?? amarillas) as int;
         rojas = (resultado['rojas'] ?? rojas) as int;
         perdidas = (resultado['perdidas'] ?? perdidas) as int;
+
         penalesConvertidosSanFernando =
             (resultado['penalesConvertidosSanFernando'] ??
                     penalesConvertidosSanFernando)
@@ -1237,6 +1242,9 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                 as int;
 
         modoActual = resultado['modoActual'] as String?;
+        modoInicioPrimerTiempo = resultado['modoInicioPrimerTiempo'] as String?;
+        modoInicioPrimerTiempoAlargue =
+            resultado['modoInicioPrimerTiempoAlargue'] as String?;
 
         final dynamic eventosResult = resultado['eventos'];
         if (eventosResult is List) {
@@ -1662,6 +1670,8 @@ class PartidoEnVivoScreen extends StatefulWidget {
   final int penalesConvertidosRivalInicial;
   final List<Map<String, dynamic>> eventosIniciales;
   final String? modoInicial;
+  final String? modoInicioPrimerTiempo;
+  final String? modoInicioPrimerTiempoAlargue;
 
   const PartidoEnVivoScreen({
     super.key,
@@ -1679,6 +1689,8 @@ class PartidoEnVivoScreen extends StatefulWidget {
     required this.penalesConvertidosRivalInicial,
     required this.eventosIniciales,
     required this.modoInicial,
+    required this.modoInicioPrimerTiempo,
+    required this.modoInicioPrimerTiempoAlargue,
   });
 
   @override
@@ -1713,8 +1725,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   String? actorPenalActual;
   String? ultimoActorSeleccionado;
 
+  bool mostrarContra = false;
+
   late List<Map<String, dynamic>> eventos;
   int _contadorEventoId = 0;
+
+  String? modoInicioPrimerTiempo;
+  String? modoInicioPrimerTiempoAlargue;
 
   @override
   void initState() {
@@ -1738,8 +1755,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     penalesIntentadosSanFernando = penalesConvertidosSanFernando;
     penalesIntentadosRival = penalesConvertidosRival;
 
-    modo = widget.modoInicial;
-
     eventos = widget.eventosIniciales
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
@@ -1750,6 +1765,30 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         _contadorEventoId = ultimoId;
       }
     }
+
+    modo = widget.modoInicial;
+    modoInicioPrimerTiempo = widget.modoInicioPrimerTiempo;
+    modoInicioPrimerTiempoAlargue = widget.modoInicioPrimerTiempoAlargue;
+
+    _aplicarModoAutomaticoSegunEstado();
+  }
+
+  void _aplicarModoAutomaticoSegunEstado() {
+    if (estadoPartido == 'segundo_tiempo' && modo == null) {
+      if (modoInicioPrimerTiempo != null) {
+        modo = _invertirModo(modoInicioPrimerTiempo!);
+      }
+    }
+
+    if (estadoPartido == 'segundo_tiempo_alargue' && modo == null) {
+      if (modoInicioPrimerTiempoAlargue != null) {
+        modo = _invertirModo(modoInicioPrimerTiempoAlargue!);
+      }
+    }
+  }
+
+  String _invertirModo(String valor) {
+    return valor == 'ataque' ? 'defensa' : 'ataque';
   }
 
   bool _isMatchFinalized() => estadoPartido == 'finalizado';
@@ -1837,13 +1876,19 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       children: [
                         Expanded(
                           child: _buildEventButton(
-                            text: 'Pérdida',
+                            text: mostrarContra ? 'Contra' : 'Pérdida',
                             onTap:
                                 _isPlayLocked() ||
                                     _isPenaltyShootout() ||
                                     modo == null
                                 ? null
-                                : _registrarPerdida,
+                                : () {
+                                    if (mostrarContra) {
+                                      _activarContra();
+                                    } else {
+                                      _registrarPerdida();
+                                    }
+                                  },
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1996,6 +2041,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   zonaTiro = null;
                   zonaArco = null;
                   penalEnCurso = false;
+                  mostrarContra = false;
+
+                  if (estadoPartido == 'primer_tiempo' &&
+                      modoInicioPrimerTiempo == null) {
+                    modoInicioPrimerTiempo = 'defensa';
+                  }
+                  if (estadoPartido == 'primer_tiempo_alargue' &&
+                      modoInicioPrimerTiempoAlargue == null) {
+                    modoInicioPrimerTiempoAlargue = 'defensa';
+                  }
                 });
               },
             ),
@@ -2011,6 +2066,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   zonaTiro = null;
                   zonaArco = null;
                   penalEnCurso = false;
+                  mostrarContra = false;
+
+                  if (estadoPartido == 'primer_tiempo' &&
+                      modoInicioPrimerTiempo == null) {
+                    modoInicioPrimerTiempo = 'ataque';
+                  }
+                  if (estadoPartido == 'primer_tiempo_alargue' &&
+                      modoInicioPrimerTiempoAlargue == null) {
+                    modoInicioPrimerTiempoAlargue = 'ataque';
+                  }
                 });
               },
             ),
@@ -2058,7 +2123,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
-      child: _isPenaltyShootout()
+      child: (_isPenaltyShootout() || penalEnCurso)
           ? _buildPenaltyOnlyGrid()
           : Column(
               children: [
@@ -2075,11 +2140,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       children: [
         const SizedBox(height: 12),
         Text(
-          modo == 'ataque'
-              ? 'Penal nuestro'
-              : modo == 'defensa'
-              ? 'Penal rival'
-              : 'Seleccioná contexto',
+          _isPenaltyShootout()
+              ? (modo == 'ataque'
+                    ? 'Penal nuestro'
+                    : modo == 'defensa'
+                    ? 'Penal rival'
+                    : 'Seleccioná contexto')
+              : 'Penal',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -2120,7 +2187,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           ? null
           : () {
               setState(() {
-                zonaTiro = fullLabel;
+                if (zonaTiro == fullLabel) {
+                  zonaTiro = null;
+                } else {
+                  zonaTiro = fullLabel;
+                }
+                mostrarContra = false;
               });
             },
       child: AnimatedContainer(
@@ -2226,9 +2298,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 }
 
                 setState(() {
-                  zonaArco = label;
+                  if (zonaArco == label) {
+                    zonaArco = null;
+                  } else {
+                    zonaArco = label;
+                  }
                 });
-                _showZoneActionSheet();
+
+                if (zonaArco != null) {
+                  _showZoneActionSheet();
+                }
               },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
@@ -2283,20 +2362,44 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _registrarPerdida() {
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
+
+    final String? zonaPerdida = zonaTiro;
+
     setState(() {
       perdidas++;
-      ultimoActorSeleccionado = 'Jugador genérico ataque';
+      ultimoActorSeleccionado = actor;
       modo = modo == 'ataque' ? 'defensa' : 'ataque';
+      mostrarContra = true;
     });
 
     _registrarEvento(
       tipo: 'perdida',
       resultado: 'perdida',
-      actor: ultimoActorSeleccionado,
+      actor: actor,
+      zonaTiroValor: zonaPerdida,
       detalle: 'Pérdida de posesión',
     );
 
-    _clearSelection();
+    _clearSelection(keepContra: true);
+  }
+
+  void _activarContra() {
+    setState(() {
+      modo = modo == 'ataque' ? 'defensa' : 'ataque';
+      mostrarContra = false;
+      zonaTiro = null;
+      zonaArco = null;
+    });
+
+    _registrarEvento(
+      tipo: 'contra',
+      resultado: 'inicio_contra',
+      actor: 'Cambio de contexto',
+      detalle: 'Se activa contragolpe',
+    );
   }
 
   void _iniciarFlujoPenalNormal() {
@@ -2310,6 +2413,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       zonaTiro = null;
       zonaArco = null;
       ultimoActorSeleccionado = actor;
+      mostrarContra = false;
     });
 
     showModalBottomSheet(
@@ -2385,6 +2489,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                     golesRecibidos++;
                     modo = 'ataque';
                   }
+                  mostrarContra = false;
                 });
 
                 _registrarEvento(
@@ -2403,6 +2508,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   if (modo == 'defensa') {
                     atajadas++;
                   }
+                  mostrarContra = true;
                 });
 
                 _registrarEvento(
@@ -2412,12 +2518,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   zonaArcoValor: zonaArco,
                 );
 
-                _clearSelection();
+                _clearSelection(keepContra: true);
                 Navigator.pop(context);
               }),
               _floatingOption('Desvío', () {
                 setState(() {
                   penales++;
+                  mostrarContra = true;
                 });
 
                 _registrarEvento(
@@ -2427,7 +2534,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   zonaArcoValor: zonaArco,
                 );
 
-                _clearSelection();
+                _clearSelection(keepContra: true);
                 Navigator.pop(context);
               }),
             ],
@@ -2593,6 +2700,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                     golesRecibidos++;
                     modo = 'ataque';
                   }
+                  mostrarContra = false;
                 });
 
                 _registrarEvento(
@@ -2611,6 +2719,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   if (modo == 'defensa') {
                     atajadas++;
                   }
+                  mostrarContra = true;
                 });
 
                 _registrarEvento(
@@ -2621,10 +2730,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   zonaArcoValor: zonaArco,
                 );
 
-                _clearSelection();
+                _clearSelection(keepContra: true);
                 Navigator.pop(context);
               }),
               _floatingOption('Desvío', () {
+                setState(() {
+                  mostrarContra = true;
+                });
+
                 _registrarEvento(
                   tipo: 'tiro',
                   resultado: 'desvio',
@@ -2633,47 +2746,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   zonaArcoValor: zonaArco,
                 );
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-              _floatingOption('Lateral propio', () {
-                setState(() {
-                  if (modo == 'ataque') {
-                    modo = 'ataque';
-                  } else {
-                    modo = 'ataque';
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'lateral_propio',
-                  actor: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                );
-
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-              _floatingOption('Lateral rival', () {
-                setState(() {
-                  if (modo == 'ataque') {
-                    modo = 'defensa';
-                  } else {
-                    modo = 'ataque';
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'lateral_rival',
-                  actor: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                );
-
-                _clearSelection();
+                _clearSelection(keepContra: true);
                 Navigator.pop(context);
               }),
             ],
@@ -2751,6 +2824,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _registrarPenalTanda(String resultado) {
+    if (modo == null) return;
+
     setState(() {
       if (modo == 'ataque') {
         penalesIntentadosSanFernando++;
@@ -2825,12 +2900,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  void _clearSelection() {
+  void _clearSelection({bool keepContra = false}) {
     setState(() {
       zonaTiro = null;
       zonaArco = null;
       penalEnCurso = false;
       actorPenalActual = null;
+      if (!keepContra) {
+        mostrarContra = false;
+      }
     });
   }
 
@@ -2944,25 +3022,23 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     if (estadoPartido == 'no_iniciado') {
       setState(() {
         estadoPartido = 'primer_tiempo';
-        modo ??= 'ataque';
+        modo = null;
       });
       return;
     }
 
     if (estadoPartido == 'primer_tiempo') {
-      setState(() => estadoPartido = 'entretiempo');
+      setState(() {
+        estadoPartido = 'entretiempo';
+      });
       return;
     }
 
     if (estadoPartido == 'entretiempo') {
       setState(() {
         estadoPartido = 'segundo_tiempo';
-        if (modo == 'ataque') {
-          modo = 'defensa';
-        } else if (modo == 'defensa') {
-          modo = 'ataque';
-        } else {
-          modo = 'defensa';
+        if (modoInicioPrimerTiempo != null) {
+          modo = _invertirModo(modoInicioPrimerTiempo!);
         }
       });
       return;
@@ -2978,19 +3054,17 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
 
     if (estadoPartido == 'primer_tiempo_alargue') {
-      setState(() => estadoPartido = 'entretiempo_alargue');
+      setState(() {
+        estadoPartido = 'entretiempo_alargue';
+      });
       return;
     }
 
     if (estadoPartido == 'entretiempo_alargue') {
       setState(() {
         estadoPartido = 'segundo_tiempo_alargue';
-        if (modo == 'ataque') {
-          modo = 'defensa';
-        } else if (modo == 'defensa') {
-          modo = 'ataque';
-        } else {
-          modo = 'defensa';
+        if (modoInicioPrimerTiempoAlargue != null) {
+          modo = _invertirModo(modoInicioPrimerTiempoAlargue!);
         }
       });
       return;
@@ -3125,6 +3199,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'penalesConvertidosRival': penalesConvertidosRival,
       'eventos': eventos,
       'modoActual': modo,
+      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
     });
   }
 }
