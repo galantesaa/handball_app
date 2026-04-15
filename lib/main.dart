@@ -77,9 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.82),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.82)),
           ),
           SafeArea(
             top: false,
@@ -154,11 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         IconButton(
           onPressed: () {},
-          icon: const Icon(
-            Icons.menu_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
+          icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
         ),
       ],
     );
@@ -197,10 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: const Text(
               'Crear institución',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 12),
@@ -208,10 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {},
             child: const Text(
               'Importar datos',
-              style: TextStyle(
-                color: Color(0xFFD7DCE3),
-                fontSize: 15,
-              ),
+              style: TextStyle(color: Color(0xFFD7DCE3), fontSize: 15),
             ),
           ),
         ],
@@ -254,10 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   subtitle: 'Historial cargado',
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  height: 1,
-                  color: Colors.white.withOpacity(0.06),
-                ),
+                Container(height: 1, color: Colors.white.withOpacity(0.06)),
                 const SizedBox(height: 6),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_estadisticas.png',
@@ -265,10 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   subtitle: 'Rendimiento y análisis',
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  height: 1,
-                  color: Colors.white.withOpacity(0.06),
-                ),
+                Container(height: 1, color: Colors.white.withOpacity(0.06)),
                 const SizedBox(height: 6),
                 _buildActionTile(
                   imagePath: 'assets/icons/icon_equipos.png',
@@ -357,9 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF111A28).withOpacity(0.55),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.03),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
       ),
       child: _buildContextLine(),
     );
@@ -405,9 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF182338).withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.035),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.035)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -460,9 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(
-            color: Colors.white.withOpacity(0.03),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -520,10 +496,7 @@ class _PressableTile extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
 
-  const _PressableTile({
-    required this.child,
-    required this.onTap,
-  });
+  const _PressableTile({required this.child, required this.onTap});
 
   @override
   State<_PressableTile> createState() => _PressableTileState();
@@ -572,13 +545,12 @@ class _PressableTileState extends State<_PressableTile> {
   }
 }
 
-
 /// ===============================
 /// PRÓXIMO PARTIDO
 /// ===============================
 /// ===============================
-/// 
-/// 
+///
+///
 class ProximoPartidoScreen extends StatefulWidget {
   const ProximoPartidoScreen({super.key});
 
@@ -639,9 +611,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.84),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.84)),
           ),
           SafeArea(
             child: SingleChildScrollView(
@@ -688,9 +658,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => PartidoEnJuegoScreen(
-                  partido: proximoPartido,
-                ),
+                builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
               ),
             );
           },
@@ -725,9 +693,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFF111A28).withOpacity(0.78),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.04),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.04)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -770,10 +736,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         const SizedBox(height: 4),
         Text(
           '${proximoPartido['categoria']} · ${proximoPartido['torneo']}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFFD4DCE7),
-          ),
+          style: const TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
         ),
       ],
     );
@@ -786,9 +749,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.90),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.22),
@@ -863,8 +824,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'condicion': proximoPartido['condicion'].toString(),
           };
 
-          final nuevosSiguientes =
-              siguientesPartidos.where((p) => p != partido).toList();
+          final nuevosSiguientes = siguientesPartidos
+              .where((p) => p != partido)
+              .toList();
 
           nuevosSiguientes.add(partidoActualAnterior);
 
@@ -916,18 +878,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             ),
             Text(
               '${partido['fecha']} • ${partido['hora']}',
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 12),
             ),
             const SizedBox(width: 10),
             Text(
               partido['condicion']!,
-              style: const TextStyle(
-                color: Color(0xFF4DA3FF),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFF4DA3FF), fontSize: 12),
             ),
           ],
         ),
@@ -982,17 +938,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF182338).withOpacity(0.85),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.04),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.history,
-              size: 18,
-              color: Color(0xFFDCE4EF),
-            ),
+            const Icon(Icons.history, size: 18, color: Color(0xFFDCE4EF)),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1004,11 +954,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 ),
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: Color(0xFF8FA3BF),
-            ),
+            const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8FA3BF)),
           ],
         ),
       ),
@@ -1065,10 +1011,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1123,9 +1066,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.white,
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.08),
-          ),
+          side: BorderSide(color: Colors.white.withOpacity(0.08)),
           padding: const EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -1133,23 +1074,19 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
     );
   }
 }
 
-
 /// ===============================
 /// FIXTURE
 /// ===============================
 /// ===============================
-/// 
-/// 
+///
+///
 class FixtureScreen extends StatelessWidget {
   final String categoria;
   final String torneo;
@@ -1176,10 +1113,7 @@ class FixtureScreen extends StatelessWidget {
           children: [
             Text(
               '$categoria • $torneo',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -1193,21 +1127,17 @@ class FixtureScreen extends StatelessWidget {
   }
 }
 
-
 /// ===============================
 /// ===============================
 /// CENTRO DE CONTROL
 /// ===============================
 /// ===============================
-/// 
-/// 
+///
+///
 class PartidoEnJuegoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
-  const PartidoEnJuegoScreen({
-    super.key,
-    required this.partido,
-  });
+  const PartidoEnJuegoScreen({super.key, required this.partido});
 
   @override
   State<PartidoEnJuegoScreen> createState() => _PartidoEnJuegoScreenState();
@@ -1231,6 +1161,9 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   int penalesConvertidosRival = 0;
 
   List<Map<String, dynamic>> eventos = [];
+
+  // null = todavía no se eligió ataque/defensa
+  String? modoActual;
 
   bool get _partidoFinalizado => estadoPartido == 'finalizado';
   bool get _somosLocales => widget.partido['condicion'] == 'Local';
@@ -1276,6 +1209,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           penalesConvertidosSanFernandoInicial: penalesConvertidosSanFernando,
           penalesConvertidosRivalInicial: penalesConvertidosRival,
           eventosIniciales: eventos,
+          modoInicial: modoActual,
         ),
       ),
     );
@@ -1286,8 +1220,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         golesSanFernando =
             (resultado['golesSanFernando'] ?? golesSanFernando) as int;
         golesRival = (resultado['golesRival'] ?? golesRival) as int;
-        golesRecibidos =
-            (resultado['golesRecibidos'] ?? golesRecibidos) as int;
+        golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
         atajadas = (resultado['atajadas'] ?? atajadas) as int;
         penales = (resultado['penales'] ?? penales) as int;
         exclusiones2Min =
@@ -1300,9 +1233,10 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                     penalesConvertidosSanFernando)
                 as int;
         penalesConvertidosRival =
-            (resultado['penalesConvertidosRival'] ??
-                    penalesConvertidosRival)
+            (resultado['penalesConvertidosRival'] ?? penalesConvertidosRival)
                 as int;
+
+        modoActual = resultado['modoActual'] as String?;
 
         final dynamic eventosResult = resultado['eventos'];
         if (eventosResult is List) {
@@ -1341,9 +1275,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.88),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
           ),
           SafeArea(
             child: SingleChildScrollView(
@@ -1397,10 +1329,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   Widget _buildControlHeader() {
     return Text(
       '${widget.partido['categoria']} · ${widget.partido['torneo']}',
-      style: const TextStyle(
-        fontSize: 14,
-        color: Color(0xFFD4DCE7),
-      ),
+      style: const TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
     );
   }
 
@@ -1411,9 +1340,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.90),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Column(
         children: [
@@ -1502,12 +1429,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             color: Colors.white,
           ),
           padding: const EdgeInsets.all(10),
-          child: Center(
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-            ),
-          ),
+          child: Center(child: Image.asset(assetPath, fit: BoxFit.contain)),
         ),
         const SizedBox(height: 8),
         Text(
@@ -1562,10 +1484,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1621,9 +1540,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.82),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1647,6 +1564,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           _buildSummaryRow('Tarjetas amarillas', '$amarillas'),
           _buildSummaryRow('Tarjetas rojas', '$rojas'),
           _buildSummaryRow('Eventos cargados', '${eventos.length}'),
+          _buildSummaryRow('Modo actual', modoActual ?? '-'),
         ],
       ),
     );
@@ -1660,10 +1578,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 13),
             ),
           ),
           Text(
@@ -1729,8 +1644,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 /// PARTIDO EN VIVO
 /// ===============================
 /// ===============================
-/// 
-/// 
+///
+///
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
@@ -1746,6 +1661,7 @@ class PartidoEnVivoScreen extends StatefulWidget {
   final int penalesConvertidosSanFernandoInicial;
   final int penalesConvertidosRivalInicial;
   final List<Map<String, dynamic>> eventosIniciales;
+  final String? modoInicial;
 
   const PartidoEnVivoScreen({
     super.key,
@@ -1762,6 +1678,7 @@ class PartidoEnVivoScreen extends StatefulWidget {
     required this.penalesConvertidosSanFernandoInicial,
     required this.penalesConvertidosRivalInicial,
     required this.eventosIniciales,
+    required this.modoInicial,
   });
 
   @override
@@ -1787,7 +1704,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   late int penalesIntentadosSanFernando;
   late int penalesIntentadosRival;
 
-  String modo = 'ataque';
+  String? modo;
 
   String? zonaTiro;
   String? zonaArco;
@@ -1815,12 +1732,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     rojas = widget.rojasInicial;
     perdidas = widget.perdidasInicial;
 
-    penalesConvertidosSanFernando =
-        widget.penalesConvertidosSanFernandoInicial;
+    penalesConvertidosSanFernando = widget.penalesConvertidosSanFernandoInicial;
     penalesConvertidosRival = widget.penalesConvertidosRivalInicial;
 
     penalesIntentadosSanFernando = penalesConvertidosSanFernando;
     penalesIntentadosRival = penalesConvertidosRival;
+
+    modo = widget.modoInicial;
 
     eventos = widget.eventosIniciales
         .map((e) => Map<String, dynamic>.from(e))
@@ -1886,9 +1804,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               ),
             ),
             Positioned.fill(
-              child: Container(
-                color: const Color(0xFF05080D).withOpacity(0.9),
-              ),
+              child: Container(color: const Color(0xFF05080D).withOpacity(0.9)),
             ),
             SafeArea(
               child: Column(
@@ -1922,7 +1838,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Pérdida',
-                            onTap: _isPlayLocked() || _isPenaltyShootout()
+                            onTap:
+                                _isPlayLocked() ||
+                                    _isPenaltyShootout() ||
+                                    modo == null
                                 ? null
                                 : _registrarPerdida,
                           ),
@@ -1931,7 +1850,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Penal',
-                            onTap: _isPlayLocked() || _isPenaltyShootout()
+                            onTap:
+                                _isPlayLocked() ||
+                                    _isPenaltyShootout() ||
+                                    modo == null
                                 ? null
                                 : _iniciarFlujoPenalNormal,
                           ),
@@ -1940,7 +1862,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Sanción',
-                            onTap: _isPlayLocked() ? null : _showSancionTargetSheet,
+                            onTap: _isPlayLocked()
+                                ? null
+                                : _showSancionTargetSheet,
                           ),
                         ),
                       ],
@@ -1975,9 +1899,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.88),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Row(
         children: [
@@ -2059,9 +1981,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Row(
         children: [
@@ -2136,23 +2056,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.82),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: _isPenaltyShootout()
           ? _buildPenaltyOnlyGrid()
           : Column(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: _buildShotZones(),
-                ),
+                Expanded(flex: 3, child: _buildShotZones()),
                 const SizedBox(height: 12),
-                Expanded(
-                  flex: 2,
-                  child: _buildGoalZones(),
-                ),
+                Expanded(flex: 2, child: _buildGoalZones()),
               ],
             ),
     );
@@ -2163,7 +2075,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       children: [
         const SizedBox(height: 12),
         Text(
-          modo == 'ataque' ? 'Penal nuestro' : 'Penal rival',
+          modo == 'ataque'
+              ? 'Penal nuestro'
+              : modo == 'defensa'
+              ? 'Penal rival'
+              : 'Seleccioná contexto',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -2171,9 +2087,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Expanded(
-          child: _buildGoalZones(),
-        ),
+        Expanded(child: _buildGoalZones()),
       ],
     );
   }
@@ -2198,7 +2112,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     final bool isSelected = zonaTiro == fullLabel;
 
     return GestureDetector(
-      onTap: _isPlayLocked() || _isPenaltyShootout() || penalEnCurso
+      onTap:
+          _isPlayLocked() ||
+              _isPenaltyShootout() ||
+              penalEnCurso ||
+              modo == null
           ? null
           : () {
               setState(() {
@@ -2279,7 +2197,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: _isPlayLocked()
+        onTap: _isPlayLocked() || modo == null
             ? null
             : () {
                 if (_isPenaltyShootout()) {
@@ -2368,6 +2286,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     setState(() {
       perdidas++;
       ultimoActorSeleccionado = 'Jugador genérico ataque';
+      modo = modo == 'ataque' ? 'defensa' : 'ataque';
     });
 
     _registrarEvento(
@@ -2381,8 +2300,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _iniciarFlujoPenalNormal() {
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
 
     setState(() {
       penalEnCurso = true;
@@ -2391,12 +2311,46 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       zonaArco = null;
       ultimoActorSeleccionado = actor;
     });
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                modo == 'ataque'
+                    ? 'Lanzador genérico seleccionado'
+                    : 'Arquero genérico seleccionado',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 14),
+              _floatingOption('Continuar', () {
+                Navigator.pop(context);
+              }),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showNormalPenaltyResultSheet() {
     if (zonaArco == null) return;
 
-    final String actor = actorPenalActual ??
+    final String actor =
+        actorPenalActual ??
         (modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico');
 
     showModalBottomSheet(
@@ -2412,7 +2366,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '$actor → $zonaArco',
+                'Penal → $zonaArco',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 17,
@@ -2461,14 +2415,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 _clearSelection();
                 Navigator.pop(context);
               }),
-              _floatingOption('Desviado', () {
+              _floatingOption('Desvío', () {
                 setState(() {
                   penales++;
                 });
 
                 _registrarEvento(
                   tipo: 'penal',
-                  resultado: 'desviado',
+                  resultado: 'desvio',
                   actor: actor,
                   zonaArcoValor: zonaArco,
                 );
@@ -2601,10 +2555,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showZoneActionSheet() {
-    if (zonaTiro == null || zonaArco == null) return;
+    if (zonaTiro == null || zonaArco == null || modo == null) return;
 
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
 
     showModalBottomSheet(
       context: context,
@@ -2669,10 +2624,50 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 _clearSelection();
                 Navigator.pop(context);
               }),
-              _floatingOption('Desviado', () {
+              _floatingOption('Desvío', () {
                 _registrarEvento(
                   tipo: 'tiro',
-                  resultado: 'desviado',
+                  resultado: 'desvio',
+                  actor: actor,
+                  zonaTiroValor: zonaTiro,
+                  zonaArcoValor: zonaArco,
+                );
+
+                _clearSelection();
+                Navigator.pop(context);
+              }),
+              _floatingOption('Lateral propio', () {
+                setState(() {
+                  if (modo == 'ataque') {
+                    modo = 'ataque';
+                  } else {
+                    modo = 'ataque';
+                  }
+                });
+
+                _registrarEvento(
+                  tipo: 'tiro',
+                  resultado: 'lateral_propio',
+                  actor: actor,
+                  zonaTiroValor: zonaTiro,
+                  zonaArcoValor: zonaArco,
+                );
+
+                _clearSelection();
+                Navigator.pop(context);
+              }),
+              _floatingOption('Lateral rival', () {
+                setState(() {
+                  if (modo == 'ataque') {
+                    modo = 'defensa';
+                  } else {
+                    modo = 'ataque';
+                  }
+                });
+
+                _registrarEvento(
+                  tipo: 'tiro',
+                  resultado: 'lateral_rival',
                   actor: actor,
                   zonaTiroValor: zonaTiro,
                   zonaArcoValor: zonaArco,
@@ -2689,10 +2684,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showPenaltyShootoutResultSheet() {
-    if (zonaArco == null) return;
+    if (zonaArco == null || modo == null) return;
 
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
 
     ultimoActorSeleccionado = actor;
 
@@ -2709,7 +2705,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '$actor → $zonaArco',
+                'Penal → $zonaArco',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 17,
@@ -2737,14 +2733,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 _registrarPenalTanda('atajado');
                 Navigator.pop(context);
               }),
-              _floatingOption('Desviado', () {
+              _floatingOption('Desvío', () {
                 _registrarEvento(
                   tipo: 'penal_tanda',
-                  resultado: 'desviado',
+                  resultado: 'desvio',
                   actor: actor,
                   zonaArcoValor: zonaArco,
                 );
-                _registrarPenalTanda('desviado');
+                _registrarPenalTanda('desvio');
                 Navigator.pop(context);
               }),
             ],
@@ -2760,13 +2756,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         penalesIntentadosSanFernando++;
         if (resultado == 'gol') {
           penalesConvertidosSanFernando++;
-          modo = 'defensa';
         }
       } else {
         penalesIntentadosRival++;
         if (resultado == 'gol') {
           penalesConvertidosRival++;
-          modo = 'ataque';
         } else if (resultado == 'atajado') {
           atajadas++;
         }
@@ -2853,9 +2847,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFF182338).withOpacity(0.75),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.04),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.04)),
           ),
           child: Center(
             child: Text(
@@ -2892,10 +2884,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -2953,7 +2942,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
 
     if (estadoPartido == 'no_iniciado') {
-      setState(() => estadoPartido = 'primer_tiempo');
+      setState(() {
+        estadoPartido = 'primer_tiempo';
+        modo ??= 'ataque';
+      });
       return;
     }
 
@@ -2963,7 +2955,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
 
     if (estadoPartido == 'entretiempo') {
-      setState(() => estadoPartido = 'segundo_tiempo');
+      setState(() {
+        estadoPartido = 'segundo_tiempo';
+        if (modo == 'ataque') {
+          modo = 'defensa';
+        } else if (modo == 'defensa') {
+          modo = 'ataque';
+        } else {
+          modo = 'defensa';
+        }
+      });
       return;
     }
 
@@ -2982,7 +2983,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
 
     if (estadoPartido == 'entretiempo_alargue') {
-      setState(() => estadoPartido = 'segundo_tiempo_alargue');
+      setState(() {
+        estadoPartido = 'segundo_tiempo_alargue';
+        if (modo == 'ataque') {
+          modo = 'defensa';
+        } else if (modo == 'defensa') {
+          modo = 'ataque';
+        } else {
+          modo = 'defensa';
+        }
+      });
       return;
     }
 
@@ -3015,12 +3025,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             children: [
               _sheetButton('Ir a alargue', () {
                 Navigator.pop(context);
-                setState(() => estadoPartido = 'primer_tiempo_alargue');
+                setState(() {
+                  estadoPartido = 'primer_tiempo_alargue';
+                  modo = null;
+                });
               }),
               const SizedBox(height: 10),
               _sheetButton('Ir a penales', () {
                 Navigator.pop(context);
-                setState(() => estadoPartido = 'penales');
+                setState(() {
+                  estadoPartido = 'penales';
+                  modo = 'defensa';
+                });
               }),
               const SizedBox(height: 10),
               _sheetButton('Finalizar partido', () {
@@ -3049,7 +3065,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             children: [
               _sheetButton('Ir a penales', () {
                 Navigator.pop(context);
-                setState(() => estadoPartido = 'penales');
+                setState(() {
+                  estadoPartido = 'penales';
+                  modo = 'defensa';
+                });
               }),
               const SizedBox(height: 10),
               _sheetButton('Finalizar partido', () {
@@ -3105,6 +3124,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
       'penalesConvertidosRival': penalesConvertidosRival,
       'eventos': eventos,
+      'modoActual': modo,
     });
   }
 }
@@ -3113,8 +3133,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 /// PLACEHOLDERS
 /// ===============================
 /// ===============================
-/// 
-/// 
+///
+///
 class HistorialScreen extends StatelessWidget {
   const HistorialScreen({super.key});
 
@@ -3122,9 +3142,7 @@ class HistorialScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Partidos Jugados')),
-      body: const Center(
-        child: Text('Pantalla Partidos Jugados'),
-      ),
+      body: const Center(child: Text('Pantalla Partidos Jugados')),
     );
   }
 }
@@ -3136,9 +3154,7 @@ class EstadisticasScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Estadísticas')),
-      body: const Center(
-        child: Text('Pantalla Estadísticas'),
-      ),
+      body: const Center(child: Text('Pantalla Estadísticas')),
     );
   }
 }
@@ -3150,9 +3166,7 @@ class EquiposScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Equipos')),
-      body: const Center(
-        child: Text('Pantalla Equipos'),
-      ),
+      body: const Center(child: Text('Pantalla Equipos')),
     );
   }
 }
@@ -3164,9 +3178,7 @@ class JugadoresScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Jugadores')),
-      body: const Center(
-        child: Text('Pantalla Jugadores'),
-      ),
+      body: const Center(child: Text('Pantalla Jugadores')),
     );
   }
 }
