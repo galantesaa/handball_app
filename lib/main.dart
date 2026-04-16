@@ -1137,10 +1137,7 @@ class FixtureScreen extends StatelessWidget {
 class PartidoEnJuegoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
-  const PartidoEnJuegoScreen({
-    super.key,
-    required this.partido,
-  });
+  const PartidoEnJuegoScreen({super.key, required this.partido});
 
   @override
   State<PartidoEnJuegoScreen> createState() => _PartidoEnJuegoScreenState();
@@ -1228,8 +1225,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         golesSanFernando =
             (resultado['golesSanFernando'] ?? golesSanFernando) as int;
         golesRival = (resultado['golesRival'] ?? golesRival) as int;
-        golesRecibidos =
-            (resultado['golesRecibidos'] ?? golesRecibidos) as int;
+        golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
 
         atajadas = (resultado['atajadas'] ?? atajadas) as int;
         penales = (resultado['penales'] ?? penales) as int;
@@ -1238,21 +1234,18 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         amarillas = (resultado['amarillas'] ?? amarillas) as int;
         rojas = (resultado['rojas'] ?? rojas) as int;
         perdidas = (resultado['perdidas'] ?? perdidas) as int;
-        recuperaciones =
-            (resultado['recuperaciones'] ?? recuperaciones) as int;
+        recuperaciones = (resultado['recuperaciones'] ?? recuperaciones) as int;
 
         penalesConvertidosSanFernando =
             (resultado['penalesConvertidosSanFernando'] ??
                     penalesConvertidosSanFernando)
                 as int;
         penalesConvertidosRival =
-            (resultado['penalesConvertidosRival'] ??
-                    penalesConvertidosRival)
+            (resultado['penalesConvertidosRival'] ?? penalesConvertidosRival)
                 as int;
 
         modoActual = resultado['modoActual'] as String?;
-        modoInicioPrimerTiempo =
-            resultado['modoInicioPrimerTiempo'] as String?;
+        modoInicioPrimerTiempo = resultado['modoInicioPrimerTiempo'] as String?;
         modoInicioPrimerTiempoAlargue =
             resultado['modoInicioPrimerTiempoAlargue'] as String?;
 
@@ -1293,9 +1286,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.88),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
           ),
           SafeArea(
             child: SingleChildScrollView(
@@ -1349,10 +1340,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   Widget _buildControlHeader() {
     return Text(
       '${widget.partido['categoria']} · ${widget.partido['torneo']}',
-      style: const TextStyle(
-        fontSize: 14,
-        color: Color(0xFFD4DCE7),
-      ),
+      style: const TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
     );
   }
 
@@ -1363,9 +1351,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.90),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Column(
         children: [
@@ -1454,12 +1440,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
             color: Colors.white,
           ),
           padding: const EdgeInsets.all(10),
-          child: Center(
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-            ),
-          ),
+          child: Center(child: Image.asset(assetPath, fit: BoxFit.contain)),
         ),
         const SizedBox(height: 8),
         Text(
@@ -1514,10 +1495,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1573,9 +1551,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.82),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1614,10 +1590,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 13),
             ),
           ),
           Text(
@@ -1685,6 +1658,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 /// ===============================
 ///
 ///
+
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
@@ -1750,7 +1724,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   late int penalesIntentadosSanFernando;
   late int penalesIntentadosRival;
 
-  String? modo;
+  String? modo; // ataque / defensa
 
   String? zonaTiro;
   String? zonaArco;
@@ -1767,6 +1741,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   String? modoInicioPrimerTiempo;
   String? modoInicioPrimerTiempoAlargue;
+
+  static const bool debugTouchAreas = true;
 
   @override
   void initState() {
@@ -1785,8 +1761,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     perdidas = widget.perdidasInicial;
     recuperaciones = widget.recuperacionesInicial;
 
-    penalesConvertidosSanFernando =
-        widget.penalesConvertidosSanFernandoInicial;
+    penalesConvertidosSanFernando = widget.penalesConvertidosSanFernandoInicial;
     penalesConvertidosRival = widget.penalesConvertidosRivalInicial;
 
     penalesIntentadosSanFernando = penalesConvertidosSanFernando;
@@ -1882,7 +1857,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             ),
             Positioned.fill(
               child: Container(
-                color: const Color(0xFF05080D).withOpacity(0.9),
+                color: const Color(0xFF05080D).withOpacity(0.90),
               ),
             ),
             SafeArea(
@@ -1917,7 +1892,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: mostrarContra ? 'Contra' : 'Pérdida',
-                            onTap: _isPlayLocked() ||
+                            onTap:
+                                _isPlayLocked() ||
                                     _isPenaltyShootout() ||
                                     modo == null
                                 ? null
@@ -1934,7 +1910,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Penal',
-                            onTap: _isPlayLocked() ||
+                            onTap:
+                                _isPlayLocked() ||
                                     _isPenaltyShootout() ||
                                     modo == null
                                 ? null
@@ -1945,7 +1922,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         Expanded(
                           child: _buildEventButton(
                             text: 'Sanción',
-                            onTap: _isPlayLocked() ? null : _showSancionTargetSheet,
+                            onTap: _isPlayLocked()
+                                ? null
+                                : _showSancionTargetSheet,
                           ),
                         ),
                       ],
@@ -1974,16 +1953,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-
   Widget _buildCompactScoreBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.88),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Row(
         children: [
@@ -2023,7 +1999,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  
   Widget _buildMiniShield() {
     return Container(
       width: 34,
@@ -2042,7 +2017,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  
   Widget _buildMiniTeamTag(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -2061,16 +2035,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  
   Widget _buildModeSwitch() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.04),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
       child: Row(
         children: [
@@ -2131,7 +2102,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  
   Widget _buildModeOption({
     required String label,
     required bool isSelected,
@@ -2162,480 +2132,456 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  
   Widget _buildGoalGrid() {
-  const bool debugTouchAreas = true;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1722).withOpacity(0.82),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.04)),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: (_isPenaltyShootout() || penalEnCurso)
+                    ? _buildPenaltyOnlyGrid()
+                    : Column(
+                        children: [
+                          Expanded(flex: 8, child: _buildFlatGoalAreaCompact()),
+                          const SizedBox(height: 8),
+                          _buildPenaltyLineMarker(),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            flex: 12,
+                            child: _buildPerspectiveShotZonesLarge(),
+                          ),
+                        ],
+                      ),
+              ),
 
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      return Container(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F1722).withOpacity(0.82),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.04)),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: (_isPenaltyShootout() || penalEnCurso)
-                  ? _buildPenaltyOnlyGrid()
-                  : Column(
-                      children: [
-                        Expanded(
-                          flex: 8,
-                          child: _buildFlatGoalAreaCompact(),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildPenaltyLineMarker(),
-                        const SizedBox(height: 10),
-                        Expanded(
-                          flex: 12,
-                          child: _buildPerspectiveShotZonesLarge(),
-                        ),
-                      ],
-                    ),
-            ),
-
-            // =========================
-            // FUERA - ARRIBA (REALMENTE AFUERA)
-            // =========================
-            Positioned(
-              top: -26, // ⬅️ MÁS ARRIBA
-              left: 60,
-              right: 60,
-              height: 20, // ⬅️ MÁS FINO
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                child: Container(
-                  color: debugTouchAreas
-                      ? Colors.red.withOpacity(0.35)
-                      : Colors.transparent,
+              // FUERA ARRIBA
+              Positioned(
+                top: -26,
+                left: 60,
+                right: 60,
+                height: 20,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
+                  child: Container(
+                    color: debugTouchAreas
+                        ? Colors.red.withOpacity(0.35)
+                        : Colors.transparent,
+                  ),
                 ),
               ),
-            ),
 
-            // =========================
-            // FUERA - COSTADOS ARCO
-            // =========================
-            Positioned(
-              top: 8,
-              left: -18, // ⬅️ MÁS AFUERA
-              width: 10, // ⬅️ MÁS FINO
-              height: 110,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                child: Container(
-                  color: debugTouchAreas
-                      ? Colors.red.withOpacity(0.35)
-                      : Colors.transparent,
+              // FUERA IZQ ARCO
+              Positioned(
+                top: 8,
+                left: -18,
+                width: 10,
+                height: 110,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
+                  child: Container(
+                    color: debugTouchAreas
+                        ? Colors.red.withOpacity(0.35)
+                        : Colors.transparent,
+                  ),
                 ),
               ),
-            ),
 
-            Positioned(
-              top: 8,
-              right: -18, // ⬅️ MÁS AFUERA
-              width: 10,
-              height: 110,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                child: Container(
-                  color: debugTouchAreas
-                      ? Colors.red.withOpacity(0.35)
-                      : Colors.transparent,
+              // FUERA DER ARCO
+              Positioned(
+                top: 8,
+                right: -18,
+                width: 10,
+                height: 110,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
+                  child: Container(
+                    color: debugTouchAreas
+                        ? Colors.red.withOpacity(0.35)
+                        : Colors.transparent,
+                  ),
                 ),
               ),
-            ),
 
-            // =========================
-            // LATERAL IZQUIERDO
-            // =========================
-            Positioned(
-              left: -20, // ⬅️ MÁS AFUERA TODAVÍA
-              top: 170,
-              bottom: 0,
-              width: 10, // ⬅️ FINO
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _lateralGestureEnabled
-                    ? () => _showLateralSheet('izquierdo')
-                    : null,
-                child: Container(
-                  color: debugTouchAreas
-                      ? Colors.red.withOpacity(0.35)
-                      : Colors.transparent,
+              // LATERAL IZQ
+              Positioned(
+                left: -20,
+                top: 170,
+                bottom: 0,
+                width: 10,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _lateralGestureEnabled
+                      ? () => _showLateralSheet('izquierdo')
+                      : null,
+                  child: Container(
+                    color: debugTouchAreas
+                        ? Colors.red.withOpacity(0.35)
+                        : Colors.transparent,
+                  ),
                 ),
               ),
-            ),
 
-            // =========================
-            // LATERAL DERECHO
-            // =========================
-            Positioned(
-              right: -20,
-              top: 170,
-              bottom: 0,
-              width: 10,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _lateralGestureEnabled
-                    ? () => _showLateralSheet('derecho')
-                    : null,
-                child: Container(
-                  color: debugTouchAreas
-                      ? Colors.red.withOpacity(0.35)
-                      : Colors.transparent,
+              // LATERAL DER
+              Positioned(
+                right: -20,
+                top: 170,
+                bottom: 0,
+                width: 10,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _lateralGestureEnabled
+                      ? () => _showLateralSheet('derecho')
+                      : null,
+                  child: Container(
+                    color: debugTouchAreas
+                        ? Colors.red.withOpacity(0.35)
+                        : Colors.transparent,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildPenaltyOnlyGrid() {
-  return Column(
-    children: [
-      const SizedBox(height: 4),
-      Text(
-        _isPenaltyShootout()
-            ? (modo == 'ataque'
-                ? 'Penal nuestro'
-                : modo == 'defensa'
+    return Column(
+      children: [
+        const SizedBox(height: 4),
+        Text(
+          _isPenaltyShootout()
+              ? (modo == 'ataque'
+                    ? 'Penal nuestro'
+                    : modo == 'defensa'
                     ? 'Penal rival'
                     : 'Seleccioná contexto')
-            : 'Penal',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
+              : 'Penal',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
-      const SizedBox(height: 10),
-      Expanded(
-        child: Column(
-          children: [
-            Expanded(
-              flex: 9,
-              child: _buildFlatGoalAreaCompact(),
-            ),
-            const Spacer(flex: 6),
-          ],
+        const SizedBox(height: 10),
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(flex: 9, child: _buildFlatGoalAreaCompact()),
+              const Spacer(flex: 6),
+            ],
+          ),
         ),
-      ),
-    ],
-  );
-}
-  
-  Widget _buildPenaltyLineMarker() {
-  return Column(
-    children: [
-      Container(
-        height: 2,
-        width: double.infinity,
-        color: Colors.white.withOpacity(0.20),
-      ),
-      const SizedBox(height: 5),
-      Text(
-        'Línea de penal',
-        style: TextStyle(
-          fontSize: 10,
-          color: Colors.white.withOpacity(0.55),
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  );
-}
-  
+      ],
+    );
+  }
+
   Widget _buildFlatGoalAreaCompact() {
-  return Column(
-    children: [
-      Expanded(
-        child: Row(
-          children: [
-            Expanded(child: _goalCell('AI')),
-            const SizedBox(width: 6),
-            Expanded(child: _goalCell('AC')),
-            const SizedBox(width: 6),
-            Expanded(child: _goalCell('AD')),
-          ],
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: _goalCell('AI')),
+              const SizedBox(width: 6),
+              Expanded(child: _goalCell('AC')),
+              const SizedBox(width: 6),
+              Expanded(child: _goalCell('AD')),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 6),
-      Expanded(
-        child: Row(
-          children: [
-            Expanded(child: _goalCell('CI')),
-            const SizedBox(width: 6),
-            Expanded(child: _goalCell('CC')),
-            const SizedBox(width: 6),
-            Expanded(child: _goalCell('CD')),
-          ],
+        const SizedBox(height: 6),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: _goalCell('CI')),
+              const SizedBox(width: 6),
+              Expanded(child: _goalCell('CC')),
+              const SizedBox(width: 6),
+              Expanded(child: _goalCell('CD')),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 6),
-      Expanded(
-        child: Row(
-          children: [
-            Expanded(child: _goalCell('BI')),
-            const SizedBox(width: 6),
-            Expanded(child: _goalCell('BC')),
-            const SizedBox(width: 6),
-            Expanded(child: _goalCell('BD')),
-          ],
+        const SizedBox(height: 6),
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: _goalCell('BI')),
+              const SizedBox(width: 6),
+              Expanded(child: _goalCell('BC')),
+              const SizedBox(width: 6),
+              Expanded(child: _goalCell('BD')),
+            ],
+          ),
         ),
-      ),
-    ],
-  );
-}
-  
+      ],
+    );
+  }
+
+  Widget _buildPenaltyLineMarker() {
+    return Column(
+      children: [
+        Container(
+          height: 2,
+          width: double.infinity,
+          color: Colors.white.withOpacity(0.20),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Línea de penal',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.white.withOpacity(0.55),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPerspectiveShotZonesLarge() {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-        flex: 12,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 4, right: 4),
-          child: _buildExtremeLane(
-            shortLabel: 'EI',
-            fullLabel: 'Extremo izquierdo',
-            alignLeft: true,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 12,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4, right: 4),
+            child: _buildExtremeLane(
+              shortLabel: 'EI',
+              fullLabel: 'Extremo izquierdo',
+              alignLeft: true,
+            ),
           ),
         ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        flex: 17,
-        child: _buildSplitLaneLarge('LI'),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        flex: 17,
-        child: _buildSplitLaneLarge('C'),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        flex: 17,
-        child: _buildSplitLaneLarge('LD'),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        flex: 12,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 4, right: 4),
-          child: _buildExtremeLane(
-            shortLabel: 'ED',
-            fullLabel: 'Extremo derecho',
-            alignLeft: false,
+        const SizedBox(width: 10),
+        Expanded(flex: 17, child: _buildSplitLaneLarge('LI')),
+        const SizedBox(width: 10),
+        Expanded(flex: 17, child: _buildSplitLaneLarge('C')),
+        const SizedBox(width: 10),
+        Expanded(flex: 17, child: _buildSplitLaneLarge('LD')),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 12,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4, right: 4),
+            child: _buildExtremeLane(
+              shortLabel: 'ED',
+              fullLabel: 'Extremo derecho',
+              alignLeft: false,
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
+
+  Widget _buildSplitLaneLarge(String base) {
+    final String zone9 = '$base 9m';
+    final String zone6 = '$base 6m';
+
+    return Column(
+      children: [
+        Expanded(
+          flex: 2,
+          child: _buildPerspectiveZoneCell(
+            shortLabel: '$base\n9m',
+            fullLabel: zone9,
+            isSelected: zonaTiro == zone9,
+            topWidthFactor: 0.62,
+            bottomWidthFactor: 0.84,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          flex: 8,
+          child: _buildPerspectiveZoneCell(
+            shortLabel: '$base\n6m',
+            fullLabel: zone6,
+            isSelected: zonaTiro == zone6,
+            topWidthFactor: 0.78,
+            bottomWidthFactor: 1.0,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildExtremeLane({
-  required String shortLabel,
-  required String fullLabel,
-  required bool alignLeft,
-}) {
-  return GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: _isPlayLocked() ||
-            _isPenaltyShootout() ||
-            penalEnCurso ||
-            modo == null
-        ? null
-        : () {
-            setState(() {
-              if (zonaTiro == fullLabel) {
-                zonaTiro = null;
-              } else {
-                zonaTiro = fullLabel;
-              }
-              mostrarContra = false;
-              origenJugadaActual = 'normal';
-            });
-          },
-    child: CustomPaint(
-      painter: _ExtremeZonePainter(
-        selected: zonaTiro == fullLabel,
-        alignLeft: alignLeft,
-      ),
-      child: Center(
-        child: Text(
-          shortLabel,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFDCE4EF),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+    required String shortLabel,
+    required String fullLabel,
+    required bool alignLeft,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap:
+          _isPlayLocked() ||
+              _isPenaltyShootout() ||
+              penalEnCurso ||
+              modo == null
+          ? null
+          : () {
+              setState(() {
+                if (zonaTiro == fullLabel) {
+                  zonaTiro = null;
+                } else {
+                  zonaTiro = fullLabel;
+                }
+                mostrarContra = false;
+                origenJugadaActual = 'normal';
+              });
+            },
+      child: CustomPaint(
+        painter: _ExtremeZonePainter(
+          selected: zonaTiro == fullLabel,
+          alignLeft: alignLeft,
+        ),
+        child: Center(
+          child: Text(
+            shortLabel,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFDCE4EF),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
-  
-  Widget _buildSplitLaneLarge(String base) {
-  final String zone9 = '$base 9m';
-  final String zone6 = '$base 6m';
+    );
+  }
 
-  return Column(
-    children: [
-      Expanded(
-        flex: 2,
-        child: _buildPerspectiveZoneCell(
-          shortLabel: '$base\n9m',
-          fullLabel: zone9,
-          isSelected: zonaTiro == zone9,
-          topWidthFactor: 0.62,
-          bottomWidthFactor: 0.84,
-        ),
-      ),
-      const SizedBox(height: 10),
-      Expanded(
-        flex: 8,
-        child: _buildPerspectiveZoneCell(
-          shortLabel: '$base\n6m',
-          fullLabel: zone6,
-          isSelected: zonaTiro == zone6,
-          topWidthFactor: 0.78,
-          bottomWidthFactor: 1.0,
-        ),
-      ),
-    ],
-  );
-}
-
-    
   Widget _buildPerspectiveZoneCell({
-  required String shortLabel,
-  required String fullLabel,
-  required bool isSelected,
-  required double topWidthFactor,
-  required double bottomWidthFactor,
-}) {
-  return GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: _isPlayLocked() ||
-            _isPenaltyShootout() ||
-            penalEnCurso ||
-            modo == null
-        ? null
-        : () {
-            setState(() {
-              if (zonaTiro == fullLabel) {
-                zonaTiro = null;
-              } else {
-                zonaTiro = fullLabel;
-              }
-              mostrarContra = false;
-              origenJugadaActual = 'normal';
-            });
-          },
-    child: CustomPaint(
-      painter: _TrapezoidZonePainter(
-        selected: isSelected,
-        topWidthFactor: topWidthFactor,
-        bottomWidthFactor: bottomWidthFactor,
-      ),
-      child: Center(
-        child: Text(
-          shortLabel,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFDCE4EF),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            height: 1.15,
+    required String shortLabel,
+    required String fullLabel,
+    required bool isSelected,
+    required double topWidthFactor,
+    required double bottomWidthFactor,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap:
+          _isPlayLocked() ||
+              _isPenaltyShootout() ||
+              penalEnCurso ||
+              modo == null
+          ? null
+          : () {
+              setState(() {
+                if (zonaTiro == fullLabel) {
+                  zonaTiro = null;
+                } else {
+                  zonaTiro = fullLabel;
+                }
+                mostrarContra = false;
+                origenJugadaActual = 'normal';
+              });
+            },
+      child: CustomPaint(
+        painter: _TrapezoidZonePainter(
+          selected: isSelected,
+          topWidthFactor: topWidthFactor,
+          bottomWidthFactor: bottomWidthFactor,
+        ),
+        child: Center(
+          child: Text(
+            shortLabel,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFDCE4EF),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
-  
+    );
+  }
+
   Widget _goalCell(String label) {
-  final bool isSelected = zonaArco == label;
+    final bool isSelected = zonaArco == label;
 
-  return GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: _isPlayLocked() || modo == null
-        ? null
-        : () {
-            if (_isPenaltyShootout()) {
-              setState(() {
-                zonaArco = label;
-              });
-              _showPenaltyShootoutResultSheet();
-              return;
-            }
-
-            if (penalEnCurso) {
-              setState(() {
-                zonaArco = label;
-              });
-              _showNormalPenaltyResultSheet();
-              return;
-            }
-
-            if (zonaTiro == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Primero seleccioná zona de tiro'),
-                ),
-              );
-              return;
-            }
-
-            setState(() {
-              if (zonaArco == label) {
-                zonaArco = null;
-              } else {
-                zonaArco = label;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _isPlayLocked() || modo == null
+          ? null
+          : () {
+              if (_isPenaltyShootout()) {
+                setState(() {
+                  zonaArco = label;
+                });
+                _showPenaltyShootoutResultSheet();
+                return;
               }
-            });
 
-            if (zonaArco != null) {
-              _showZoneActionSheet();
-            }
-          },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFF4F8CFF).withOpacity(0.24)
-            : Colors.white.withOpacity(0.035),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
+              if (penalEnCurso) {
+                setState(() {
+                  zonaArco = label;
+                });
+                _showNormalPenaltyResultSheet();
+                return;
+              }
+
+              if (zonaTiro == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Primero seleccioná zona de tiro'),
+                  ),
+                );
+                return;
+              }
+
+              setState(() {
+                if (zonaArco == label) {
+                  zonaArco = null;
+                } else {
+                  zonaArco = label;
+                }
+              });
+
+              if (zonaArco != null) {
+                _showZoneActionSheet();
+              }
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF4F8CFF).withOpacity(0.55)
-              : Colors.white.withOpacity(0.05),
+              ? const Color(0xFF4F8CFF).withOpacity(0.24)
+              : Colors.white.withOpacity(0.035),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF4F8CFF).withOpacity(0.55)
+                : Colors.white.withOpacity(0.05),
+          ),
         ),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFDCE4EF),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+        child: Center(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFDCE4EF),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _registrarEvento({
     required String tipo,
@@ -2724,8 +2670,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   void _registrarPerdidaConSubtipo(String subtipo) {
     if (modo == null) return;
 
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Jugador genérico defensa';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Jugador genérico defensa';
 
     final String? zonaActual = zonaTiro;
     final bool estabaEnAtaque = modo == 'ataque';
@@ -2798,8 +2745,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   void _registrarLateral(String resultado, String lado) {
     if (modo == null) return;
 
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Jugador genérico defensa';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Jugador genérico defensa';
 
     bool activaContra = false;
     bool mantiene = true;
@@ -2825,12 +2773,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
       mostrarContra = activaContra;
       contraDebeCambiarModo = !activaContra;
-      if (activaContra) {
-        contraDebeCambiarModo = false;
-      }
-      if (!activaContra) {
-        origenJugadaActual = 'normal';
-      }
+      if (activaContra) contraDebeCambiarModo = false;
+      if (!activaContra) origenJugadaActual = 'normal';
     });
 
     _registrarEvento(
@@ -2848,8 +2792,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   void _registrarFueraPorGesto() {
     if (!_fueraGestureEnabled || modo == null) return;
 
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
 
     final bool esPenal = penalEnCurso;
     final bool esTanda = _isPenaltyShootout();
@@ -2912,8 +2857,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _iniciarFlujoPenalNormal() {
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
 
     setState(() {
       penalEnCurso = true;
@@ -2958,106 +2904,228 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showNormalPenaltyResultSheet() {
-  if (zonaArco == null) return;
+    if (zonaArco == null) return;
 
-  final String actor = actorPenalActual ??
-      (modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico');
+    final String actor =
+        actorPenalActual ??
+        (modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico');
 
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (_) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Penal → $zonaArco',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Penal → $zonaArco',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _floatingOption('Gol', () {
-              setState(() {
-                penales++;
-                if (modo == 'ataque') {
-                  golesSanFernando++;
-                  modo = 'defensa';
-                } else {
-                  golesRival++;
-                  golesRecibidos++;
-                  modo = 'ataque';
-                }
-                mostrarContra = false;
-              });
+              const SizedBox(height: 16),
+              _floatingOption('Gol', () {
+                setState(() {
+                  penales++;
+                  if (modo == 'ataque') {
+                    golesSanFernando++;
+                    modo = 'defensa';
+                  } else {
+                    golesRival++;
+                    golesRecibidos++;
+                    modo = 'ataque';
+                  }
+                  mostrarContra = false;
+                });
 
-              _registrarEvento(
-                tipo: 'penal',
-                resultado: 'gol',
-                actorPrincipal: actor,
-                zonaArcoValor: zonaArco,
-                subtipo: 'penal_7m',
-                mantieneContexto: false,
-              );
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'gol',
+                  actorPrincipal: actor,
+                  zonaArcoValor: zonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: false,
+                );
 
-              _clearSelection();
-              Navigator.pop(context);
-            }),
-            _floatingOption('Atajado', () {
-              setState(() {
-                penales++;
-                if (modo == 'defensa') {
-                  atajadas++;
-                }
-                mostrarContra = true;
-                contraDebeCambiarModo = true;
-              });
+                _clearSelection();
+                Navigator.pop(context);
+              }),
+              _floatingOption('Atajado', () {
+                setState(() {
+                  penales++;
+                  if (modo == 'defensa') {
+                    atajadas++;
+                  }
+                  mostrarContra = true;
+                  contraDebeCambiarModo = true;
+                });
 
-              _registrarEvento(
-                tipo: 'penal',
-                resultado: 'atajado',
-                actorPrincipal: actor,
-                zonaArcoValor: zonaArco,
-                subtipo: 'penal_7m',
-                mantieneContexto: true,
-              );
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'atajado',
+                  actorPrincipal: actor,
+                  zonaArcoValor: zonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: true,
+                );
 
-              _clearSelection(keepContra: true);
-              Navigator.pop(context);
-            }),
-            _floatingOption('Fuera', () {
-              setState(() {
-                penales++;
-                modo = modo == 'ataque' ? 'defensa' : 'ataque';
-                mostrarContra = true;
-                contraDebeCambiarModo = true;
-              });
+                _clearSelection(keepContra: true);
+                Navigator.pop(context);
+              }),
+              _floatingOption('Fuera', () {
+                setState(() {
+                  penales++;
+                  modo = modo == 'ataque' ? 'defensa' : 'ataque';
+                  mostrarContra = true;
+                  contraDebeCambiarModo = true;
+                });
 
-              _registrarEvento(
-                tipo: 'penal',
-                resultado: 'fuera',
-                actorPrincipal: actor,
-                zonaArcoValor: zonaArco,
-                subtipo: 'penal_7m',
-                mantieneContexto: false,
-              );
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'fuera',
+                  actorPrincipal: actor,
+                  zonaArcoValor: zonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: false,
+                );
 
-              _clearSelection(keepContra: true);
-              Navigator.pop(context);
-            }),
-          ],
-        ),
-      );
-    },
-  );
-}
+                _clearSelection(keepContra: true);
+                Navigator.pop(context);
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPenaltyShootoutResultSheet() {
+    if (zonaArco == null || modo == null) return;
+
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Penal → $zonaArco',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _floatingOption('Gol', () {
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'gol',
+                  actorPrincipal: actor,
+                  zonaArcoValor: zonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                );
+                _registrarPenalTanda('gol');
+                Navigator.pop(context);
+              }),
+              _floatingOption('Atajado', () {
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'atajado',
+                  actorPrincipal: actor,
+                  zonaArcoValor: zonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                );
+                _registrarPenalTanda('atajado');
+                Navigator.pop(context);
+              }),
+              _floatingOption('Fuera', () {
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'fuera',
+                  actorPrincipal: actor,
+                  zonaArcoValor: zonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                );
+                _registrarPenalTanda('fuera');
+                Navigator.pop(context);
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _registrarPenalTanda(String resultado) {
+    if (modo == null) return;
+
+    setState(() {
+      if (modo == 'ataque') {
+        penalesIntentadosSanFernando++;
+        if (resultado == 'gol') {
+          penalesConvertidosSanFernando++;
+        }
+      } else {
+        penalesIntentadosRival++;
+        if (resultado == 'gol') {
+          penalesConvertidosRival++;
+        } else if (resultado == 'atajado') {
+          atajadas++;
+        }
+      }
+    });
+
+    _clearSelection();
+    _alternarModoPenales();
+    _evaluarFinPenales();
+  }
+
+  void _alternarModoPenales() {
+    setState(() {
+      modo = modo == 'ataque' ? 'defensa' : 'ataque';
+    });
+  }
+
+  void _evaluarFinPenales() {
+    final int intentosSF = penalesIntentadosSanFernando;
+    final int intentosRival = penalesIntentadosRival;
+    final int convertidosSF = penalesConvertidosSanFernando;
+    final int convertidosRival = penalesConvertidosRival;
+
+    if (intentosSF >= 5 && intentosRival >= 5 && intentosSF == intentosRival) {
+      if (convertidosSF != convertidosRival) {
+        _finalizarPartido();
+        return;
+      }
+    }
+
+    if (intentosSF > 5 && intentosRival > 5 && intentosSF == intentosRival) {
+      if (convertidosSF != convertidosRival) {
+        _finalizarPartido();
+      }
+    }
+  }
 
   void _showSancionTargetSheet() {
     showModalBottomSheet(
@@ -3183,8 +3251,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   void _showZoneActionSheet() {
     if (zonaTiro == null || zonaArco == null || modo == null) return;
 
-    final String actor =
-        modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
+    final String actor = modo == 'ataque'
+        ? 'Jugador genérico ataque'
+        : 'Arquero genérico';
 
     showModalBottomSheet(
       context: context,
@@ -3279,126 +3348,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  void _showPenaltyShootoutResultSheet() {
-  if (zonaArco == null || modo == null) return;
-
-  final String actor =
-      modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico';
-
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (_) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Penal → $zonaArco',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _floatingOption('Gol', () {
-              _registrarEvento(
-                tipo: 'penal_tanda',
-                resultado: 'gol',
-                actorPrincipal: actor,
-                zonaArcoValor: zonaArco,
-                subtipo: 'tanda_penales',
-                mantieneContexto: false,
-              );
-              _registrarPenalTanda('gol');
-              Navigator.pop(context);
-            }),
-            _floatingOption('Atajado', () {
-              _registrarEvento(
-                tipo: 'penal_tanda',
-                resultado: 'atajado',
-                actorPrincipal: actor,
-                zonaArcoValor: zonaArco,
-                subtipo: 'tanda_penales',
-                mantieneContexto: false,
-              );
-              _registrarPenalTanda('atajado');
-              Navigator.pop(context);
-            }),
-            _floatingOption('Fuera', () {
-              _registrarEvento(
-                tipo: 'penal_tanda',
-                resultado: 'fuera',
-                actorPrincipal: actor,
-                zonaArcoValor: zonaArco,
-                subtipo: 'tanda_penales',
-                mantieneContexto: false,
-              );
-              _registrarPenalTanda('fuera');
-              Navigator.pop(context);
-            }),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-  void _registrarPenalTanda(String resultado) {
-    if (modo == null) return;
-
-    setState(() {
-      if (modo == 'ataque') {
-        penalesIntentadosSanFernando++;
-        if (resultado == 'gol') {
-          penalesConvertidosSanFernando++;
-        }
-      } else {
-        penalesIntentadosRival++;
-        if (resultado == 'gol') {
-          penalesConvertidosRival++;
-        } else if (resultado == 'atajado') {
-          atajadas++;
-        }
-      }
-    });
-
-    _clearSelection();
-    _alternarModoPenales();
-    _evaluarFinPenales();
-  }
-
-  void _alternarModoPenales() {
-    setState(() {
-      modo = modo == 'ataque' ? 'defensa' : 'ataque';
-    });
-  }
-
-  void _evaluarFinPenales() {
-    final int intentosSF = penalesIntentadosSanFernando;
-    final int intentosRival = penalesIntentadosRival;
-    final int convertidosSF = penalesConvertidosSanFernando;
-    final int convertidosRival = penalesConvertidosRival;
-
-    if (intentosSF >= 5 && intentosRival >= 5 && intentosSF == intentosRival) {
-      if (convertidosSF != convertidosRival) {
-        _finalizarPartido();
-        return;
-      }
-    }
-
-    if (intentosSF > 5 && intentosRival > 5 && intentosSF == intentosRival) {
-      if (convertidosSF != convertidosRival) {
-        _finalizarPartido();
-      }
-    }
-  }
-
   Widget _floatingOption(String text, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -3453,9 +3402,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFF182338).withOpacity(0.75),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.04),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.04)),
           ),
           child: Center(
             child: Text(
@@ -3492,10 +3439,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         ),
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -3799,10 +3743,7 @@ class _ExtremeZonePainter extends CustomPainter {
   final bool selected;
   final bool alignLeft;
 
-  _ExtremeZonePainter({
-    required this.selected,
-    required this.alignLeft,
-  });
+  _ExtremeZonePainter({required this.selected, required this.alignLeft});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -3847,7 +3788,6 @@ class _ExtremeZonePainter extends CustomPainter {
         oldDelegate.alignLeft != alignLeft;
   }
 }
-
 
 /// ===============================
 /// PLACEHOLDERS
