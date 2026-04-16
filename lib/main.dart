@@ -1744,6 +1744,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   static const bool debugTouchAreas = true;
 
+  ///prende y apaga linea roja para chear touch
+  static const bool _showTouchDebug = true; // Cambiar a true para debug
+
   @override
   void initState() {
     super.initState();
@@ -2133,195 +2136,153 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildGoalGrid() {
-    const bool debugTouchAreas = true;
-
     return LayoutBuilder(
       builder: (context, constraints) {
+        final bool soloArco = _isPenaltyShootout() || penalEnCurso;
+
         return Container(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
           decoration: BoxDecoration(
             color: const Color(0xFF0F1722).withOpacity(0.82),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white.withOpacity(0.04)),
           ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(
-                child: (_isPenaltyShootout() || penalEnCurso)
-                    ? _buildPenaltyOnlyGrid()
-                    : Column(
-                        children: [
-                          Expanded(flex: 8, child: _buildFlatGoalAreaCompact()),
-                          const SizedBox(height: 8),
-                          _buildPenaltyLineMarker(),
-                          const SizedBox(height: 10),
-                          Expanded(
-                            flex: 12,
-                            child: _buildPerspectiveShotZonesLarge(),
-                          ),
-                        ],
-                      ),
-              ),
-
-              // =========================
-              // DEBUG VISUAL - FUERA ARRIBA
-              // =========================
-              if (debugTouchAreas)
-                Positioned(
-                  top: -26,
-                  left: 60,
-                  right: 60,
-                  height: 20,
-                  child: IgnorePointer(
-                    child: Container(color: Colors.red.withOpacity(0.35)),
-                  ),
-                ),
-
-              // Gesture real - FUERA ARRIBA
-              Positioned(
-                top: -26,
-                left: 60,
-                right: 60,
-                height: 20,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-
-                  ///onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                  onTap: _fueraGestureEnabled
-                      ? () {
-                          _debugSnack('FUERA ARRIBA');
-                          _registrarFueraPorGesto();
-                        }
-                      : null,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-
-              // =========================
-              // DEBUG VISUAL - FUERA IZQ ARCO
-              // =========================
-              if (debugTouchAreas)
-                Positioned(
-                  top: 8,
-                  left: -18,
-                  width: 10,
-                  height: 110,
-                  child: IgnorePointer(
-                    child: Container(color: Colors.red.withOpacity(0.35)),
-                  ),
-                ),
-
-              // Gesture real - FUERA IZQ ARCO
-              Positioned(
-                top: 8,
-                left: -18,
-                width: 10,
-                height: 110,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-
-                  ///onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                  onTap: _lateralGestureEnabled
-                      ? () {
-                          _debugSnack('LATERAL IZQUIERDO');
-                          _showLateralSheet('izquierdo');
-                        }
-                      : null,
-
-                  child: const SizedBox.expand(),
-                ),
-              ),
-
-              // =========================
-              // DEBUG VISUAL - FUERA DER ARCO
-              // =========================
-              if (debugTouchAreas)
-                Positioned(
-                  top: 8,
-                  right: -18,
-                  width: 10,
-                  height: 110,
-                  child: IgnorePointer(
-                    child: Container(color: Colors.red.withOpacity(0.35)),
-                  ),
-                ),
-
-              // Gesture real - FUERA DER ARCO
-              Positioned(
-                top: 8,
-                right: -18,
-                width: 10,
-                height: 110,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-
-                  ///onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-
-              // =========================
-              // DEBUG VISUAL - LATERAL IZQ
-              // =========================
-              if (debugTouchAreas)
-                Positioned(
-                  left: -20,
-                  top: 170,
-                  bottom: 0,
-                  width: 10,
-                  child: IgnorePointer(
-                    child: Container(color: Colors.red.withOpacity(0.35)),
-                  ),
-                ),
-
-              // Gesture real - LATERAL IZQ
-              Positioned(
-                left: -20,
-                top: 170,
-                bottom: 0,
-                width: 10,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: _lateralGestureEnabled
-                      ? () => _showLateralSheet('izquierdo')
-                      : null,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-
-              // =========================
-              // DEBUG VISUAL - LATERAL DER
-              // =========================
-              if (debugTouchAreas)
-                Positioned(
-                  right: -20,
-                  top: 170,
-                  bottom: 0,
-                  width: 10,
-                  child: IgnorePointer(
-                    child: Container(color: Colors.red.withOpacity(0.35)),
-                  ),
-                ),
-
-              // Gesture real - LATERAL DER
-              Positioned(
-                right: -20,
-                top: 170,
-                bottom: 0,
-                width: 10,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: _lateralGestureEnabled
-                      ? () => _showLateralSheet('derecho')
-                      : null,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            ],
-          ),
+          child: soloArco ? _buildPenaltyOnlyGrid() : _buildNormalPlayGrid(),
         );
       },
+    );
+  }
+
+  Widget _buildTouchLane({
+    required bool enabled,
+    required VoidCallback onTap,
+    required Color debugColor,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: enabled ? onTap : null,
+      child: Container(
+        color: _showTouchDebug
+            ? debugColor.withOpacity(0.35)
+            : Colors.transparent,
+      ),
+    );
+  }
+
+  Widget _buildNormalPlayGrid() {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            // FUERA ARRIBA
+            SizedBox(
+              height: 18,
+              child: Row(
+                children: [
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: _buildTouchLane(
+                      enabled: _fueraGestureEnabled,
+                      onTap: _registrarFueraPorGesto,
+                      debugColor: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            Expanded(
+              child: Row(
+                children: [
+                  // LATERAL IZQUIERDO
+                  SizedBox(
+                    width: 12,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 92), // antes 118
+                        Expanded(
+                          child: _buildTouchLane(
+                            enabled: _lateralGestureEnabled,
+                            onTap: () => _showLateralSheet('izquierdo'),
+                            debugColor: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // CONTENIDO CENTRAL
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // ARCO + FUERA COSTADOS
+                        SizedBox(
+                          height: 96, // antes 132
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 12,
+                                child: _buildTouchLane(
+                                  enabled: _fueraGestureEnabled,
+                                  onTap: _registrarFueraPorGesto,
+                                  debugColor: Colors.red,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+
+                              Expanded(child: _buildFlatGoalAreaCompact()),
+
+                              const SizedBox(width: 6),
+                              SizedBox(
+                                width: 12,
+                                child: _buildTouchLane(
+                                  enabled: _fueraGestureEnabled,
+                                  onTap: _registrarFueraPorGesto,
+                                  debugColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 4),
+                        _buildPenaltyLineMarker(),
+                        const SizedBox(height: 2),
+
+                        // ZONA MUCHO MÁS ALTA
+                        Expanded(child: _buildPerspectiveShotZonesLarge()),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // LATERAL DERECHO
+                  SizedBox(
+                    width: 12,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 92), // antes 118
+                        Expanded(
+                          child: _buildTouchLane(
+                            enabled: _lateralGestureEnabled,
+                            onTap: () => _showLateralSheet('derecho'),
+                            debugColor: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -2356,10 +2317,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         const SizedBox(height: 10),
         Expanded(
           child: Column(
-            children: [
-              Expanded(flex: 9, child: _buildFlatGoalAreaCompact()),
-              const Spacer(flex: 6),
-            ],
+            children: [Expanded(child: _buildFlatGoalAreaCompact())],
           ),
         ),
       ],
@@ -2373,33 +2331,33 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           child: Row(
             children: [
               Expanded(child: _goalCell('AI')),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(child: _goalCell('AC')),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(child: _goalCell('AD')),
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Expanded(
           child: Row(
             children: [
               Expanded(child: _goalCell('CI')),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(child: _goalCell('CC')),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(child: _goalCell('CD')),
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Expanded(
           child: Row(
             children: [
               Expanded(child: _goalCell('BI')),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(child: _goalCell('BC')),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(child: _goalCell('BD')),
             ],
           ),
@@ -2416,7 +2374,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           width: double.infinity,
           color: Colors.white.withOpacity(0.20),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 3),
         Text(
           'Línea de penal',
           style: TextStyle(
@@ -2436,7 +2394,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         Expanded(
           flex: 12,
           child: Padding(
-            padding: const EdgeInsets.only(left: 4, right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: _buildExtremeLane(
               shortLabel: 'EI',
               fullLabel: 'Extremo izquierdo',
@@ -2444,17 +2402,17 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 6),
         Expanded(flex: 17, child: _buildSplitLaneLarge('LI')),
-        const SizedBox(width: 10),
+        const SizedBox(width: 6),
         Expanded(flex: 17, child: _buildSplitLaneLarge('C')),
-        const SizedBox(width: 10),
+        const SizedBox(width: 6),
         Expanded(flex: 17, child: _buildSplitLaneLarge('LD')),
-        const SizedBox(width: 10),
+        const SizedBox(width: 6),
         Expanded(
           flex: 12,
           child: Padding(
-            padding: const EdgeInsets.only(left: 4, right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: _buildExtremeLane(
               shortLabel: 'ED',
               fullLabel: 'Extremo derecho',
@@ -2473,23 +2431,23 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     return Column(
       children: [
         Expanded(
-          flex: 2,
+          flex: 5, // antes 4
           child: _buildPerspectiveZoneCell(
             shortLabel: '$base\n9m',
             fullLabel: zone9,
             isSelected: zonaTiro == zone9,
-            topWidthFactor: 0.62,
-            bottomWidthFactor: 0.84,
+            topWidthFactor: 0.70,
+            bottomWidthFactor: 0.92,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Expanded(
-          flex: 8,
+          flex: 10, // antes 9
           child: _buildPerspectiveZoneCell(
             shortLabel: '$base\n6m',
             fullLabel: zone6,
             isSelected: zonaTiro == zone6,
-            topWidthFactor: 0.78,
+            topWidthFactor: 0.84,
             bottomWidthFactor: 1.0,
           ),
         ),
