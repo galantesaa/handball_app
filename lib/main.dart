@@ -2170,135 +2170,132 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildNormalPlayGrid() {
-    return Stack(
-      children: [
-        Column(
-          children: [
-            // FUERA ARRIBA
-            SizedBox(
-              height: 24, // antes 18
-              child: Row(
-                children: [
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: _buildTouchLane(
-                      enabled: _fueraGestureEnabled,
-                      onTap: _registrarFueraPorGesto,
-                      debugColor: Colors.red,
-                    ),
+  return Stack(
+    children: [
+      Column(
+        children: [
+          // FUERA ARRIBA
+          SizedBox(
+            height: 24,
+            child: Row(
+              children: [
+                const SizedBox(width: 24),
+                Expanded(
+                  child: _buildTouchLane(
+                    enabled: _fueraGestureEnabled,
+                    onTap: _registrarFueraPorGesto,
+                    debugColor: Colors.red,
                   ),
-                  const SizedBox(width: 24),
-                ],
-              ),
+                ),
+                const SizedBox(width: 24),
+              ],
             ),
-            const SizedBox(height: 4),
+          ),
+          const SizedBox(height: 4),
 
-            Expanded(
-              child: Row(
-                children: [
-                  // LATERAL IZQUIERDO
-                  SizedBox(
-                    width: 12,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 116),
-                        Expanded(
-                          child: _buildTouchLane(
-                            enabled: _lateralGestureEnabled,
-                            onTap: () => _showLateralSheet('izquierdo'),
-                            debugColor: Colors.red,
-                          ),
+          Expanded(
+            child: Row(
+              children: [
+                // LATERAL IZQUIERDO
+                SizedBox(
+                  width: 12,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 118),
+                      Expanded(
+                        child: _buildTouchLane(
+                          enabled: _lateralGestureEnabled,
+                          onTap: () => _showLateralSheet('izquierdo'),
+                          debugColor: Colors.red,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
 
-                  const SizedBox(width: 8),
+                const SizedBox(width: 8),
 
-                  // CONTENIDO CENTRAL
-                  Expanded(
-                    child: Column(
-                      children: [
-                        // ARCO + FUERA COSTADOS
-                        SizedBox(
-                          height:
-                              132, // vuelve al valor que visualmente te gustaba
-                          child: Row(
-                            children: [
-                              SizedBox(
+                // CONTENIDO CENTRAL
+                Expanded(
+                  child: Column(
+                    children: [
+                      // ARCO + FUERA COSTADOS
+                      SizedBox(
+                        height: 150, // más grande otra vez
+                        child: Row(
+                          children: [
+                            Transform.translate(
+                              offset: const Offset(-10, -35), // afuera y arriba
+                              child: SizedBox(
                                 width: 12,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTouchLane(
-                                        enabled: _fueraGestureEnabled,
-                                        onTap: _registrarFueraPorGesto,
-                                        debugColor: Colors.red,
-                                      ),
-                                    ),
-                                  ],
+                                child: _buildTouchLane(
+                                  enabled: _fueraGestureEnabled,
+                                  onTap: _registrarFueraPorGesto,
+                                  debugColor: Colors.red,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                            ),
+                            const SizedBox(width: 6),
 
-                              Expanded(child: _buildFlatGoalAreaCompact()),
+                            Expanded(
+                              child: _buildFlatGoalAreaCompact(),
+                            ),
 
-                              const SizedBox(width: 6),
-                              SizedBox(
+                            const SizedBox(width: 6),
+                            Transform.translate(
+                              offset: const Offset(10, -35), // afuera y arriba
+                              child: SizedBox(
                                 width: 12,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTouchLane(
-                                        enabled: _fueraGestureEnabled,
-                                        onTap: _registrarFueraPorGesto,
-                                        debugColor: Colors.red,
-                                      ),
-                                    ),
-                                  ],
+                                child: _buildTouchLane(
+                                  enabled: _fueraGestureEnabled,
+                                  onTap: _registrarFueraPorGesto,
+                                  debugColor: Colors.red,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
+                      ),
 
-                        const SizedBox(height: 4),
-                        _buildPenaltyLineMarker(),
-                        const SizedBox(height: 4),
+                      const SizedBox(height: 4),
+                      _buildPenaltyLineMarker(),
+                      const SizedBox(height: 4),
 
-                        // ZONA
-                        Expanded(child: _buildPerspectiveShotZonesLarge()),
-                      ],
-                    ),
+                      // ZONA
+                      Expanded(
+                        child: _buildPerspectiveShotZonesLarge(),
+                      ),
+                    ],
                   ),
+                ),
 
-                  const SizedBox(width: 8),
+                const SizedBox(width: 8),
 
-                  // LATERAL DERECHO
-                  SizedBox(
-                    width: 12,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 116),
-                        Expanded(
-                          child: _buildTouchLane(
-                            enabled: _lateralGestureEnabled,
-                            onTap: () => _showLateralSheet('derecho'),
-                            debugColor: Colors.red,
-                          ),
+                // LATERAL DERECHO
+                SizedBox(
+                  width: 12,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 118),
+                      Expanded(
+                        child: _buildTouchLane(
+                          enabled: _lateralGestureEnabled,
+                          onTap: () => _showLateralSheet('derecho'),
+                          debugColor: Colors.red,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ],
-    );
-  }
-
+          ),
+        ],
+      ),
+    ],
+  );
+}
+  
   void _debugSnack(String text) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2338,47 +2335,47 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildFlatGoalAreaCompact() {
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _goalCell('AI')),
-              const SizedBox(width: 4),
-              Expanded(child: _goalCell('AC')),
-              const SizedBox(width: 4),
-              Expanded(child: _goalCell('AD')),
-            ],
-          ),
+  return Column(
+    children: [
+      Expanded(
+        child: Row(
+          children: [
+            Expanded(child: _goalCell('AI')),
+            const SizedBox(width: 6),
+            Expanded(child: _goalCell('AC')),
+            const SizedBox(width: 6),
+            Expanded(child: _goalCell('AD')),
+          ],
         ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _goalCell('CI')),
-              const SizedBox(width: 4),
-              Expanded(child: _goalCell('CC')),
-              const SizedBox(width: 4),
-              Expanded(child: _goalCell('CD')),
-            ],
-          ),
+      ),
+      const SizedBox(height: 6),
+      Expanded(
+        child: Row(
+          children: [
+            Expanded(child: _goalCell('CI')),
+            const SizedBox(width: 6),
+            Expanded(child: _goalCell('CC')),
+            const SizedBox(width: 6),
+            Expanded(child: _goalCell('CD')),
+          ],
         ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _goalCell('BI')),
-              const SizedBox(width: 4),
-              Expanded(child: _goalCell('BC')),
-              const SizedBox(width: 4),
-              Expanded(child: _goalCell('BD')),
-            ],
-          ),
+      ),
+      const SizedBox(height: 6),
+      Expanded(
+        child: Row(
+          children: [
+            Expanded(child: _goalCell('BI')),
+            const SizedBox(width: 6),
+            Expanded(child: _goalCell('BC')),
+            const SizedBox(width: 6),
+            Expanded(child: _goalCell('BD')),
+          ],
         ),
-      ],
-    );
-  }
-
+      ),
+    ],
+  );
+}
+  
   Widget _buildPenaltyLineMarker() {
     return Column(
       children: [
