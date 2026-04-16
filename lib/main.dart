@@ -1705,6 +1705,7 @@ class PartidoEnVivoScreen extends StatefulWidget {
 }
 
 class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
+  
   late String estadoPartido;
 
   late int golesSanFernando;
@@ -1750,45 +1751,63 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   static const bool _showTouchDebug = true; // Cambiar a true para debug
 
   @override
-  void initState() {
-    super.initState();
+  @override
+void initState() {
+  super.initState();
 
-    estadoPartido = widget.estadoInicial;
-    golesSanFernando = widget.golesSanFernandoInicial;
-    golesRival = widget.golesRivalInicial;
-    golesRecibidos = widget.golesRivalInicial;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  });
 
-    atajadas = widget.atajadasInicial;
-    penales = widget.penalesInicial;
-    exclusiones2Min = widget.exclusiones2MinInicial;
-    amarillas = widget.amarillasInicial;
-    rojas = widget.rojasInicial;
-    perdidas = widget.perdidasInicial;
-    recuperaciones = widget.recuperacionesInicial;
+  estadoPartido = widget.estadoInicial;
+  golesSanFernando = widget.golesSanFernandoInicial;
+  golesRival = widget.golesRivalInicial;
+  golesRecibidos = widget.golesRivalInicial;
 
-    penalesConvertidosSanFernando = widget.penalesConvertidosSanFernandoInicial;
-    penalesConvertidosRival = widget.penalesConvertidosRivalInicial;
+  atajadas = widget.atajadasInicial;
+  penales = widget.penalesInicial;
+  exclusiones2Min = widget.exclusiones2MinInicial;
+  amarillas = widget.amarillasInicial;
+  rojas = widget.rojasInicial;
+  perdidas = widget.perdidasInicial;
+  recuperaciones = widget.recuperacionesInicial;
 
-    penalesIntentadosSanFernando = penalesConvertidosSanFernando;
-    penalesIntentadosRival = penalesConvertidosRival;
+  penalesConvertidosSanFernando = widget.penalesConvertidosSanFernandoInicial;
+  penalesConvertidosRival = widget.penalesConvertidosRivalInicial;
 
-    eventos = widget.eventosIniciales
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+  penalesIntentadosSanFernando = penalesConvertidosSanFernando;
+  penalesIntentadosRival = penalesConvertidosRival;
 
-    if (eventos.isNotEmpty) {
-      final dynamic ultimoId = eventos.last['id'];
-      if (ultimoId is int) {
-        _contadorEventoId = ultimoId;
-      }
+  eventos = widget.eventosIniciales
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
+
+  if (eventos.isNotEmpty) {
+    final dynamic ultimoId = eventos.last['id'];
+    if (ultimoId is int) {
+      _contadorEventoId = ultimoId;
     }
-
-    modo = widget.modoInicial;
-    modoInicioPrimerTiempo = widget.modoInicioPrimerTiempo;
-    modoInicioPrimerTiempoAlargue = widget.modoInicioPrimerTiempoAlargue;
-
-    _aplicarModoAutomaticoSegunEstado();
   }
+
+  modo = widget.modoInicial;
+  modoInicioPrimerTiempo = widget.modoInicioPrimerTiempo;
+  modoInicioPrimerTiempoAlargue = widget.modoInicioPrimerTiempoAlargue;
+
+  _aplicarModoAutomaticoSegunEstado();
+}
+
+@override
+void dispose() {
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  super.dispose();
+}
 
   void _aplicarModoAutomaticoSegunEstado() {
     if (estadoPartido == 'segundo_tiempo' && modo == null) {
@@ -2545,11 +2564,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           ? null
           : () {
               setState(() {
-                if (zonaTiro == fullLabel) {
-                  zonaTiro = null;
-                } else {
-                  zonaTiro = fullLabel;
-                }
+                zonaTiro = (zonaTiro == fullLabel) ? null : fullLabel;
+                zonaArco = null;
                 mostrarContra = false;
                 origenJugadaActual = 'normal';
               });
@@ -2591,11 +2607,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           ? null
           : () {
               setState(() {
-                if (zonaTiro == fullLabel) {
-                  zonaTiro = null;
-                } else {
-                  zonaTiro = fullLabel;
-                }
+                zonaTiro = (zonaTiro == fullLabel) ? null : fullLabel;
+                zonaArco = null;
                 mostrarContra = false;
                 origenJugadaActual = 'normal';
               });
@@ -2623,7 +2636,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _goalCell(String label) {
-    final bool isSelected = zonaArco == label;
+    final bool isSelected = zonaTiro != null && zonaArco == label;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -3794,79 +3807,122 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
     });
   }
+
 }
 
 class CourtOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.18)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    final Paint softPaint = Paint()
-      ..color = Colors.white.withOpacity(0.07)
-      ..style = PaintingStyle.fill;
-
     final double w = size.width;
     final double h = size.height;
 
-    final RRect frame = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, w, h),
+    final Paint strongLine = Paint()
+      ..color = Colors.white.withOpacity(0.22)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2;
+
+    final Paint softLine = Paint()
+      ..color = Colors.white.withOpacity(0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+
+    final Paint softFill = Paint()
+      ..color = Colors.white.withOpacity(0.035)
+      ..style = PaintingStyle.fill;
+
+    // =========================
+    // MARCO GENERAL
+    // =========================
+    final RRect outerFrame = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.02, h * 0.02, w * 0.96, h * 0.96),
+      const Radius.circular(26),
+    );
+    canvas.drawRRect(outerFrame, strongLine);
+
+    // =========================
+    // BLOQUE SUPERIOR SUAVE (zona visual del arco)
+    // =========================
+    final RRect topArea = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.08, h * 0.04, w * 0.84, h * 0.18),
       const Radius.circular(22),
     );
-    canvas.drawRRect(frame, linePaint);
+    canvas.drawRRect(topArea, softFill);
 
-    final Rect topGlow = Rect.fromLTWH(w * 0.08, h * 0.02, w * 0.84, h * 0.18);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(topGlow, const Radius.circular(18)),
-      softPaint,
-    );
-
-    // Línea superior de referencia
+    // =========================
+    // SEPARACIÓN ARCO / ZONA
+    // =========================
     canvas.drawLine(
-      Offset(w * 0.05, h * 0.43),
-      Offset(w * 0.95, h * 0.43),
-      linePaint,
+      Offset(w * 0.06, h * 0.43),
+      Offset(w * 0.94, h * 0.43),
+      strongLine,
     );
 
-    // Lados en perspectiva
+    // =========================
+    // LÍNEA DE PENAL
+    // =========================
     canvas.drawLine(
-      Offset(w * 0.10, h * 0.48),
-      Offset(w * 0.06, h * 0.98),
-      linePaint,
-    );
-    canvas.drawLine(
-      Offset(w * 0.90, h * 0.48),
-      Offset(w * 0.94, h * 0.98),
-      linePaint,
+      Offset(w * 0.10, h * 0.50),
+      Offset(w * 0.90, h * 0.50),
+      strongLine,
     );
 
-    // Curva 6m
-    final Path sixMeterPath = Path()
-      ..moveTo(w * 0.18, h * 0.64)
-      ..quadraticBezierTo(w * 0.50, h * 0.77, w * 0.82, h * 0.64);
-    canvas.drawPath(sixMeterPath, linePaint);
-
-    // Curva 9m
-    final Path nineMeterPath = Path()
-      ..moveTo(w * 0.08, h * 0.82)
-      ..quadraticBezierTo(w * 0.50, h * 0.99, w * 0.92, h * 0.82);
-    canvas.drawPath(nineMeterPath, linePaint);
-
-    // Base inferior
-    canvas.drawLine(
-      Offset(w * 0.12, h * 0.98),
-      Offset(w * 0.88, h * 0.98),
-      linePaint,
-    );
-
+    // Texto no: ya lo pone el widget
     // Punto penal
     canvas.drawCircle(
-      Offset(w * 0.50, h * 0.485),
-      2.4,
-      Paint()..color = Colors.white.withOpacity(0.18),
+      Offset(w * 0.50, h * 0.56),
+      3,
+      Paint()..color = Colors.white.withOpacity(0.22),
     );
+
+    // =========================
+    // LATERALES EN PERSPECTIVA
+    // =========================
+    canvas.drawLine(
+      Offset(w * 0.09, h * 0.54),
+      Offset(w * 0.06, h * 0.96),
+      strongLine,
+    );
+    canvas.drawLine(
+      Offset(w * 0.91, h * 0.54),
+      Offset(w * 0.94, h * 0.96),
+      strongLine,
+    );
+
+    // =========================
+    // CURVA 6m
+    // =========================
+    final Path sixMeterPath = Path()
+      ..moveTo(w * 0.18, h * 0.63)
+      ..quadraticBezierTo(w * 0.50, h * 0.73, w * 0.82, h * 0.63);
+    canvas.drawPath(sixMeterPath, strongLine);
+
+    // =========================
+    // CURVA 9m
+    // =========================
+    final Path nineMeterPath = Path()
+      ..moveTo(w * 0.08, h * 0.82)
+      ..quadraticBezierTo(w * 0.50, h * 0.96, w * 0.92, h * 0.82);
+    canvas.drawPath(nineMeterPath, strongLine);
+
+    // =========================
+    // BASE INFERIOR
+    // =========================
+    canvas.drawLine(
+      Offset(w * 0.11, h * 0.96),
+      Offset(w * 0.89, h * 0.96),
+      strongLine,
+    );
+
+    // =========================
+    // LÍNEAS VERTICALES SUAVES DE PERSPECTIVA
+    // =========================
+    for (final x in [0.18, 0.32, 0.50, 0.68, 0.82]) {
+      canvas.drawLine(
+        Offset(w * x, h * 0.50),
+        Offset(w * (x - 0.03), h * 0.98),
+        softLine,
+      );
+    }
   }
 
   @override
