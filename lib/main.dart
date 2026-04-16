@@ -1752,7 +1752,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   @override
   @override
-void initState() {
+  void initState() {
   super.initState();
 
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1798,8 +1798,8 @@ void initState() {
   _aplicarModoAutomaticoSegunEstado();
 }
 
-@override
-void dispose() {
+  @override
+  void dispose() {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -1870,6 +1870,40 @@ void dispose() {
             icon: const Icon(Icons.arrow_back),
             onPressed: _goBack,
           ),
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              color: const Color(0xFF0F1722),
+              onSelected: (value) {
+                if (value == 'undo') {
+                  if (eventos.isNotEmpty) {
+                    _deshacerUltimoEvento();
+                  }
+                } else if (value == 'undo_sanction') {
+                  _showUndoSanctionSheet();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  value: 'undo',
+                  enabled: eventos.isNotEmpty,
+                  child: Text(
+                    'Deshacer último evento',
+                    style: TextStyle(
+                      color: eventos.isNotEmpty ? Colors.white : Colors.white54,
+                    ),
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'undo_sanction',
+                  child: Text(
+                    'Deshacer sanción',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         body: Stack(
           children: [
@@ -2707,37 +2741,114 @@ void dispose() {
     );
   }
 
+  Map<String, dynamic> _captureStateSnapshot() {
+  return {
+    'estadoPartido': estadoPartido,
+    'golesSanFernando': golesSanFernando,
+    'golesRival': golesRival,
+    'golesRecibidos': golesRecibidos,
+    'atajadas': atajadas,
+    'penales': penales,
+    'exclusiones2Min': exclusiones2Min,
+    'amarillas': amarillas,
+    'rojas': rojas,
+    'perdidas': perdidas,
+    'recuperaciones': recuperaciones,
+    'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+    'penalesConvertidosRival': penalesConvertidosRival,
+    'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
+    'penalesIntentadosRival': penalesIntentadosRival,
+    'modo': modo,
+    'zonaTiro': zonaTiro,
+    'zonaArco': zonaArco,
+    'penalEnCurso': penalEnCurso,
+    'actorPenalActual': actorPenalActual,
+    'mostrarContra': mostrarContra,
+    'contraDebeCambiarModo': contraDebeCambiarModo,
+    'origenJugadaActual': origenJugadaActual,
+    'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+    'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+  };
+}
+
+  void _restoreStateSnapshot(Map<String, dynamic> snapshot) {
+  estadoPartido = snapshot['estadoPartido'] as String? ?? estadoPartido;
+
+  golesSanFernando = snapshot['golesSanFernando'] as int? ?? golesSanFernando;
+  golesRival = snapshot['golesRival'] as int? ?? golesRival;
+  golesRecibidos = snapshot['golesRecibidos'] as int? ?? golesRecibidos;
+
+  atajadas = snapshot['atajadas'] as int? ?? atajadas;
+  penales = snapshot['penales'] as int? ?? penales;
+  exclusiones2Min = snapshot['exclusiones2Min'] as int? ?? exclusiones2Min;
+  amarillas = snapshot['amarillas'] as int? ?? amarillas;
+  rojas = snapshot['rojas'] as int? ?? rojas;
+  perdidas = snapshot['perdidas'] as int? ?? perdidas;
+  recuperaciones = snapshot['recuperaciones'] as int? ?? recuperaciones;
+
+  penalesConvertidosSanFernando =
+      snapshot['penalesConvertidosSanFernando'] as int? ??
+      penalesConvertidosSanFernando;
+  penalesConvertidosRival =
+      snapshot['penalesConvertidosRival'] as int? ??
+      penalesConvertidosRival;
+
+  penalesIntentadosSanFernando =
+      snapshot['penalesIntentadosSanFernando'] as int? ??
+      penalesIntentadosSanFernando;
+  penalesIntentadosRival =
+      snapshot['penalesIntentadosRival'] as int? ??
+      penalesIntentadosRival;
+
+  modo = snapshot['modo'] as String?;
+  zonaTiro = snapshot['zonaTiro'] as String?;
+  zonaArco = snapshot['zonaArco'] as String?;
+  penalEnCurso = snapshot['penalEnCurso'] as bool? ?? false;
+  actorPenalActual = snapshot['actorPenalActual'] as String?;
+  mostrarContra = snapshot['mostrarContra'] as bool? ?? false;
+  contraDebeCambiarModo =
+      snapshot['contraDebeCambiarModo'] as bool? ?? true;
+  origenJugadaActual =
+      snapshot['origenJugadaActual'] as String? ?? 'normal';
+
+  modoInicioPrimerTiempo = snapshot['modoInicioPrimerTiempo'] as String?;
+  modoInicioPrimerTiempoAlargue =
+      snapshot['modoInicioPrimerTiempoAlargue'] as String?;
+}
+
   void _registrarEvento({
-    required String tipo,
-    String? resultado,
-    String? actorPrincipal,
-    String? actorSecundario,
-    String? zonaTiroValor,
-    String? zonaArcoValor,
-    String? detalle,
-    String? subtipo,
-    bool? mantieneContexto,
-  }) {
-    _contadorEventoId++;
+  required String tipo,
+  String? resultado,
+  String? actorPrincipal,
+  String? actorSecundario,
+  String? zonaTiroValor,
+  String? zonaArcoValor,
+  String? detalle,
+  String? subtipo,
+  bool? mantieneContexto,
+  Map<String, dynamic>? prevState,
+}) {
+  _contadorEventoId++;
 
-    eventos.add({
-      'id': _contadorEventoId,
-      'timestamp': DateTime.now().toIso8601String(),
-      'estadoPartido': estadoPartido,
-      'modo': modo,
-      'origenJugada': origenJugadaActual,
-      'tipo': tipo,
-      'resultado': resultado,
-      'actorPrincipal': actorPrincipal,
-      'actorSecundario': actorSecundario,
-      'zonaTiro': zonaTiroValor,
-      'zonaArco': zonaArcoValor,
-      'detalle': detalle,
-      'subtipo': subtipo,
-      'mantieneContexto': mantieneContexto,
-    });
-  }
-
+  eventos.add({
+    'id': _contadorEventoId,
+    'timestamp': DateTime.now().toIso8601String(),
+    'estadoPartido': estadoPartido,
+    'modo': modo,
+    'origenJugada': origenJugadaActual,
+    'tipo': tipo,
+    'resultado': resultado,
+    'actorPrincipal': actorPrincipal,
+    'actorSecundario': actorSecundario,
+    'zonaTiro': zonaTiroValor,
+    'zonaArco': zonaArcoValor,
+    'detalle': detalle,
+    'subtipo': subtipo,
+    'mantieneContexto': mantieneContexto,
+    'prevState': prevState == null ? null : Map<String, dynamic>.from(prevState),
+  });
+}
+  
   void _showPerdidaSheet() {
     showModalBottomSheet(
       context: context,
@@ -2792,41 +2903,44 @@ void dispose() {
   }
 
   void _registrarPerdidaConSubtipo(String subtipo) {
-    if (modo == null) return;
+  if (modo == null) return;
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Jugador genérico defensa';
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-    final String? zonaActual = zonaTiro;
-    final bool estabaEnAtaque = modo == 'ataque';
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Jugador genérico defensa';
 
-    setState(() {
-      if (estabaEnAtaque) {
-        perdidas++;
-        modo = 'defensa';
-      } else {
-        recuperaciones++;
-        modo = 'ataque';
-      }
-      mostrarContra = true;
-      contraDebeCambiarModo = false;
-      origenJugadaActual = 'normal';
-    });
+  final String? zonaActual = zonaTiro;
+  final bool estabaEnAtaque = modo == 'ataque';
 
-    _registrarEvento(
-      tipo: 'perdida',
-      resultado: estabaEnAtaque ? 'perdida' : 'recuperacion',
-      actorPrincipal: actor,
-      zonaTiroValor: zonaActual,
-      detalle: subtipo,
-      subtipo: subtipo,
-      mantieneContexto: false,
-    );
+  setState(() {
+    if (estabaEnAtaque) {
+      perdidas++;
+      modo = 'defensa';
+    } else {
+      recuperaciones++;
+      modo = 'ataque';
+    }
+    mostrarContra = true;
+    contraDebeCambiarModo = false;
+    origenJugadaActual = 'normal';
+  });
 
-    _clearSelection(keepContra: true);
-  }
+  _registrarEvento(
+    tipo: 'perdida',
+    resultado: estabaEnAtaque ? 'perdida' : 'recuperacion',
+    actorPrincipal: actor,
+    zonaTiroValor: zonaActual,
+    detalle: subtipo,
+    subtipo: subtipo,
+    mantieneContexto: false,
+    prevState: prevState,
+  );
 
+  _clearSelection(keepContra: true);
+}
+  
   void _showLateralSheet(String lado) {
     if (!_lateralGestureEnabled || modo == null) return;
 
@@ -2867,119 +2981,129 @@ void dispose() {
   }
 
   void _registrarLateral(String resultado, String lado) {
-    if (modo == null) return;
+  if (modo == null) return;
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Jugador genérico defensa';
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-    bool activaContra = false;
-    bool mantiene = true;
-    final String resultadoEvento = 'lateral_$resultado';
-    final String subtipo = 'lateral_$lado';
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Jugador genérico defensa';
 
-    setState(() {
-      if (modo == 'ataque' && resultado == 'propio') {
-        mantiene = true;
-      } else if (modo == 'ataque' && resultado == 'rival') {
-        perdidas++;
-        modo = 'defensa';
-        activaContra = true;
-        mantiene = false;
-      } else if (modo == 'defensa' && resultado == 'propio') {
-        recuperaciones++;
-        modo = 'ataque';
-        activaContra = true;
-        mantiene = false;
-      } else if (modo == 'defensa' && resultado == 'rival') {
-        mantiene = true;
-      }
+  bool activaContra = false;
+  bool mantiene = true;
+  final String resultadoEvento = 'lateral_$resultado';
+  final String subtipo = 'lateral_$lado';
 
-      mostrarContra = activaContra;
-      contraDebeCambiarModo = !activaContra;
-      if (activaContra) contraDebeCambiarModo = false;
-      if (!activaContra) origenJugadaActual = 'normal';
-    });
-
-    _registrarEvento(
-      tipo: 'lateral',
-      resultado: resultadoEvento,
-      actorPrincipal: actor,
-      detalle: lado,
-      subtipo: subtipo,
-      mantieneContexto: mantiene,
-    );
-
-    _clearSelection(keepContra: activaContra);
-  }
-
-  void _registrarFueraPorGesto() {
-    if (!_fueraGestureEnabled || modo == null) return;
-
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
-
-    final bool esPenal = penalEnCurso;
-    final bool esTanda = _isPenaltyShootout();
-
-    if (esTanda) {
-      _registrarEvento(
-        tipo: 'penal_tanda',
-        resultado: 'fuera',
-        actorPrincipal: actor,
-        zonaArcoValor: zonaArco,
-        subtipo: 'tanda_penales',
-        mantieneContexto: false,
-      );
-      _registrarPenalTanda('fuera');
-      return;
+  setState(() {
+    if (modo == 'ataque' && resultado == 'propio') {
+      mantiene = true;
+    } else if (modo == 'ataque' && resultado == 'rival') {
+      perdidas++;
+      modo = 'defensa';
+      activaContra = true;
+      mantiene = false;
+    } else if (modo == 'defensa' && resultado == 'propio') {
+      recuperaciones++;
+      modo = 'ataque';
+      activaContra = true;
+      mantiene = false;
+    } else if (modo == 'defensa' && resultado == 'rival') {
+      mantiene = true;
     }
 
-    setState(() {
-      if (esPenal) {
-        penales++;
-      }
-      modo = modo == 'ataque' ? 'defensa' : 'ataque';
-      mostrarContra = true;
-      contraDebeCambiarModo = true;
-    });
+    mostrarContra = activaContra;
+    contraDebeCambiarModo = !activaContra;
+    if (activaContra) contraDebeCambiarModo = false;
+    if (!activaContra) origenJugadaActual = 'normal';
+  });
 
+  _registrarEvento(
+    tipo: 'lateral',
+    resultado: resultadoEvento,
+    actorPrincipal: actor,
+    detalle: lado,
+    subtipo: subtipo,
+    mantieneContexto: mantiene,
+    prevState: prevState,
+  );
+
+  _clearSelection(keepContra: activaContra);
+}
+  
+  void _registrarFueraPorGesto() {
+  if (!_fueraGestureEnabled || modo == null) return;
+
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Arquero genérico';
+
+  final bool esPenal = penalEnCurso;
+  final bool esTanda = _isPenaltyShootout();
+
+  if (esTanda) {
     _registrarEvento(
-      tipo: esPenal ? 'penal' : 'tiro',
+      tipo: 'penal_tanda',
       resultado: 'fuera',
       actorPrincipal: actor,
-      zonaTiroValor: esPenal ? null : zonaTiro,
       zonaArcoValor: zonaArco,
-      subtipo: esPenal ? 'penal_7m' : 'fuera_gesto',
+      subtipo: 'tanda_penales',
       mantieneContexto: false,
+      prevState: prevState,
     );
-
-    _clearSelection(keepContra: true);
+    _registrarPenalTanda('fuera');
+    return;
   }
 
+  setState(() {
+    if (esPenal) {
+      penales++;
+    }
+    modo = modo == 'ataque' ? 'defensa' : 'ataque';
+    mostrarContra = true;
+    contraDebeCambiarModo = true;
+  });
+
+  _registrarEvento(
+    tipo: esPenal ? 'penal' : 'tiro',
+    resultado: 'fuera',
+    actorPrincipal: actor,
+    zonaTiroValor: esPenal ? null : zonaTiro,
+    zonaArcoValor: zonaArco,
+    subtipo: esPenal ? 'penal_7m' : 'fuera_gesto',
+    mantieneContexto: false,
+    prevState: prevState,
+  );
+
+  _clearSelection(keepContra: true);
+}
+  
   void _activarContra() {
-    setState(() {
-      if (contraDebeCambiarModo) {
-        modo = modo == 'ataque' ? 'defensa' : 'ataque';
-      }
-      mostrarContra = false;
-      zonaTiro = null;
-      zonaArco = null;
-      origenJugadaActual = 'contra';
-      contraDebeCambiarModo = true;
-    });
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-    _registrarEvento(
-      tipo: 'contra',
-      resultado: 'inicio_contra',
-      actorPrincipal: 'Cambio de contexto',
-      detalle: 'Se activa contragolpe',
-      subtipo: 'inicio_contra',
-      mantieneContexto: false,
-    );
-  }
+  setState(() {
+    if (contraDebeCambiarModo) {
+      modo = modo == 'ataque' ? 'defensa' : 'ataque';
+    }
+    mostrarContra = false;
+    zonaTiro = null;
+    zonaArco = null;
+    origenJugadaActual = 'contra';
+    contraDebeCambiarModo = true;
+  });
 
+  _registrarEvento(
+    tipo: 'contra',
+    resultado: 'inicio_contra',
+    actorPrincipal: 'Cambio de contexto',
+    detalle: 'Se activa contragolpe',
+    subtipo: 'inicio_contra',
+    mantieneContexto: false,
+    prevState: prevState,
+  );
+}
+  
   void _iniciarFlujoPenalNormal() {
     final String actor = modo == 'ataque'
         ? 'Jugador genérico ataque'
@@ -3028,179 +3152,197 @@ void dispose() {
   }
 
   void _showNormalPenaltyResultSheet() {
-    if (zonaArco == null) return;
+  if (zonaArco == null) return;
 
-    final String actor =
-        actorPenalActual ??
-        (modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico');
+  final String actor =
+      actorPenalActual ??
+      (modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico');
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $zonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Gol', () {
-                setState(() {
-                  penales++;
-                  if (modo == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-                  mostrarContra = false;
-                });
+            ),
+            const SizedBox(height: 16),
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                );
+              setState(() {
+                penales++;
+                if (modo == 'ataque') {
+                  golesSanFernando++;
+                  modo = 'defensa';
+                } else {
+                  golesRival++;
+                  golesRecibidos++;
+                  modo = 'ataque';
+                }
+                mostrarContra = false;
+              });
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-              _floatingOption('Atajado', () {
-                setState(() {
-                  penales++;
-                  if (modo == 'defensa') {
-                    atajadas++;
-                  }
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaArcoValor: zonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: false,
+                prevState: prevState,
+              );
 
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: true,
-                );
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-              _floatingOption('Fuera', () {
-                setState(() {
-                  penales++;
-                  modo = modo == 'ataque' ? 'defensa' : 'ataque';
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
+              setState(() {
+                penales++;
+                if (modo == 'defensa') {
+                  atajadas++;
+                }
+                mostrarContra = true;
+                contraDebeCambiarModo = true;
+              });
 
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                );
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaArcoValor: zonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: true,
+                prevState: prevState,
+              );
 
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+              _clearSelection(keepContra: true);
+              Navigator.pop(context);
+            }),
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
+              setState(() {
+                penales++;
+                modo = modo == 'ataque' ? 'defensa' : 'ataque';
+                mostrarContra = true;
+                contraDebeCambiarModo = true;
+              });
+
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'fuera',
+                actorPrincipal: actor,
+                zonaArcoValor: zonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: false,
+                prevState: prevState,
+              );
+
+              _clearSelection(keepContra: true);
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   void _showPenaltyShootoutResultSheet() {
-    if (zonaArco == null || modo == null) return;
+  if (zonaArco == null || modo == null) return;
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Arquero genérico';
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $zonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Gol', () {
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                );
-                _registrarPenalTanda('gol');
-                Navigator.pop(context);
-              }),
-              _floatingOption('Atajado', () {
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                );
-                _registrarPenalTanda('atajado');
-                Navigator.pop(context);
-              }),
-              _floatingOption('Fuera', () {
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                );
-                _registrarPenalTanda('fuera');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+            ),
+            const SizedBox(height: 16),
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
+              _registrarEvento(
+                tipo: 'penal_tanda',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaArcoValor: zonaArco,
+                subtipo: 'tanda_penales',
+                mantieneContexto: false,
+                prevState: prevState,
+              );
+              _registrarPenalTanda('gol');
+              Navigator.pop(context);
+            }),
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+              _registrarEvento(
+                tipo: 'penal_tanda',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaArcoValor: zonaArco,
+                subtipo: 'tanda_penales',
+                mantieneContexto: false,
+                prevState: prevState,
+              );
+              _registrarPenalTanda('atajado');
+              Navigator.pop(context);
+            }),
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+              _registrarEvento(
+                tipo: 'penal_tanda',
+                resultado: 'fuera',
+                actorPrincipal: actor,
+                zonaArcoValor: zonaArco,
+                subtipo: 'tanda_penales',
+                mantieneContexto: false,
+                prevState: prevState,
+              );
+              _registrarPenalTanda('fuera');
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   void _registrarPenalTanda(String resultado) {
     if (modo == null) return;
 
@@ -3251,46 +3393,94 @@ void dispose() {
     }
   }
 
-  void _showSancionTargetSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '¿A quién sancionar?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  void _showSancionSheet(String actor) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Sanción para $actor',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Jugador genérico', () {
-                Navigator.pop(context);
-                _showSancionSheet('Jugador genérico');
-              }),
-              _floatingOption('Arquero genérico', () {
-                Navigator.pop(context);
-                _showSancionSheet('Arquero genérico');
-              }),
-              _floatingOption('Técnico genérico', () {
-                Navigator.pop(context);
-                _showSancionSheet('Técnico genérico');
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+            ),
+            const SizedBox(height: 16),
+            _floatingOption('Exclusión 2 min', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+              setState(() {
+                exclusiones2Min++;
+              });
+
+              _registrarEvento(
+                tipo: 'sancion',
+                resultado: 'exclusion_2_min',
+                actorPrincipal: actor,
+                detalle: 'Exclusión de 2 minutos',
+                subtipo: 'disciplina',
+                mantieneContexto: true,
+                prevState: prevState,
+              );
+
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+            _floatingOption('Tarjeta amarilla', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+              setState(() {
+                amarillas++;
+              });
+
+              _registrarEvento(
+                tipo: 'sancion',
+                resultado: 'tarjeta_amarilla',
+                actorPrincipal: actor,
+                detalle: 'Tarjeta amarilla',
+                subtipo: 'disciplina',
+                mantieneContexto: true,
+                prevState: prevState,
+              );
+
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+            _floatingOption('Tarjeta roja', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+              setState(() {
+                rojas++;
+              });
+
+              _registrarEvento(
+                tipo: 'sancion',
+                resultado: 'tarjeta_roja',
+                actorPrincipal: actor,
+                detalle: 'Tarjeta roja',
+                subtipo: 'disciplina',
+                mantieneContexto: true,
+                prevState: prevState,
+              );
+
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   void _showSancionSheet(String actor) {
     showModalBottomSheet(
@@ -3373,105 +3563,114 @@ void dispose() {
   }
 
   void _showZoneActionSheet() {
-    if (zonaTiro == null || zonaArco == null || modo == null) return;
+  if (zonaTiro == null || zonaArco == null || modo == null) return;
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Arquero genérico';
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$zonaTiro → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$zonaTiro → $zonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Gol', () {
-                setState(() {
-                  if (modo == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-                  mostrarContra = false;
-                });
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                );
+              setState(() {
+                if (modo == 'ataque') {
+                  golesSanFernando++;
+                  modo = 'defensa';
+                } else {
+                  golesRival++;
+                  golesRecibidos++;
+                  modo = 'ataque';
+                }
+                mostrarContra = false;
+              });
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-              _floatingOption('Atajado', () {
-                setState(() {
-                  if (modo == 'defensa') {
-                    atajadas++;
-                  }
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
+              _registrarEvento(
+                tipo: 'tiro',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaTiroValor: zonaTiro,
+                zonaArcoValor: zonaArco,
+                mantieneContexto: false,
+                prevState: prevState,
+              );
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: true,
-                );
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-              _floatingOption('Desvío', () {
-                setState(() {
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
+              setState(() {
+                if (modo == 'defensa') {
+                  atajadas++;
+                }
+                mostrarContra = true;
+                contraDebeCambiarModo = true;
+              });
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'desvio',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: true,
-                );
+              _registrarEvento(
+                tipo: 'tiro',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaTiroValor: zonaTiro,
+                zonaArcoValor: zonaArco,
+                mantieneContexto: true,
+                prevState: prevState,
+              );
 
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+              _clearSelection(keepContra: true);
+              Navigator.pop(context);
+            }),
+            _floatingOption('Desvío', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
 
+              setState(() {
+                mostrarContra = true;
+                contraDebeCambiarModo = true;
+              });
+
+              _registrarEvento(
+                tipo: 'tiro',
+                resultado: 'desvio',
+                actorPrincipal: actor,
+                zonaTiroValor: zonaTiro,
+                zonaArcoValor: zonaArco,
+                mantieneContexto: true,
+                prevState: prevState,
+              );
+
+              _clearSelection(keepContra: true);
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Widget _floatingOption(String text, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -3808,6 +4007,158 @@ void dispose() {
     });
   }
 
+  void _deshacerUltimoEvento() {
+  if (eventos.isEmpty) return;
+
+  int index = eventos.length - 1;
+
+  while (index >= 0) {
+    final evento = eventos[index];
+    final tipo = evento['tipo'];
+    final prevState = evento['prevState'];
+
+    final bool esCorreccionManual = tipo == 'correccion_sancion';
+    final bool tieneSnapshotValido = prevState is Map;
+
+    if (esCorreccionManual || !tieneSnapshotValido) {
+      index--;
+      continue;
+    }
+
+    break;
+  }
+
+  if (index < 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No hay eventos de juego para deshacer'),
+      ),
+    );
+    return;
+  }
+
+  final eventoADeshacer = eventos[index];
+  final prevState = Map<String, dynamic>.from(eventoADeshacer['prevState']);
+
+  setState(() {
+    eventos.removeAt(index);
+    _restoreStateSnapshot(prevState);
+  });
+}
+  
+  void _showUndoSanctionSheet() {
+  final List<_UndoSanctionOption> opciones = [];
+
+  if (exclusiones2Min > 0) {
+    opciones.add(
+      const _UndoSanctionOption(
+        label: 'Quitar exclusión 2 min',
+        resultado: 'exclusion_2_min',
+      ),
+    );
+  }
+
+  if (amarillas > 0) {
+    opciones.add(
+      const _UndoSanctionOption(
+        label: 'Quitar tarjeta amarilla',
+        resultado: 'tarjeta_amarilla',
+      ),
+    );
+  }
+
+  if (rojas > 0) {
+    opciones.add(
+      const _UndoSanctionOption(
+        label: 'Quitar tarjeta roja',
+        resultado: 'tarjeta_roja',
+      ),
+    );
+  }
+
+  if (opciones.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No hay sanciones para deshacer'),
+      ),
+    );
+    return;
+  }
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Deshacer sanción',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            for (final opcion in opciones)
+              _floatingOption(opcion.label, () {
+                Navigator.pop(context);
+                _revertirSancion(opcion.resultado);
+              }),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+  void _revertirSancion(String tipoSancion) {
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+  bool huboCambio = false;
+
+  setState(() {
+    if (tipoSancion == 'exclusion_2_min' && exclusiones2Min > 0) {
+      exclusiones2Min--;
+      huboCambio = true;
+    } else if (tipoSancion == 'tarjeta_amarilla' && amarillas > 0) {
+      amarillas--;
+      huboCambio = true;
+    } else if (tipoSancion == 'tarjeta_roja' && rojas > 0) {
+      rojas--;
+      huboCambio = true;
+    }
+  });
+
+  if (!huboCambio) return;
+
+  _registrarEvento(
+    tipo: 'correccion_sancion',
+    resultado: tipoSancion,
+    actorPrincipal: 'Corrección manual',
+    detalle: 'Se revierte sanción',
+    subtipo: 'undo_sancion',
+    mantieneContexto: true,
+    prevState: prevState,
+  );
+}
+
+}
+
+class _UndoSanctionOption {
+  final String label;
+  final String resultado;
+
+  const _UndoSanctionOption({
+    required this.label,
+    required this.resultado,
+  });
 }
 
 class CourtOverlayPainter extends CustomPainter {
