@@ -2133,6 +2133,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildGoalGrid() {
+    const bool debugTouchAreas = true;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
@@ -2162,98 +2164,174 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       ),
               ),
 
-              // FUERA ARRIBA
+              // =========================
+              // DEBUG VISUAL - FUERA ARRIBA
+              // =========================
+              if (debugTouchAreas)
+                Positioned(
+                  top: -26,
+                  left: 60,
+                  right: 60,
+                  height: 20,
+                  child: IgnorePointer(
+                    child: Container(color: Colors.red.withOpacity(0.35)),
+                  ),
+                ),
+
+              // Gesture real - FUERA ARRIBA
               Positioned(
                 top: -26,
                 left: 60,
                 right: 60,
                 height: 20,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                  child: Container(
-                    color: debugTouchAreas
-                        ? Colors.red.withOpacity(0.35)
-                        : Colors.transparent,
-                  ),
+                  behavior: HitTestBehavior.translucent,
+
+                  ///onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
+                  onTap: _fueraGestureEnabled
+                      ? () {
+                          _debugSnack('FUERA ARRIBA');
+                          _registrarFueraPorGesto();
+                        }
+                      : null,
+                  child: const SizedBox.expand(),
                 ),
               ),
 
-              // FUERA IZQ ARCO
+              // =========================
+              // DEBUG VISUAL - FUERA IZQ ARCO
+              // =========================
+              if (debugTouchAreas)
+                Positioned(
+                  top: 8,
+                  left: -18,
+                  width: 10,
+                  height: 110,
+                  child: IgnorePointer(
+                    child: Container(color: Colors.red.withOpacity(0.35)),
+                  ),
+                ),
+
+              // Gesture real - FUERA IZQ ARCO
               Positioned(
                 top: 8,
                 left: -18,
                 width: 10,
                 height: 110,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                  child: Container(
-                    color: debugTouchAreas
-                        ? Colors.red.withOpacity(0.35)
-                        : Colors.transparent,
-                  ),
+                  behavior: HitTestBehavior.translucent,
+
+                  ///onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
+                  onTap: _lateralGestureEnabled
+                      ? () {
+                          _debugSnack('LATERAL IZQUIERDO');
+                          _showLateralSheet('izquierdo');
+                        }
+                      : null,
+
+                  child: const SizedBox.expand(),
                 ),
               ),
 
-              // FUERA DER ARCO
+              // =========================
+              // DEBUG VISUAL - FUERA DER ARCO
+              // =========================
+              if (debugTouchAreas)
+                Positioned(
+                  top: 8,
+                  right: -18,
+                  width: 10,
+                  height: 110,
+                  child: IgnorePointer(
+                    child: Container(color: Colors.red.withOpacity(0.35)),
+                  ),
+                ),
+
+              // Gesture real - FUERA DER ARCO
               Positioned(
                 top: 8,
                 right: -18,
                 width: 10,
                 height: 110,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
-                  child: Container(
-                    color: debugTouchAreas
-                        ? Colors.red.withOpacity(0.35)
-                        : Colors.transparent,
-                  ),
+                  behavior: HitTestBehavior.translucent,
+
+                  ///onTap: _fueraGestureEnabled ? _registrarFueraPorGesto : null,
+                  child: const SizedBox.expand(),
                 ),
               ),
 
-              // LATERAL IZQ
+              // =========================
+              // DEBUG VISUAL - LATERAL IZQ
+              // =========================
+              if (debugTouchAreas)
+                Positioned(
+                  left: -20,
+                  top: 170,
+                  bottom: 0,
+                  width: 10,
+                  child: IgnorePointer(
+                    child: Container(color: Colors.red.withOpacity(0.35)),
+                  ),
+                ),
+
+              // Gesture real - LATERAL IZQ
               Positioned(
                 left: -20,
                 top: 170,
                 bottom: 0,
                 width: 10,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                  behavior: HitTestBehavior.translucent,
                   onTap: _lateralGestureEnabled
                       ? () => _showLateralSheet('izquierdo')
                       : null,
-                  child: Container(
-                    color: debugTouchAreas
-                        ? Colors.red.withOpacity(0.35)
-                        : Colors.transparent,
-                  ),
+                  child: const SizedBox.expand(),
                 ),
               ),
 
-              // LATERAL DER
+              // =========================
+              // DEBUG VISUAL - LATERAL DER
+              // =========================
+              if (debugTouchAreas)
+                Positioned(
+                  right: -20,
+                  top: 170,
+                  bottom: 0,
+                  width: 10,
+                  child: IgnorePointer(
+                    child: Container(color: Colors.red.withOpacity(0.35)),
+                  ),
+                ),
+
+              // Gesture real - LATERAL DER
               Positioned(
                 right: -20,
                 top: 170,
                 bottom: 0,
                 width: 10,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                  behavior: HitTestBehavior.translucent,
                   onTap: _lateralGestureEnabled
                       ? () => _showLateralSheet('derecho')
                       : null,
-                  child: Container(
-                    color: debugTouchAreas
-                        ? Colors.red.withOpacity(0.35)
-                        : Colors.transparent,
-                  ),
+                  child: const SizedBox.expand(),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  void _debugSnack(String text) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text),
+        duration: const Duration(milliseconds: 700),
+      ),
     );
   }
 
