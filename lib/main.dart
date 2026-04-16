@@ -2194,7 +2194,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   const double fueraSideOffsetY = -10;
   const double fueraSideBottomTrim = 8;
 
-  const double gapArcoToPenaltyLine = 18;
+  const double gapArcoToPenaltyLine = 22;
   const double gapPenaltyLineToZone = 14;
 
   return LayoutBuilder(
@@ -3844,14 +3844,14 @@ class CourtOverlayPainter extends CustomPainter {
 
     // Curva 6m
     final Path sixMeterPath = Path()
-      ..moveTo(w * 0.18, h * 0.62)
-      ..quadraticBezierTo(w * 0.50, h * 0.74, w * 0.82, h * 0.62);
+      ..moveTo(w * 0.18, h * 0.64)
+      ..quadraticBezierTo(w * 0.50, h * 0.77, w * 0.82, h * 0.64);
     canvas.drawPath(sixMeterPath, linePaint);
 
     // Curva 9m
     final Path nineMeterPath = Path()
-      ..moveTo(w * 0.08, h * 0.80)
-      ..quadraticBezierTo(w * 0.50, h * 0.96, w * 0.92, h * 0.80);
+      ..moveTo(w * 0.08, h * 0.82)
+      ..quadraticBezierTo(w * 0.50, h * 0.99, w * 0.92, h * 0.82);
     canvas.drawPath(nineMeterPath, linePaint);
 
     // Base inferior
