@@ -2176,7 +2176,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           children: [
             // FUERA ARRIBA
             SizedBox(
-              height: 18,
+              height: 24, // antes 18
               child: Row(
                 children: [
                   const SizedBox(width: 24),
@@ -2201,7 +2201,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                     width: 12,
                     child: Column(
                       children: [
-                        const SizedBox(height: 92), // antes 118
+                        const SizedBox(height: 116),
                         Expanded(
                           child: _buildTouchLane(
                             enabled: _lateralGestureEnabled,
@@ -2221,15 +2221,22 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       children: [
                         // ARCO + FUERA COSTADOS
                         SizedBox(
-                          height: 96, // antes 132
+                          height:
+                              132, // vuelve al valor que visualmente te gustaba
                           child: Row(
                             children: [
                               SizedBox(
                                 width: 12,
-                                child: _buildTouchLane(
-                                  enabled: _fueraGestureEnabled,
-                                  onTap: _registrarFueraPorGesto,
-                                  debugColor: Colors.red,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: _buildTouchLane(
+                                        enabled: _fueraGestureEnabled,
+                                        onTap: _registrarFueraPorGesto,
+                                        debugColor: Colors.red,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -2239,10 +2246,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                               const SizedBox(width: 6),
                               SizedBox(
                                 width: 12,
-                                child: _buildTouchLane(
-                                  enabled: _fueraGestureEnabled,
-                                  onTap: _registrarFueraPorGesto,
-                                  debugColor: Colors.red,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: _buildTouchLane(
+                                        enabled: _fueraGestureEnabled,
+                                        onTap: _registrarFueraPorGesto,
+                                        debugColor: Colors.red,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -2251,9 +2264,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
                         const SizedBox(height: 4),
                         _buildPenaltyLineMarker(),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
 
-                        // ZONA MUCHO MÁS ALTA
+                        // ZONA
                         Expanded(child: _buildPerspectiveShotZonesLarge()),
                       ],
                     ),
@@ -2266,7 +2279,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                     width: 12,
                     child: Column(
                       children: [
-                        const SizedBox(height: 92), // antes 118
+                        const SizedBox(height: 116),
                         Expanded(
                           child: _buildTouchLane(
                             enabled: _lateralGestureEnabled,
@@ -2431,18 +2444,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     return Column(
       children: [
         Expanded(
-          flex: 5, // antes 4
+          flex: 4,
           child: _buildPerspectiveZoneCell(
             shortLabel: '$base\n9m',
             fullLabel: zone9,
             isSelected: zonaTiro == zone9,
-            topWidthFactor: 0.70,
-            bottomWidthFactor: 0.92,
+            topWidthFactor: 0.68,
+            bottomWidthFactor: 0.90,
           ),
         ),
         const SizedBox(height: 6),
         Expanded(
-          flex: 10, // antes 9
+          flex: 9,
           child: _buildPerspectiveZoneCell(
             shortLabel: '$base\n6m',
             fullLabel: zone6,
