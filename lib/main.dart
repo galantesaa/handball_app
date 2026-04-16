@@ -1882,12 +1882,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: 0.92,
-                          child: _buildGoalGrid(),
-                        ),
-                      ),
+                      child: _buildGoalGrid(),
                     ),
                   ),
                   Padding(
@@ -2138,36 +2133,38 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildGoalGrid() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool soloArco = _isPenaltyShootout() || penalEnCurso;
+  final bool soloArco = _isPenaltyShootout() || penalEnCurso;
 
-        return Container(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1722).withOpacity(0.82),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.04)),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.82),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.04),
           ),
-          child: Stack(
-            children: [
-              soloArco ? _buildPenaltyOnlyGrid() : _buildNormalPlayGrid(),
+        ),
+        child: Stack(
+          children: [
+            soloArco ? _buildPenaltyOnlyGrid() : _buildNormalPlayGrid(),
 
-              if (_showCourtOverlay && !soloArco)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: CourtOverlayPainter(),
-                    ),
+            if (_showCourtOverlay && !soloArco)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: CourtOverlayPainter(),
                   ),
                 ),
-              ],
-            ),
-        );
-      },
-    );
-  }
-
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Widget _buildTouchLane({
     required bool enabled,
     required VoidCallback onTap,
@@ -2185,32 +2182,32 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildNormalPlayGrid() {
-  const double uiScale = 1.08;
-
   const double fueraTopHeight = 18;
   const double fueraTopSideInset = 10;
   const double fueraTopTranslateY = -6;
 
   const double lateralWidth = 12;
-  const double lateralTopStart = 150;
-  const double lateralBottomTrim = 6;
-
   const double centerGapToLaterals = 6;
 
-  const double arcoBlockHeight = 162;
   const double fueraSideWidth = 12;
   const double fueraSideOffsetX = 10;
   const double fueraSideOffsetY = -10;
   const double fueraSideBottomTrim = 8;
 
-  const double gapArcoToPenaltyLine = 0;
-  const double gapPenaltyLineToZone = 0;
+  const double gapArcoToPenaltyLine = 18;
+  const double gapPenaltyLineToZone = 14;
 
-  return Stack(
-    children: [
-      Column(
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final double totalHeight = constraints.maxHeight;
+
+      // Reparto del court:
+      // 30% arco / 70% zona, usando TODO el alto disponible real.
+      final double arcoHeight = totalHeight * 0.28;
+      final double lateralTopStart = arcoHeight;
+
+      return Column(
         children: [
-          // FUERA ARRIBA
           SizedBox(
             height: fueraTopHeight,
             child: Row(
@@ -2233,137 +2230,130 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           const SizedBox(height: 2),
 
           Expanded(
-            child: Transform.scale(
-              scale: uiScale,
-              alignment: Alignment.topCenter,
-              child: Row(
-                children: [
-                  // LATERAL IZQUIERDO
-                  SizedBox(
-                    width: lateralWidth,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: lateralTopStart),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: lateralBottomTrim,
-                            ),
-                            child: _buildTouchLane(
-                              enabled: _lateralGestureEnabled,
-                              onTap: () => _showLateralSheet('izquierdo'),
-                              debugColor: Colors.red,
-                            ),
+            child: Row(
+              children: [
+                // LATERAL IZQUIERDO
+                SizedBox(
+                  width: lateralWidth,
+                  child: Column(
+                    children: [
+                      SizedBox(height: lateralTopStart),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: _buildTouchLane(
+                            enabled: _lateralGestureEnabled,
+                            onTap: () => _showLateralSheet('izquierdo'),
+                            debugColor: Colors.red,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
 
-                  const SizedBox(width: centerGapToLaterals),
+                const SizedBox(width: centerGapToLaterals),
 
-                  // CONTENIDO CENTRAL
-                  Expanded(
-                    child: Column(
-                      children: [
-                        // ARCO + FUERA COSTADOS
-                        SizedBox(
-                          height: arcoBlockHeight,
-                          child: Row(
-                            children: [
-                              Transform.translate(
-                                offset: const Offset(
-                                  -fueraSideOffsetX,
-                                  fueraSideOffsetY,
-                                ),
-                                child: SizedBox(
-                                  width: fueraSideWidth,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      bottom: fueraSideBottomTrim,
-                                    ),
-                                    child: _buildTouchLane(
-                                      enabled: _fueraGestureEnabled,
-                                      onTap: _registrarFueraPorGesto,
-                                      debugColor: Colors.red,
-                                    ),
+                // CENTRO
+                Expanded(
+                  child: Column(
+                    children: [
+                      // ARCO + FUERA CORTO LATERAL
+                      SizedBox(
+                        height: arcoHeight,
+                        child: Row(
+                          children: [
+                            Transform.translate(
+                              offset: const Offset(
+                                -fueraSideOffsetX,
+                                fueraSideOffsetY,
+                              ),
+                              child: SizedBox(
+                                width: fueraSideWidth,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: fueraSideBottomTrim,
+                                  ),
+                                  child: _buildTouchLane(
+                                    enabled: _fueraGestureEnabled,
+                                    onTap: _registrarFueraPorGesto,
+                                    debugColor: Colors.red,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                            ),
+                            const SizedBox(width: 6),
 
-                              Expanded(
-                                child: _buildFlatGoalAreaCompact(),
+                            Expanded(
+                              child: _buildFlatGoalAreaCompact(),
+                            ),
+
+                            const SizedBox(width: 6),
+                            Transform.translate(
+                              offset: const Offset(
+                                fueraSideOffsetX,
+                                fueraSideOffsetY,
                               ),
-
-                              const SizedBox(width: 6),
-                              Transform.translate(
-                                offset: const Offset(
-                                  fueraSideOffsetX,
-                                  fueraSideOffsetY,
-                                ),
-                                child: SizedBox(
-                                  width: fueraSideWidth,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      bottom: fueraSideBottomTrim,
-                                    ),
-                                    child: _buildTouchLane(
-                                      enabled: _fueraGestureEnabled,
-                                      onTap: _registrarFueraPorGesto,
-                                      debugColor: Colors.red,
-                                    ),
+                              child: SizedBox(
+                                width: fueraSideWidth,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: fueraSideBottomTrim,
+                                  ),
+                                  child: _buildTouchLane(
+                                    enabled: _fueraGestureEnabled,
+                                    onTap: _registrarFueraPorGesto,
+                                    debugColor: Colors.red,
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: gapArcoToPenaltyLine),
+                      _buildPenaltyLineMarker(),
+                      const SizedBox(height: gapPenaltyLineToZone),
+
+                      // ZONA usa TODO el resto real del court
+                      Expanded(
+                        child: _buildPerspectiveShotZonesLarge(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: centerGapToLaterals),
+
+                // LATERAL DERECHO
+                SizedBox(
+                  width: lateralWidth,
+                  child: Column(
+                    children: [
+                      SizedBox(height: lateralTopStart),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: _buildTouchLane(
+                            enabled: _lateralGestureEnabled,
+                            onTap: () => _showLateralSheet('derecho'),
+                            debugColor: Colors.red,
                           ),
                         ),
-
-                        const SizedBox(height: gapArcoToPenaltyLine),
-                        _buildPenaltyLineMarker(),
-                        const SizedBox(height: gapPenaltyLineToZone),
-
-                        Expanded(
-                          child: _buildPerspectiveShotZonesLarge(),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(width: centerGapToLaterals),
-
-                  // LATERAL DERECHO
-                  SizedBox(
-                    width: lateralWidth,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: lateralTopStart),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: lateralBottomTrim,
-                            ),
-                            child: _buildTouchLane(
-                              enabled: _lateralGestureEnabled,
-                              onTap: () => _showLateralSheet('derecho'),
-                              debugColor: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
-      ),
-    ],
+      );
+    },
   );
 }
-
+  
   void _debugSnack(String text) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2375,33 +2365,31 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildPenaltyOnlyGrid() {
-    return Column(
-      children: [
-        const SizedBox(height: 4),
-        Text(
-          _isPenaltyShootout()
-              ? (modo == 'ataque'
-                    ? 'Penal nuestro'
-                    : modo == 'defensa'
+  return Column(
+    children: [
+      const SizedBox(height: 4),
+      Text(
+        _isPenaltyShootout()
+            ? (modo == 'ataque'
+                ? 'Penal nuestro'
+                : modo == 'defensa'
                     ? 'Penal rival'
                     : 'Seleccioná contexto')
-              : 'Penal',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
+            : 'Penal',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
         ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: Column(
-            children: [Expanded(child: _buildFlatGoalAreaCompact())],
-          ),
-        ),
-      ],
-    );
-  }
-
+      ),
+      const SizedBox(height: 10),
+      Expanded(
+        child: _buildFlatGoalAreaCompact(),
+      ),
+    ],
+  );
+}
+  
   Widget _buildFlatGoalAreaCompact() {
   return Column(
     children: [
@@ -2416,7 +2404,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 5),
+      const SizedBox(height: 3),
       Expanded(
         child: Row(
           children: [
@@ -2428,7 +2416,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           ],
         ),
       ),
-      const SizedBox(height: 5),
+      const SizedBox(height: 3),
       Expanded(
         child: Row(
           children: [
@@ -2510,7 +2498,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     ],
   );
 }
-
+  
   Widget _buildSplitLaneLarge(String base) {
   final String zone6 = '$base 6m';
   final String zone9 = '$base 9m';
@@ -3812,9 +3800,9 @@ class CourtOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.42)
+      ..color = Colors.white.withOpacity(0.18)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
+      ..strokeWidth = 2.0;
 
     final Paint softPaint = Paint()
       ..color = Colors.white.withOpacity(0.07)
@@ -3823,47 +3811,26 @@ class CourtOverlayPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    // Marco general suave
     final RRect frame = RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, w, h),
       const Radius.circular(22),
     );
     canvas.drawRRect(frame, linePaint);
 
-    // Zona superior suave detrás del arco
     final Rect topGlow = Rect.fromLTWH(w * 0.08, h * 0.02, w * 0.84, h * 0.18);
     canvas.drawRRect(
       RRect.fromRectAndRadius(topGlow, const Radius.circular(18)),
       softPaint,
     );
 
-    // Línea horizontal principal (simula referencia de área)
+    // Línea superior de referencia
     canvas.drawLine(
       Offset(w * 0.05, h * 0.43),
       Offset(w * 0.95, h * 0.43),
       linePaint,
     );
 
-    // Línea de 9m sugerida en perspectiva
-    final Path nineMeterPath = Path()
-      ..moveTo(w * 0.08, h * 0.73)
-      ..quadraticBezierTo(w * 0.50, h * 0.86, w * 0.92, h * 0.73);
-    canvas.drawPath(nineMeterPath, linePaint);
-
-    // Línea de 6m sugerida en perspectiva
-    final Path sixMeterPath = Path()
-      ..moveTo(w * 0.18, h * 0.56)
-      ..quadraticBezierTo(w * 0.50, h * 0.64, w * 0.82, h * 0.56);
-    canvas.drawPath(sixMeterPath, linePaint);
-
-    // Marca central de penal
-    canvas.drawCircle(
-       Offset(w * 0.50, h * 0.485),
-      2.2,
-      Paint()..color = Colors.white.withOpacity(0.16),
-    );
-
-    // Laterales en perspectiva
+    // Lados en perspectiva
     canvas.drawLine(
       Offset(w * 0.10, h * 0.48),
       Offset(w * 0.06, h * 0.98),
@@ -3875,11 +3842,30 @@ class CourtOverlayPainter extends CustomPainter {
       linePaint,
     );
 
-    // Base inferior sutil
+    // Curva 6m
+    final Path sixMeterPath = Path()
+      ..moveTo(w * 0.18, h * 0.62)
+      ..quadraticBezierTo(w * 0.50, h * 0.74, w * 0.82, h * 0.62);
+    canvas.drawPath(sixMeterPath, linePaint);
+
+    // Curva 9m
+    final Path nineMeterPath = Path()
+      ..moveTo(w * 0.08, h * 0.80)
+      ..quadraticBezierTo(w * 0.50, h * 0.96, w * 0.92, h * 0.80);
+    canvas.drawPath(nineMeterPath, linePaint);
+
+    // Base inferior
     canvas.drawLine(
       Offset(w * 0.12, h * 0.98),
       Offset(w * 0.88, h * 0.98),
       linePaint,
+    );
+
+    // Punto penal
+    canvas.drawCircle(
+      Offset(w * 0.50, h * 0.485),
+      2.4,
+      Paint()..color = Colors.white.withOpacity(0.18),
     );
   }
 
