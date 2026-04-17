@@ -1745,6 +1745,17 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   static const bool _showCourtOverlay = true;
   static const bool _showTouchDebug = false;
 
+  bool get _hasUndoableGameEvents {
+    return eventos.any((evento) {
+      final tipo = (evento['tipo'] ?? '').toString();
+      final prevState = evento['prevState'];
+      final bool esSancion = tipo == 'sancion';
+      final bool esCorreccionSancion = tipo == 'correccion_sancion';
+      final bool tieneSnapshotValido = prevState is Map;
+      return !esSancion && !esCorreccionSancion && tieneSnapshotValido;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1878,11 +1889,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               itemBuilder: (context) => [
                 PopupMenuItem<String>(
                   value: 'undo',
-                  enabled: eventos.isNotEmpty,
+                  enabled: _hasUndoableGameEvents,
                   child: Text(
                     'Deshacer último evento',
                     style: TextStyle(
-                      color: eventos.isNotEmpty ? Colors.white : Colors.white54,
+                      color: _hasUndoableGameEvents ? Colors.white : Colors.white54,
                     ),
                   ),
                 ),
@@ -2374,28 +2385,45 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildPenaltyOnlyGrid() {
-    return Column(
-      children: [
-        const SizedBox(height: 4),
-        Text(
-          _isPenaltyShootout()
-              ? (modo == 'ataque'
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final double totalHeight = constraints.maxHeight;
+
+      // Antes ocupaba todo el alto.
+      // Ahora usa aprox 2/3 del alto para el arco y deja aire arriba/abajo.
+      final double goalHeight = totalHeight * 0.68;
+
+      return Column(
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            _isPenaltyShootout()
+                ? (modo == 'ataque'
                     ? 'Penal nuestro'
                     : modo == 'defensa'
-                    ? 'Penal rival'
-                    : 'Seleccioná contexto')
-              : 'Penal',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+                        ? 'Penal rival'
+                        : 'Seleccioná contexto')
+                : 'Penal',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(child: _buildFlatGoalAreaCompact()),
-      ],
-    );
-  }
+          const SizedBox(height: 10),
+          Expanded(
+            child: Center(
+              child: SizedBox(
+                height: goalHeight,
+                child: _buildFlatGoalAreaCompact(),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Widget _buildFlatGoalAreaCompact() {
     return Column(
@@ -4094,17 +4122,17 @@ class CourtOverlayPainter extends CustomPainter {
     final double h = size.height;
 
     final Paint strongLine = Paint()
-      ..color = Colors.white.withOpacity(0.22)
+      ..color = Colors.white.withOpacity(0.20)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
+      ..strokeWidth = 2.0;
 
     final Paint softLine = Paint()
-      ..color = Colors.white.withOpacity(0.12)
+      ..color = Colors.white.withOpacity(0.10)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+      ..strokeWidth = 1.3;
 
     final Paint softFill = Paint()
-      ..color = Colors.white.withOpacity(0.035)
+      ..color = Colors.white.withOpacity(0.03)
       ..style = PaintingStyle.fill;
 
     final RRect outerFrame = RRect.fromRectAndRadius(
@@ -4119,24 +4147,28 @@ class CourtOverlayPainter extends CustomPainter {
     );
     canvas.drawRRect(topArea, softFill);
 
+    // Separación arco / zona
     canvas.drawLine(
-      Offset(w * 0.06, h * 0.43),
-      Offset(w * 0.94, h * 0.43),
+      Offset(w * 0.06, h * 0.41),
+      Offset(w * 0.94, h * 0.41),
       strongLine,
     );
 
+    // Línea de penal
     canvas.drawLine(
-      Offset(w * 0.10, h * 0.50),
-      Offset(w * 0.90, h * 0.50),
+      Offset(w * 0.10, h * 0.49),
+      Offset(w * 0.90, h * 0.49),
       strongLine,
     );
 
+    // Punto penal
     canvas.drawCircle(
-      Offset(w * 0.50, h * 0.56),
+      Offset(w * 0.50, h * 0.55),
       3,
-      Paint()..color = Colors.white.withOpacity(0.22),
+      Paint()..color = Colors.white.withOpacity(0.20),
     );
 
+    // Laterales en perspectiva
     canvas.drawLine(
       Offset(w * 0.09, h * 0.54),
       Offset(w * 0.06, h * 0.96),
@@ -4148,25 +4180,29 @@ class CourtOverlayPainter extends CustomPainter {
       strongLine,
     );
 
+    // Curva 6m
     final Path sixMeterPath = Path()
       ..moveTo(w * 0.18, h * 0.63)
-      ..quadraticBezierTo(w * 0.50, h * 0.73, w * 0.82, h * 0.63);
+      ..quadraticBezierTo(w * 0.50, h * 0.74, w * 0.82, h * 0.63);
     canvas.drawPath(sixMeterPath, strongLine);
 
+    // Curva 9m
     final Path nineMeterPath = Path()
       ..moveTo(w * 0.08, h * 0.82)
       ..quadraticBezierTo(w * 0.50, h * 0.96, w * 0.92, h * 0.82);
     canvas.drawPath(nineMeterPath, strongLine);
 
+    // Base inferior
     canvas.drawLine(
       Offset(w * 0.11, h * 0.96),
       Offset(w * 0.89, h * 0.96),
       strongLine,
     );
 
+    // Guías suaves verticales
     for (final x in [0.18, 0.32, 0.50, 0.68, 0.82]) {
       canvas.drawLine(
-        Offset(w * x, h * 0.50),
+        Offset(w * x, h * 0.49),
         Offset(w * (x - 0.03), h * 0.98),
         softLine,
       );
