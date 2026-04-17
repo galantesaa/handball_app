@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -1751,12 +1754,219 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     return gameEvents.any((e) => e.isUndoableGameEvent);
   }
 
-  @override
+  String? currentGoalkeeperNumber; // '33' o '1'
+
+  static const String _liveMatchStorageKey = 'live_match_current_v1';
+  static const String _finishedMatchesStorageKey = 'finished_matches_history_v1';
+
+  String _normalizeValue(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u');
+  }
+
+  String get _matchIdentity {
+    return [
+      _normalizeValue(widget.partido['torneo']),
+      _normalizeValue(widget.partido['categoria']),
+      _normalizeValue(widget.partido['fecha']),
+      _normalizeValue(widget.partido['rival']),
+      _normalizeValue(widget.partido['condicion']),
+    ].join('|');
+  }
+
+  bool get _isArgentinosJuniorsOfficialMatch {
+    return _normalizeValue(widget.partido['torneo']) == 'apertura' &&
+        _normalizeValue(widget.partido['categoria']) == 'cadetes' &&
+        _normalizeValue(widget.partido['fecha']) == '4' &&
+        _normalizeValue(widget.partido['rival']) == 'argentinos juniors' &&
+        _normalizeValue(widget.partido['condicion']) == 'local';
+  }
+
+  String get _currentGoalkeeperActorName {
+    if (currentGoalkeeperNumber == null) return 'Arquero genérico';
+    return 'Arquero $currentGoalkeeperNumber';
+  }
+
+  String? _rivalShieldAsset() {
+    if (_normalizeValue(widget.partido['rival']) == 'argentinos juniors') {
+      return 'assets/images/argentinos.png';
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _toPersistedMatchMap() {
+    return {
+      'version': 1,
+      'matchIdentity': _matchIdentity,
+      'partido': Map<String, dynamic>.from(widget.partido),
+      'estadoPartido': estadoPartido,
+      'golesSanFernando': golesSanFernando,
+      'golesRival': golesRival,
+      'golesRecibidos': golesRecibidos,
+      'atajadas': atajadas,
+      'penales': penales,
+      'exclusiones2Min': exclusiones2Min,
+      'amarillas': amarillas,
+      'rojas': rojas,
+      'perdidas': perdidas,
+      'recuperaciones': recuperaciones,
+      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+      'penalesConvertidosRival': penalesConvertidosRival,
+      'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
+      'penalesIntentadosRival': penalesIntentadosRival,
+      'modo': modo,
+      'zonaTiro': zonaTiro,
+      'zonaArco': zonaArco,
+      'penalEnCurso': penalEnCurso,
+      'actorPenalActual': actorPenalActual,
+      'mostrarContra': mostrarContra,
+      'contraDebeCambiarModo': contraDebeCambiarModo,
+      'origenJugadaActual': origenJugadaActual,
+      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+      'currentGoalkeeperNumber': currentGoalkeeperNumber,
+      'eventos': eventos,
+    };
+  }
+
+  Future<void> _persistLiveMatch() async {
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final data = _toPersistedMatchMap();
+    await prefs.setString(_liveMatchStorageKey, jsonEncode(data));
+  }
+
+  Future<void> _clearPersistedLiveMatch() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_liveMatchStorageKey);
+  }
+
+  Future<void> _archiveFinishedMatchIfNeeded() async {
+    if (!_isArgentinosJuniorsOfficialMatch) {
+      await _clearPersistedLiveMatch();
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_finishedMatchesStorageKey);
+
+    List<dynamic> history = [];
+    if (raw != null && raw.isNotEmpty) {
+      history = jsonDecode(raw) as List<dynamic>;
+    }
+
+    final finishedData = _toPersistedMatchMap()
+      ..['archivedAt'] = DateTime.now().toIso8601String()
+      ..['finalizado'] = true;
+
+    history.removeWhere((item) {
+      if (item is! Map) return false;
+      return (item['matchIdentity'] ?? '') == _matchIdentity;
+    });
+
+    history.add(finishedData);
+
+    await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
+    await _clearPersistedLiveMatch();
+  }
+
+  Future<void> _loadSavedLiveMatchIfAny() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_liveMatchStorageKey);
+
+    if (raw == null || raw.isEmpty) return;
+
+    final Map<String, dynamic> data =
+        Map<String, dynamic>.from(jsonDecode(raw) as Map);
+
+    if ((data['matchIdentity'] ?? '') != _matchIdentity) return;
+    if ((data['estadoPartido'] ?? '') == 'finalizado') return;
+
+    setState(() {
+      estadoPartido = (data['estadoPartido'] ?? estadoPartido) as String;
+      golesSanFernando =
+          (data['golesSanFernando'] ?? golesSanFernando) as int;
+      golesRival = (data['golesRival'] ?? golesRival) as int;
+      golesRecibidos = (data['golesRecibidos'] ?? golesRecibidos) as int;
+
+      atajadas = (data['atajadas'] ?? atajadas) as int;
+      penales = (data['penales'] ?? penales) as int;
+      exclusiones2Min =
+          (data['exclusiones2Min'] ?? exclusiones2Min) as int;
+      amarillas = (data['amarillas'] ?? amarillas) as int;
+      rojas = (data['rojas'] ?? rojas) as int;
+      perdidas = (data['perdidas'] ?? perdidas) as int;
+      recuperaciones = (data['recuperaciones'] ?? recuperaciones) as int;
+
+      penalesConvertidosSanFernando =
+          (data['penalesConvertidosSanFernando'] ??
+              penalesConvertidosSanFernando) as int;
+      penalesConvertidosRival =
+          (data['penalesConvertidosRival'] ??
+              penalesConvertidosRival) as int;
+      penalesIntentadosSanFernando =
+          (data['penalesIntentadosSanFernando'] ??
+              penalesIntentadosSanFernando) as int;
+      penalesIntentadosRival =
+          (data['penalesIntentadosRival'] ??
+              penalesIntentadosRival) as int;
+
+      modo = data['modo'] as String?;
+      zonaTiro = data['zonaTiro'] as String?;
+      zonaArco = data['zonaArco'] as String?;
+      penalEnCurso = (data['penalEnCurso'] ?? false) as bool;
+      actorPenalActual = data['actorPenalActual'] as String?;
+      mostrarContra = (data['mostrarContra'] ?? false) as bool;
+      contraDebeCambiarModo =
+          (data['contraDebeCambiarModo'] ?? true) as bool;
+      origenJugadaActual =
+          (data['origenJugadaActual'] ?? 'normal') as String;
+
+      modoInicioPrimerTiempo = data['modoInicioPrimerTiempo'] as String?;
+      modoInicioPrimerTiempoAlargue =
+          data['modoInicioPrimerTiempoAlargue'] as String?;
+
+      currentGoalkeeperNumber =
+          data['currentGoalkeeperNumber'] as String?;
+
+      final persistedEvents =
+          (data['eventos'] as List<dynamic>? ?? const [])
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+
+      eventos = persistedEvents;
+      gameEvents = eventos
+          .map((e) => GameEvent.fromLegacyMap(e))
+          .toList();
+
+      if (eventos.isNotEmpty) {
+        final dynamic ultimoId = eventos.last['id'];
+        if (ultimoId is int) {
+          _contadorEventoId = ultimoId;
+        }
+      }
+    });
+  }
+
+
+
+    @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+      await _loadSavedLiveMatchIfAny();
     });
 
     estadoPartido = widget.estadoInicial;
@@ -1779,12 +1989,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     penalesIntentadosRival = penalesConvertidosRival;
 
     eventos = widget.eventosIniciales
-      .map((e) => Map<String, dynamic>.from(e))
-      .toList();
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
 
     gameEvents = eventos
-      .map((e) => GameEvent.fromLegacyMap(e))
-      .toList();
+        .map((e) => GameEvent.fromLegacyMap(e))
+        .toList();
 
     if (eventos.isNotEmpty) {
       final dynamic ultimoId = eventos.last['id'];
@@ -1797,11 +2007,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     modoInicioPrimerTiempo = widget.modoInicioPrimerTiempo;
     modoInicioPrimerTiempoAlargue = widget.modoInicioPrimerTiempoAlargue;
 
+    currentGoalkeeperNumber = null;
+
     _aplicarModoAutomaticoSegunEstado();
   }
-
-  @override
+    
+    @override
   void dispose() {
+    _persistLiveMatch();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -1810,7 +2023,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     ]);
     super.dispose();
   }
-
+  
   void _aplicarModoAutomaticoSegunEstado() {
     if (estadoPartido == 'segundo_tiempo' && modo == null) {
       if (modoInicioPrimerTiempo != null) {
@@ -1855,10 +2068,62 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   bool get _fueraGestureEnabled => !_isPlayLocked() && modo != null;
 
+ 
+  Widget _buildCompactScoreBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Row(
+        children: [
+          _buildMiniTeamTag('L'),
+          const SizedBox(width: 8),
+          _buildMiniShield(
+            assetPath: 'assets/images/san_fernando.png',
+          ),
+          const Spacer(),
+          Column(
+            children: [
+              Text(
+                '${_golesLocal()} - ${_golesVisitante()}',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              if (_isPenaltyShootout()) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '(${_penalesLocal()} - ${_penalesVisitante()})',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const Spacer(),
+          _buildMiniShield(
+            assetPath: _rivalShieldAsset(),
+          ),
+          const SizedBox(width: 8),
+          _buildMiniTeamTag('V'),
+        ],
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
+        await _persistLiveMatch();
         _goBack();
         return false;
       },
@@ -1870,19 +2135,38 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: _goBack,
+            onPressed: () async {
+              await _persistLiveMatch();
+              _goBack();
+            },
           ),
           actions: [
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               color: const Color(0xFF0F1722),
-              onSelected: (value) {
+              onSelected: (value) async {
                 if (value == 'undo') {
-                  if (eventos.isNotEmpty) {
+                  if (_hasUndoableGameEvents) {
                     _deshacerUltimoEvento();
                   }
                 } else if (value == 'undo_sanction') {
                   _showUndoSanctionSheet();
+                } else if (value == 'goalkeeper') {
+                  await _showGoalkeeperSelectorSheet(
+                    title: 'Cambiar arquero activo',
+                    onSelected33: () {
+                      setState(() {
+                        currentGoalkeeperNumber = '33';
+                      });
+                      _persistLiveMatch();
+                    },
+                    onSelected1: () {
+                      setState(() {
+                        currentGoalkeeperNumber = '1';
+                      });
+                      _persistLiveMatch();
+                    },
+                  );
                 }
               },
               itemBuilder: (context) => [
@@ -1892,7 +2176,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   child: Text(
                     'Deshacer último evento',
                     style: TextStyle(
-                      color: _hasUndoableGameEvents ? Colors.white : Colors.white54,
+                      color: _hasUndoableGameEvents
+                          ? Colors.white
+                          : Colors.white54,
                     ),
                   ),
                 ),
@@ -1901,6 +2187,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   child: Text(
                     'Deshacer sanción',
                     style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'goalkeeper',
+                  child: Text(
+                    currentGoalkeeperNumber == null
+                        ? 'Seleccionar arquero'
+                        : 'Arquero actual: $currentGoalkeeperNumber',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
@@ -2008,53 +2303,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  Widget _buildCompactScoreBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.88),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: Row(
-        children: [
-          _buildMiniTeamTag('L'),
-          const SizedBox(width: 8),
-          _buildMiniShield(),
-          const Spacer(),
-          Column(
-            children: [
-              Text(
-                '${_golesLocal()} - ${_golesVisitante()}',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-              if (_isPenaltyShootout()) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '(${_penalesLocal()} - ${_penalesVisitante()})',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFAAB4C3),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const Spacer(),
-          _buildMiniShield(),
-          const SizedBox(width: 8),
-          _buildMiniTeamTag('V'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniShield() {
+  Widget _buildMiniShield({String? assetPath}) {
     return Container(
       width: 34,
       height: 34,
@@ -2064,14 +2313,20 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       ),
       padding: const EdgeInsets.all(6),
       child: Center(
-        child: Image.asset(
-          'assets/images/san_fernando.png',
-          fit: BoxFit.contain,
-        ),
+        child: assetPath == null
+            ? const Icon(
+                Icons.sports_handball,
+                size: 18,
+                color: Color(0xFF1C2B44),
+              )
+            : Image.asset(
+                assetPath,
+                fit: BoxFit.contain,
+              ),
       ),
     );
   }
-
+  
   Widget _buildMiniTeamTag(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -2384,6 +2639,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildPenaltyOnlyGrid() {
+  
+  
   return LayoutBuilder(
     builder: (context, constraints) {
       final double totalHeight = constraints.maxHeight;
@@ -2459,10 +2716,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       Positioned.fill(
         child: IgnorePointer(
           child: CustomPaint(
-            painter: HeatmapPainter(gameEvents),
+            painter: HeatmapPainter(
+              gameEvents
+                  .where((e) => e.phase == GameEventPhase.defensa)
+                  .toList(),
+            ),
           ),
         ),
-      ),
+),
     ],
   );
 }
@@ -2785,46 +3046,48 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         snapshot['modoInicioPrimerTiempoAlargue'] as String?;
   }
 
-  void _registrarEvento({
-  required String tipo,
-  String? resultado,
-  String? actorPrincipal,
-  String? actorSecundario,
-  String? zonaTiroValor,
-  String? zonaArcoValor,
-  String? detalle,
-  String? subtipo,
-  bool? mantieneContexto,
-  Map<String, dynamic>? prevState,
-}) {
-  _contadorEventoId++;
-  
-  final now = DateTime.now();
+    void _registrarEvento({
+    required String tipo,
+    String? resultado,
+    String? actorPrincipal,
+    String? actorSecundario,
+    String? zonaTiroValor,
+    String? zonaArcoValor,
+    String? detalle,
+    String? subtipo,
+    bool? mantieneContexto,
+    Map<String, dynamic>? prevState,
+    String? modoEvento,
+  }) {
+    _contadorEventoId++;
 
-  final legacyEvent = <String, dynamic>{
-    'id': _contadorEventoId,
-    'timestamp': now.toIso8601String(),
-    'estadoPartido': estadoPartido,
-    'modo': modo,
-    'origenJugada': origenJugadaActual,
-    'tipo': tipo,
-    'resultado': resultado,
-    'actorPrincipal': actorPrincipal,
-    'actorSecundario': actorSecundario,
-    'zonaTiro': zonaTiroValor,
-    'zonaArco': zonaArcoValor,
-    'detalle': detalle,
-    'subtipo': subtipo,
-    'mantieneContexto': mantieneContexto,
-    'prevState': prevState == null
-        ? null
-        : Map<String, dynamic>.from(prevState),
-  };
+    final now = DateTime.now();
 
-  eventos.add(legacyEvent);
-  gameEvents.add(GameEvent.fromLegacyMap(legacyEvent));
-  _debugPrintEventSummary();
-}
+    final legacyEvent = <String, dynamic>{
+      'id': _contadorEventoId,
+      'timestamp': now.toIso8601String(),
+      'estadoPartido': estadoPartido,
+      'modo': modoEvento ?? modo,
+      'origenJugada': origenJugadaActual,
+      'tipo': tipo,
+      'resultado': resultado,
+      'actorPrincipal': actorPrincipal,
+      'actorSecundario': actorSecundario,
+      'zonaTiro': zonaTiroValor,
+      'zonaArco': zonaArcoValor,
+      'detalle': detalle,
+      'subtipo': subtipo,
+      'mantieneContexto': mantieneContexto,
+      'prevState': prevState == null
+          ? null
+          : Map<String, dynamic>.from(prevState),
+    };
+
+    eventos.add(legacyEvent);
+    gameEvents.add(GameEvent.fromLegacyMap(legacyEvent));
+
+    _persistLiveMatch();
+  }
   
   void _debugPrintEventSummary() {
   debugPrint('========== EVENT SUMMARY ==========');
@@ -3061,54 +3324,57 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _registrarFueraPorGesto() {
-    if (!_fueraGestureEnabled || modo == null) return;
+  if (!_fueraGestureEnabled || modo == null) return;
 
-    final Map<String, dynamic> prevState = _captureStateSnapshot();
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
+  final String modoAntesDelEvento = modo ?? 'neutral';
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Arquero genérico';
 
-    final bool esPenal = penalEnCurso;
-    final bool esTanda = _isPenaltyShootout();
+  final bool esPenal = penalEnCurso;
+  final bool esTanda = _isPenaltyShootout();
 
-    if (esTanda) {
-      _registrarEvento(
-        tipo: 'penal_tanda',
-        resultado: 'fuera',
-        actorPrincipal: actor,
-        zonaArcoValor: zonaArco,
-        subtipo: 'tanda_penales',
-        mantieneContexto: false,
-        prevState: prevState,
-      );
-      _registrarPenalTanda('fuera');
-      return;
-    }
-
-    setState(() {
-      if (esPenal) {
-        penales++;
-      }
-      modo = modo == 'ataque' ? 'defensa' : 'ataque';
-      mostrarContra = true;
-      contraDebeCambiarModo = true;
-    });
-
+  if (esTanda) {
     _registrarEvento(
-      tipo: esPenal ? 'penal' : 'tiro',
+      tipo: 'penal_tanda',
       resultado: 'fuera',
       actorPrincipal: actor,
-      zonaTiroValor: esPenal ? null : zonaTiro,
       zonaArcoValor: zonaArco,
-      subtipo: esPenal ? 'penal_7m' : 'fuera_gesto',
+      subtipo: 'tanda_penales',
       mantieneContexto: false,
       prevState: prevState,
+      modoEvento: modoAntesDelEvento,
     );
-
-    _clearSelection(keepContra: true);
+    _registrarPenalTanda('fuera');
+    return;
   }
 
+  setState(() {
+    if (esPenal) {
+      penales++;
+    }
+    modo = modo == 'ataque' ? 'defensa' : 'ataque';
+    mostrarContra = true;
+    contraDebeCambiarModo = true;
+  });
+
+  _registrarEvento(
+    tipo: esPenal ? 'penal' : 'tiro',
+    resultado: 'fuera',
+    actorPrincipal: actor,
+    zonaTiroValor: esPenal ? null : zonaTiro,
+    zonaArcoValor: zonaArco,
+    subtipo: esPenal ? 'penal_7m' : 'fuera_gesto',
+    mantieneContexto: false,
+    prevState: prevState,
+    modoEvento: modoAntesDelEvento,
+  );
+
+  _clearSelection(keepContra: true);
+}
+  
   void _activarContra() {
     final Map<String, dynamic> prevState = _captureStateSnapshot();
 
@@ -3135,268 +3401,324 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _iniciarFlujoPenalNormal() {
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
+  final String actor = modo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Arquero genérico';
 
-    setState(() {
-      penalEnCurso = true;
-      actorPenalActual = actor;
-      zonaTiro = null;
-      zonaArco = null;
-      mostrarContra = false;
-    });
+  setState(() {
+    penalEnCurso = true;
+    actorPenalActual = actor;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                modo == 'ataque'
-                    ? 'Lanzador genérico seleccionado'
-                    : 'Arquero genérico seleccionado',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
+    // penal arranca limpio
+    zonaTiro = null;
+    zonaArco = null;
+
+    mostrarContra = false;
+    origenJugadaActual = 'penal';
+  });
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              modo == 'ataque'
+                  ? 'Penal nuestro'
+                  : 'Penal rival',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 14),
-              _floatingOption('Continuar', () {
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            _floatingOption('Continuar', () {
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   void _showNormalPenaltyResultSheet() {
-    if (zonaArco == null) return;
+  final String? currentModo = modo;
+  final String? currentZonaArco = zonaArco;
 
-    final String actor =
-        actorPenalActual ??
-        (modo == 'ataque' ? 'Jugador genérico ataque' : 'Arquero genérico');
+  if (currentZonaArco == null || currentModo == null) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  final String actor =
+      actorPenalActual ??
+      (currentModo == 'ataque'
+          ? 'Jugador genérico ataque'
+          : 'Arquero genérico');
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $currentZonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Gol', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
+            ),
+            const SizedBox(height: 16),
 
-                setState(() {
-                  penales++;
-                  if (modo == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              setState(() {
+                penales++;
+
+                if (modoAntesDelEvento == 'ataque') {
+                  golesSanFernando++;
+                  modo = 'defensa';
+                } else {
+                  golesRival++;
+                  golesRecibidos++;
+                  modo = 'ataque';
+                }
+
+                mostrarContra = false;
+              });
+
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              setState(() {
+                penales++;
+
+                if (modoAntesDelEvento == 'defensa') {
+                  atajadas++;
+                  modo = 'ataque';
+                  mostrarContra = true;
+                  contraDebeCambiarModo = false;
+                } else {
+                  modo = 'defensa';
                   mostrarContra = false;
-                });
+                }
+              });
 
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                );
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: true,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-              _floatingOption('Atajado', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
+              _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+              Navigator.pop(context);
+            }),
 
-                setState(() {
-                  penales++;
-                  if (modo == 'defensa') {
-                    atajadas++;
-                  }
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              setState(() {
+                penales++;
+
+                if (modoAntesDelEvento == 'ataque') {
+                  modo = 'defensa';
+                  mostrarContra = false;
+                } else {
+                  modo = 'ataque';
                   mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
+                  contraDebeCambiarModo = false;
+                }
+              });
 
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: true,
-                  prevState: prevState,
-                );
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'fuera',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
 
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-              _floatingOption('Fuera', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-
-                setState(() {
-                  penales++;
-                  modo = modo == 'ataque' ? 'defensa' : 'ataque';
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                );
-
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+              _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   void _showPenaltyShootoutResultSheet() {
-    if (zonaArco == null || modo == null) return;
+  final String? currentModo = modo;
+  final String? currentZonaArco = zonaArco;
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
+  if (currentZonaArco == null || currentModo == null) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  final String actor = currentModo == 'ataque'
+      ? 'Jugador genérico ataque'
+      : 'Arquero genérico';
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $currentZonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Gol', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
+            ),
+            const SizedBox(height: 16),
 
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                );
-                _registrarPenalTanda('gol');
-                Navigator.pop(context);
-              }),
-              _floatingOption('Atajado', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
 
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                );
-                _registrarPenalTanda('atajado');
-                Navigator.pop(context);
-              }),
-              _floatingOption('Fuera', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
+              _registrarEvento(
+                tipo: 'penal_tanda',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'tanda_penales',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
 
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaArcoValor: zonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                );
-                _registrarPenalTanda('fuera');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+              _registrarPenalTanda('gol');
+              Navigator.pop(context);
+            }),
 
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              _registrarEvento(
+                tipo: 'penal_tanda',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'tanda_penales',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _registrarPenalTanda('atajado');
+              Navigator.pop(context);
+            }),
+
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              _registrarEvento(
+                tipo: 'penal_tanda',
+                resultado: 'fuera',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'tanda_penales',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _registrarPenalTanda('fuera');
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   void _registrarPenalTanda(String resultado) {
-    if (modo == null) return;
+  final String? currentModo = modo;
+  if (currentModo == null) return;
 
-    setState(() {
-      if (modo == 'ataque') {
-        penalesIntentadosSanFernando++;
-        if (resultado == 'gol') {
-          penalesConvertidosSanFernando++;
-        }
-      } else {
-        penalesIntentadosRival++;
-        if (resultado == 'gol') {
-          penalesConvertidosRival++;
-        } else if (resultado == 'atajado') {
-          atajadas++;
-        }
+  final String modoAntesDelEvento = currentModo;
+
+  setState(() {
+    if (modoAntesDelEvento == 'ataque') {
+      penalesIntentadosSanFernando++;
+      if (resultado == 'gol') {
+        penalesConvertidosSanFernando++;
       }
-    });
+    } else {
+      penalesIntentadosRival++;
+      if (resultado == 'gol') {
+        penalesConvertidosRival++;
+      } else if (resultado == 'atajado') {
+        atajadas++;
+      }
+    }
 
-    _clearSelection();
-    _alternarModoPenales();
-    _evaluarFinPenales();
-  }
+    zonaTiro = null;
+    zonaArco = null;
+    penalEnCurso = false;
+    actorPenalActual = null;
+    mostrarContra = false;
+    origenJugadaActual = 'normal';
+    contraDebeCambiarModo = true;
+  });
 
+  _alternarModoPenales();
+  _evaluarFinPenales();
+}
+  
   void _alternarModoPenales() {
     setState(() {
       modo = modo == 'ataque' ? 'defensa' : 'ataque';
@@ -3475,6 +3797,71 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       },
     );
   }
+
+  Future<void> _showGoalkeeperSelectorSheet({
+    required VoidCallback onSelected33,
+    required VoidCallback onSelected1,
+    String title = 'Seleccionar arquero',
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _floatingOption('Arquero 33', () {
+                Navigator.pop(context);
+                onSelected33();
+              }),
+              _floatingOption('Arquero 1', () {
+                Navigator.pop(context);
+                onSelected1();
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _selectGoalkeeperForCurrentPeriod({
+    required VoidCallback onAfterSelect,
+    String title = 'Seleccionar arquero inicial',
+  }) async {
+    await _showGoalkeeperSelectorSheet(
+      title: title,
+      onSelected33: () {
+        setState(() {
+          currentGoalkeeperNumber = '33';
+        });
+        _persistLiveMatch();
+        onAfterSelect();
+      },
+      onSelected1: () {
+        setState(() {
+          currentGoalkeeperNumber = '1';
+        });
+        _persistLiveMatch();
+        onAfterSelect();
+      },
+    );
+  }
+
 
   void _showSancionSheet(String actor) {
     showModalBottomSheet(
@@ -3595,33 +3982,35 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               ),
               const SizedBox(height: 16),
               _floatingOption('Gol', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                  final Map<String, dynamic> prevState = _captureStateSnapshot();
+                  final String modoAntesDelEvento = modo ?? 'neutral';
 
-                setState(() {
-                  if (modo == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-                  mostrarContra = false;
-                });
+                  setState(() {
+                    if (modo == 'ataque') {
+                      golesSanFernando++;
+                      modo = 'defensa';
+                    } else {
+                      golesRival++;
+                      golesRecibidos++;
+                      modo = 'ataque';
+                    }
+                    mostrarContra = false;
+                  });
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                );
+                  _registrarEvento(
+                    tipo: 'tiro',
+                    resultado: 'gol',
+                    actorPrincipal: actor,
+                    zonaTiroValor: zonaTiro,
+                    zonaArcoValor: zonaArco,
+                    mantieneContexto: false,
+                    prevState: prevState,
+                    modoEvento: modoAntesDelEvento,
+                  );
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
+                  _clearSelection();
+                  Navigator.pop(context);
+                }),
               _floatingOption('Atajado', () {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
 
@@ -3816,17 +4205,23 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     }
   }
 
-  void _handleMainAction() {
+    void _handleMainAction() {
     if (estadoPartido == 'finalizado') {
       _goBack();
       return;
     }
 
     if (estadoPartido == 'no_iniciado') {
-      setState(() {
-        estadoPartido = 'primer_tiempo';
-        modo = null;
-      });
+      _selectGoalkeeperForCurrentPeriod(
+        title: 'Seleccionar arquero inicial (1T)',
+        onAfterSelect: () {
+          setState(() {
+            estadoPartido = 'primer_tiempo';
+            modo = null;
+          });
+          _persistLiveMatch();
+        },
+      );
       return;
     }
 
@@ -3835,16 +4230,23 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         estadoPartido = 'entretiempo';
         modo = null;
       });
+      _persistLiveMatch();
       return;
     }
 
     if (estadoPartido == 'entretiempo') {
-      setState(() {
-        estadoPartido = 'segundo_tiempo';
-        if (modoInicioPrimerTiempo != null) {
-          modo = _invertirModo(modoInicioPrimerTiempo!);
-        }
-      });
+      _selectGoalkeeperForCurrentPeriod(
+        title: 'Seleccionar arquero inicial (2T)',
+        onAfterSelect: () {
+          setState(() {
+            estadoPartido = 'segundo_tiempo';
+            if (modoInicioPrimerTiempo != null) {
+              modo = _invertirModo(modoInicioPrimerTiempo!);
+            }
+          });
+          _persistLiveMatch();
+        },
+      );
       return;
     }
 
@@ -3862,16 +4264,23 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         estadoPartido = 'entretiempo_alargue';
         modo = null;
       });
+      _persistLiveMatch();
       return;
     }
 
     if (estadoPartido == 'entretiempo_alargue') {
-      setState(() {
-        estadoPartido = 'segundo_tiempo_alargue';
-        if (modoInicioPrimerTiempoAlargue != null) {
-          modo = _invertirModo(modoInicioPrimerTiempoAlargue!);
-        }
-      });
+      _selectGoalkeeperForCurrentPeriod(
+        title: 'Seleccionar arquero inicial (2T alargue)',
+        onAfterSelect: () {
+          setState(() {
+            estadoPartido = 'segundo_tiempo_alargue';
+            if (modoInicioPrimerTiempoAlargue != null) {
+              modo = _invertirModo(modoInicioPrimerTiempoAlargue!);
+            }
+          });
+          _persistLiveMatch();
+        },
+      );
       return;
     }
 
@@ -3888,8 +4297,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       _finalizarPartido();
     }
   }
-
-  void _showEndOptions() {
+  
+    void _showEndOptions() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0F1722),
@@ -3904,10 +4313,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             children: [
               _sheetButton('Ir a alargue', () {
                 Navigator.pop(context);
-                setState(() {
-                  estadoPartido = 'primer_tiempo_alargue';
-                  modo = null;
-                });
+                _selectGoalkeeperForCurrentPeriod(
+                  title: 'Seleccionar arquero inicial (1T alargue)',
+                  onAfterSelect: () {
+                    setState(() {
+                      estadoPartido = 'primer_tiempo_alargue';
+                      modo = null;
+                    });
+                    _persistLiveMatch();
+                  },
+                );
               }),
               const SizedBox(height: 10),
               _sheetButton('Ir a penales', () {
@@ -3915,7 +4330,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 setState(() {
                   estadoPartido = 'penales';
                   modo = 'defensa';
+                  zonaTiro = null;
+                  zonaArco = null;
+                  penalEnCurso = false;
+                  actorPenalActual = null;
+                  mostrarContra = false;
+                  origenJugadaActual = 'normal';
+                  contraDebeCambiarModo = true;
                 });
+                _persistLiveMatch();
               }),
               const SizedBox(height: 10),
               _sheetButton('Finalizar partido', () {
@@ -3928,8 +4351,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       },
     );
   }
-
-  void _showPenalesOrEnd() {
+  
+    void _showPenalesOrEnd() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0F1722),
@@ -3947,7 +4370,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 setState(() {
                   estadoPartido = 'penales';
                   modo = 'defensa';
+                  zonaTiro = null;
+                  zonaArco = null;
+                  penalEnCurso = false;
+                  actorPenalActual = null;
+                  mostrarContra = false;
+                  origenJugadaActual = 'normal';
+                  contraDebeCambiarModo = true;
                 });
+                _persistLiveMatch();
               }),
               const SizedBox(height: 10),
               _sheetButton('Finalizar partido', () {
@@ -3960,7 +4391,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       },
     );
   }
-
+  
   Widget _sheetButton(String text, VoidCallback onTap) {
     return SizedBox(
       width: double.infinity,
@@ -3979,16 +4410,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  void _finalizarPartido() {
+    void _finalizarPartido() {
     setState(() => estadoPartido = 'finalizado');
+
+    _archiveFinishedMatchIfNeeded();
 
     Future.delayed(const Duration(milliseconds: 150), () {
       if (!mounted) return;
       _goBack();
     });
   }
-
-  void _goBack() {
+  
+    void _goBack() {
     Navigator.pop(context, {
       'estadoPartido': estadoPartido,
       'golesSanFernando': golesSanFernando,
@@ -4007,9 +4440,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'modoActual': modo,
       'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
       'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+      'currentGoalkeeperNumber': currentGoalkeeperNumber,
     });
   }
-
+  
   void _deshacerUltimoEvento() {
   if (eventos.isEmpty || gameEvents.isEmpty) return;
 
