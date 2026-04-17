@@ -1706,6 +1706,7 @@ class PartidoEnVivoScreen extends StatefulWidget {
 
 class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   late String estadoPartido;
+  late List<GameEvent> gameEvents;
 
   late int golesSanFernando;
   late int golesRival;
@@ -1746,14 +1747,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   static const bool _showTouchDebug = false;
 
   bool get _hasUndoableGameEvents {
-    return eventos.any((evento) {
-      final tipo = (evento['tipo'] ?? '').toString();
-      final prevState = evento['prevState'];
-      final bool esSancion = tipo == 'sancion';
-      final bool esCorreccionSancion = tipo == 'correccion_sancion';
-      final bool tieneSnapshotValido = prevState is Map;
-      return !esSancion && !esCorreccionSancion && tieneSnapshotValido;
-    });
+    return gameEvents.any((e) => e.isUndoableGameEvent);
   }
 
   @override
@@ -1784,8 +1778,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     penalesIntentadosRival = penalesConvertidosRival;
 
     eventos = widget.eventosIniciales
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
+
+    gameEvents = eventos
+      .map((e) => GameEvent.fromLegacyMap(e))
+      .toList();
 
     if (eventos.isNotEmpty) {
       final dynamic ultimoId = eventos.last['id'];
@@ -2786,39 +2784,98 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _registrarEvento({
-    required String tipo,
-    String? resultado,
-    String? actorPrincipal,
-    String? actorSecundario,
-    String? zonaTiroValor,
-    String? zonaArcoValor,
-    String? detalle,
-    String? subtipo,
-    bool? mantieneContexto,
-    Map<String, dynamic>? prevState,
-  }) {
-    _contadorEventoId++;
+  required String tipo,
+  String? resultado,
+  String? actorPrincipal,
+  String? actorSecundario,
+  String? zonaTiroValor,
+  String? zonaArcoValor,
+  String? detalle,
+  String? subtipo,
+  bool? mantieneContexto,
+  Map<String, dynamic>? prevState,
+}) {
+  _contadorEventoId++;
+  
+  final now = DateTime.now();
 
-    eventos.add({
-      'id': _contadorEventoId,
-      'timestamp': DateTime.now().toIso8601String(),
-      'estadoPartido': estadoPartido,
-      'modo': modo,
-      'origenJugada': origenJugadaActual,
-      'tipo': tipo,
-      'resultado': resultado,
-      'actorPrincipal': actorPrincipal,
-      'actorSecundario': actorSecundario,
-      'zonaTiro': zonaTiroValor,
-      'zonaArco': zonaArcoValor,
-      'detalle': detalle,
-      'subtipo': subtipo,
-      'mantieneContexto': mantieneContexto,
-      'prevState': prevState == null
-          ? null
-          : Map<String, dynamic>.from(prevState),
-    });
+  final legacyEvent = <String, dynamic>{
+    'id': _contadorEventoId,
+    'timestamp': now.toIso8601String(),
+    'estadoPartido': estadoPartido,
+    'modo': modo,
+    'origenJugada': origenJugadaActual,
+    'tipo': tipo,
+    'resultado': resultado,
+    'actorPrincipal': actorPrincipal,
+    'actorSecundario': actorSecundario,
+    'zonaTiro': zonaTiroValor,
+    'zonaArco': zonaArcoValor,
+    'detalle': detalle,
+    'subtipo': subtipo,
+    'mantieneContexto': mantieneContexto,
+    'prevState': prevState == null
+        ? null
+        : Map<String, dynamic>.from(prevState),
+  };
+
+  eventos.add(legacyEvent);
+  gameEvents.add(GameEvent.fromLegacyMap(legacyEvent));
+  _debugPrintEventSummary();
+}
+  
+  void _debugPrintEventSummary() {
+  debugPrint('========== EVENT SUMMARY ==========');
+  debugPrint('Legacy eventos: ${eventos.length}');
+  debugPrint('Typed gameEvents: ${gameEvents.length}');
+  debugPrint('Shots: ${_shotEvents.length}');
+  debugPrint('Goals: ${_goalEvents.length}');
+  debugPrint('Saves: ${_saveEvents.length}');
+  debugPrint('Misses: ${_missEvents.length}');
+  debugPrint('Attack events: ${_attackEvents.length}');
+  debugPrint('Defense events: ${_defenseEvents.length}');
+  debugPrint('==================================');
+}
+
+  List<GameEvent> get _shotEvents {
+  return gameEvents.where((e) => e.isShotLike).toList();
+}
+
+  List<GameEvent> get _goalEvents {
+    return gameEvents.where((e) => e.isGoal).toList();
   }
+
+  List<GameEvent> get _saveEvents {
+    return gameEvents.where((e) => e.isSave).toList();
+  }
+
+  List<GameEvent> get _missEvents {
+    return gameEvents.where((e) => e.isMiss).toList();
+  }
+
+  List<GameEvent> get _attackEvents {
+    return gameEvents
+        .where((e) => e.phase == GameEventPhase.ataque)
+        .toList();
+  }
+
+  List<GameEvent> get _defenseEvents {
+    return gameEvents
+        .where((e) => e.phase == GameEventPhase.defensa)
+        .toList();
+  }
+
+  int _countByResult(String result) {
+    return gameEvents.where((e) => e.resultado == result).length;
+  }
+
+  int _countShotsToZone(String zone) {
+    return gameEvents.where((e) => e.zonaTiro == zone).length;
+  }
+
+  int _countShotsToGoalZone(String goalZone) {
+  return gameEvents.where((e) => e.zonaArco == goalZone).length;
+}
 
   void _showPerdidaSheet() {
     showModalBottomSheet(
@@ -3952,53 +4009,58 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _deshacerUltimoEvento() {
-    if (eventos.isEmpty) return;
+  if (eventos.isEmpty || gameEvents.isEmpty) return;
 
-    int index = eventos.length - 1;
+  int index = eventos.length - 1;
 
-    while (index >= 0) {
-      final evento = eventos[index];
-      final tipo = (evento['tipo'] ?? '').toString();
-      final prevState = evento['prevState'];
+  while (index >= 0) {
+    final evento = eventos[index];
+    final tipo = (evento['tipo'] ?? '').toString();
+    final prevState = evento['prevState'];
 
-      final bool esSancion = tipo == 'sancion';
-      final bool esCorreccionSancion = tipo == 'correccion_sancion';
-      final bool tieneSnapshotValido = prevState is Map;
+    final bool esSancion = tipo == 'sancion';
+    final bool esCorreccionSancion = tipo == 'correccion_sancion';
+    final bool tieneSnapshotValido = prevState is Map;
 
-      if (esSancion || esCorreccionSancion || !tieneSnapshotValido) {
-        index--;
-        continue;
-      }
-
-      break;
+    if (esSancion || esCorreccionSancion || !tieneSnapshotValido) {
+      index--;
+      continue;
     }
 
-    if (index < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay eventos de juego para deshacer')),
-      );
-      return;
-    }
-
-    final eventoADeshacer = eventos[index];
-    final prevState = Map<String, dynamic>.from(
-      eventoADeshacer['prevState'] as Map,
-    );
-
-    setState(() {
-      eventos.removeAt(index);
-      _restoreStateSnapshot(prevState);
-
-      zonaTiro = null;
-      zonaArco = null;
-      penalEnCurso = false;
-      actorPenalActual = null;
-      mostrarContra = false;
-      origenJugadaActual = 'normal';
-      contraDebeCambiarModo = true;
-    });
+    break;
   }
 
+  if (index < 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No hay eventos de juego para deshacer'),
+      ),
+    );
+    return;
+  }
+
+  final eventoADeshacer = eventos[index];
+  final prevState =
+      Map<String, dynamic>.from(eventoADeshacer['prevState'] as Map);
+
+  final int id = (eventoADeshacer['id'] as int?) ?? -1;
+
+  setState(() {
+    eventos.removeAt(index);
+    gameEvents.removeWhere((e) => e.id == id);
+
+    _restoreStateSnapshot(prevState);
+
+    zonaTiro = null;
+    zonaArco = null;
+    penalEnCurso = false;
+    actorPenalActual = null;
+    mostrarContra = false;
+    origenJugadaActual = 'normal';
+    contraDebeCambiarModo = true;
+  });
+}
+  
   void _showUndoSanctionSheet() {
     final List<_UndoSanctionOption> opciones = [];
 
@@ -4107,265 +4169,413 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 }
-
-class _UndoSanctionOption {
-  final String label;
-  final String resultado;
+  class _UndoSanctionOption {
+    final String label;
+    final String resultado;
 
   const _UndoSanctionOption({required this.label, required this.resultado});
-}
+  }
 
-class CourtOverlayPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
+  enum GameEventPhase {
+    ataque,
+    defensa,
+    neutral,
+  }
 
-    final Paint strongLine = Paint()
-      ..color = Colors.white.withOpacity(0.20)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+  enum GameEventKind {
+    tiro,
+    penal,
+    penalTanda,
+    perdida,
+    recuperacion,
+    lateral,
+    contra,
+    sancion,
+    correccionSancion,
+    inicioPeriodo,
+    finPeriodo,
+    otro,
+  }
 
-    final Paint softLine = Paint()
-      ..color = Colors.white.withOpacity(0.10)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.3;
+  class GameEvent {
+    final int id;
+    final DateTime timestamp;
+    final GameEventKind kind;
+    final GameEventPhase phase;
 
-    final Paint softFill = Paint()
-      ..color = Colors.white.withOpacity(0.03)
-      ..style = PaintingStyle.fill;
+    final String? resultado;
+    final String? actorPrincipal;
+    final String? actorSecundario;
+    final String? zonaTiro;
+    final String? zonaArco;
+    final String? detalle;
+    final String? subtipo;
+    final String? origenJugada;
 
-    final RRect outerFrame = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.02, h * 0.02, w * 0.96, h * 0.96),
-      const Radius.circular(26),
-    );
-    canvas.drawRRect(outerFrame, strongLine);
+    final bool mantieneContexto;
 
-    final RRect topArea = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.08, h * 0.04, w * 0.84, h * 0.18),
-      const Radius.circular(22),
-    );
-    canvas.drawRRect(topArea, softFill);
+    const GameEvent({
+      required this.id,
+      required this.timestamp,
+      required this.kind,
+      required this.phase,
+      this.resultado,
+      this.actorPrincipal,
+      this.actorSecundario,
+      this.zonaTiro,
+      this.zonaArco,
+      this.detalle,
+      this.subtipo,
+      this.origenJugada,
+      required this.mantieneContexto,
+    });
 
-    // Separación arco / zona
-    canvas.drawLine(
-      Offset(w * 0.06, h * 0.41),
-      Offset(w * 0.94, h * 0.41),
-      strongLine,
-    );
+    factory GameEvent.fromLegacyMap(Map<String, dynamic> map) {
+      return GameEvent(
+        id: (map['id'] as int?) ?? 0,
+        timestamp: DateTime.tryParse(
+              (map['timestamp'] ?? '').toString(),
+            ) ??
+            DateTime.now(),
+        kind: _gameEventKindFromString((map['tipo'] ?? '').toString(), map),
+        phase: _gameEventPhaseFromString((map['modo'] ?? '').toString()),
+        resultado: map['resultado']?.toString(),
+        actorPrincipal: map['actorPrincipal']?.toString(),
+        actorSecundario: map['actorSecundario']?.toString(),
+        zonaTiro: map['zonaTiro']?.toString(),
+        zonaArco: map['zonaArco']?.toString(),
+        detalle: map['detalle']?.toString(),
+        subtipo: map['subtipo']?.toString(),
+        origenJugada: map['origenJugada']?.toString(),
+        mantieneContexto: (map['mantieneContexto'] as bool?) ?? false,
+      );
+    }
 
-    // Línea de penal
-    canvas.drawLine(
-      Offset(w * 0.10, h * 0.49),
-      Offset(w * 0.90, h * 0.49),
-      strongLine,
-    );
+    Map<String, dynamic> toMap() {
+      return {
+        'id': id,
+        'timestamp': timestamp.toIso8601String(),
+        'kind': kind.name,
+        'phase': phase.name,
+        'resultado': resultado,
+        'actorPrincipal': actorPrincipal,
+        'actorSecundario': actorSecundario,
+        'zonaTiro': zonaTiro,
+        'zonaArco': zonaArco,
+        'detalle': detalle,
+        'subtipo': subtipo,
+        'origenJugada': origenJugada,
+        'mantieneContexto': mantieneContexto,
+      };
+    }
 
-    // Punto penal
-    canvas.drawCircle(
-      Offset(w * 0.50, h * 0.55),
-      3,
-      Paint()..color = Colors.white.withOpacity(0.20),
-    );
+    bool get isShotLike =>
+        kind == GameEventKind.tiro ||
+        kind == GameEventKind.penal ||
+        kind == GameEventKind.penalTanda;
 
-    // Laterales en perspectiva
-    canvas.drawLine(
-      Offset(w * 0.09, h * 0.54),
-      Offset(w * 0.06, h * 0.96),
-      strongLine,
-    );
-    canvas.drawLine(
-      Offset(w * 0.91, h * 0.54),
-      Offset(w * 0.94, h * 0.96),
-      strongLine,
-    );
+    bool get isSanctionLike =>
+        kind == GameEventKind.sancion ||
+        kind == GameEventKind.correccionSancion;
 
-    // Curva 6m
-    final Path sixMeterPath = Path()
-      ..moveTo(w * 0.18, h * 0.63)
-      ..quadraticBezierTo(w * 0.50, h * 0.74, w * 0.82, h * 0.63);
-    canvas.drawPath(sixMeterPath, strongLine);
+    bool get isUndoableGameEvent => !isSanctionLike;
 
-    // Curva 9m
-    final Path nineMeterPath = Path()
-      ..moveTo(w * 0.08, h * 0.82)
-      ..quadraticBezierTo(w * 0.50, h * 0.96, w * 0.92, h * 0.82);
-    canvas.drawPath(nineMeterPath, strongLine);
+    bool get isGoal => resultado == 'gol';
+    bool get isSave => resultado == 'atajado';
+    bool get isMiss => resultado == 'fuera' || resultado == 'desvio';
+  }
 
-    // Base inferior
-    canvas.drawLine(
-      Offset(w * 0.11, h * 0.96),
-      Offset(w * 0.89, h * 0.96),
-      strongLine,
-    );
+  GameEventKind _gameEventKindFromString(
+    String tipo,
+    Map<String, dynamic> map,
+  ) {
+    switch (tipo) {
+      case 'tiro':
+        return GameEventKind.tiro;
+      case 'penal':
+        return GameEventKind.penal;
+      case 'penal_tanda':
+        return GameEventKind.penalTanda;
+      case 'perdida':
+        final resultado = (map['resultado'] ?? '').toString();
+        return resultado == 'recuperacion'
+            ? GameEventKind.recuperacion
+            : GameEventKind.perdida;
+      case 'lateral':
+        return GameEventKind.lateral;
+      case 'contra':
+        return GameEventKind.contra;
+      case 'sancion':
+        return GameEventKind.sancion;
+      case 'correccion_sancion':
+        return GameEventKind.correccionSancion;
+      default:
+        return GameEventKind.otro;
+    }
+  }
 
-    // Guías suaves verticales
-    for (final x in [0.18, 0.32, 0.50, 0.68, 0.82]) {
+  GameEventPhase _gameEventPhaseFromString(String modo) {
+    switch (modo) {
+      case 'ataque':
+        return GameEventPhase.ataque;
+      case 'defensa':
+        return GameEventPhase.defensa;
+      default:
+        return GameEventPhase.neutral;
+    }
+  }
+
+  class CourtOverlayPainter extends CustomPainter {
+    @override
+    void paint(Canvas canvas, Size size) {
+      final double w = size.width;
+      final double h = size.height;
+
+      final Paint strongLine = Paint()
+        ..color = Colors.white.withOpacity(0.20)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+
+      final Paint softLine = Paint()
+        ..color = Colors.white.withOpacity(0.10)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3;
+
+      final Paint softFill = Paint()
+        ..color = Colors.white.withOpacity(0.03)
+        ..style = PaintingStyle.fill;
+
+      final RRect outerFrame = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.02, h * 0.02, w * 0.96, h * 0.96),
+        const Radius.circular(26),
+      );
+      canvas.drawRRect(outerFrame, strongLine);
+
+      final RRect topArea = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.08, h * 0.04, w * 0.84, h * 0.18),
+        const Radius.circular(22),
+      );
+      canvas.drawRRect(topArea, softFill);
+
+      // Separación arco / zona
       canvas.drawLine(
-        Offset(w * x, h * 0.49),
-        Offset(w * (x - 0.03), h * 0.98),
-        softLine,
+        Offset(w * 0.06, h * 0.41),
+        Offset(w * 0.94, h * 0.41),
+        strongLine,
+      );
+
+      // Línea de penal
+      canvas.drawLine(
+        Offset(w * 0.10, h * 0.49),
+        Offset(w * 0.90, h * 0.49),
+        strongLine,
+      );
+
+      // Punto penal
+      canvas.drawCircle(
+        Offset(w * 0.50, h * 0.55),
+        3,
+        Paint()..color = Colors.white.withOpacity(0.20),
+      );
+
+      // Laterales en perspectiva
+      canvas.drawLine(
+        Offset(w * 0.09, h * 0.54),
+        Offset(w * 0.06, h * 0.96),
+        strongLine,
+      );
+      canvas.drawLine(
+        Offset(w * 0.91, h * 0.54),
+        Offset(w * 0.94, h * 0.96),
+        strongLine,
+      );
+
+      // Curva 6m
+      final Path sixMeterPath = Path()
+        ..moveTo(w * 0.18, h * 0.63)
+        ..quadraticBezierTo(w * 0.50, h * 0.74, w * 0.82, h * 0.63);
+      canvas.drawPath(sixMeterPath, strongLine);
+
+      // Curva 9m
+      final Path nineMeterPath = Path()
+        ..moveTo(w * 0.08, h * 0.82)
+        ..quadraticBezierTo(w * 0.50, h * 0.96, w * 0.92, h * 0.82);
+      canvas.drawPath(nineMeterPath, strongLine);
+
+      // Base inferior
+      canvas.drawLine(
+        Offset(w * 0.11, h * 0.96),
+        Offset(w * 0.89, h * 0.96),
+        strongLine,
+      );
+
+      // Guías suaves verticales
+      for (final x in [0.18, 0.32, 0.50, 0.68, 0.82]) {
+        canvas.drawLine(
+          Offset(w * x, h * 0.49),
+          Offset(w * (x - 0.03), h * 0.98),
+          softLine,
+        );
+      }
+    }
+
+    @override
+    bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  }
+
+  class _TrapezoidZonePainter extends CustomPainter {
+    final bool selected;
+    final double topWidthFactor;
+    final double bottomWidthFactor;
+
+    _TrapezoidZonePainter({
+      required this.selected,
+      required this.topWidthFactor,
+      required this.bottomWidthFactor,
+    });
+
+    @override
+    void paint(Canvas canvas, Size size) {
+      final double topWidth = size.width * topWidthFactor;
+      final double bottomWidth = size.width * bottomWidthFactor;
+
+      final double topLeft = (size.width - topWidth) / 2;
+      final double topRight = topLeft + topWidth;
+
+      final double bottomLeft = (size.width - bottomWidth) / 2;
+      final double bottomRight = bottomLeft + bottomWidth;
+
+      final path = Path()
+        ..moveTo(topLeft, 0)
+        ..lineTo(topRight, 0)
+        ..lineTo(bottomRight, size.height)
+        ..lineTo(bottomLeft, size.height)
+        ..close();
+
+      final fill = Paint()
+        ..color = selected
+            ? const Color(0xFF4F8CFF).withOpacity(0.24)
+            : Colors.white.withOpacity(0.04)
+        ..style = PaintingStyle.fill;
+
+      final stroke = Paint()
+        ..color = selected
+            ? const Color(0xFF4F8CFF).withOpacity(0.60)
+            : Colors.white.withOpacity(0.08)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2;
+
+      canvas.drawPath(path, fill);
+      canvas.drawPath(path, stroke);
+    }
+
+    @override
+    bool shouldRepaint(covariant _TrapezoidZonePainter oldDelegate) {
+      return oldDelegate.selected != selected ||
+          oldDelegate.topWidthFactor != topWidthFactor ||
+          oldDelegate.bottomWidthFactor != bottomWidthFactor;
+    }
+  }
+
+  class _ExtremeZonePainter extends CustomPainter {
+    final bool selected;
+    final bool alignLeft;
+
+    _ExtremeZonePainter({required this.selected, required this.alignLeft});
+
+    @override
+    void paint(Canvas canvas, Size size) {
+      final path = Path();
+
+      if (alignLeft) {
+        path
+          ..moveTo(size.width * 0.28, 0)
+          ..lineTo(size.width, 0)
+          ..lineTo(size.width * 0.84, size.height)
+          ..lineTo(0, size.height)
+          ..close();
+      } else {
+        path
+          ..moveTo(0, 0)
+          ..lineTo(size.width * 0.72, 0)
+          ..lineTo(size.width, size.height)
+          ..lineTo(size.width * 0.16, size.height)
+          ..close();
+      }
+
+      final fill = Paint()
+        ..color = selected
+            ? const Color(0xFF4F8CFF).withOpacity(0.24)
+            : Colors.white.withOpacity(0.04)
+        ..style = PaintingStyle.fill;
+
+      final stroke = Paint()
+        ..color = selected
+            ? const Color(0xFF4F8CFF).withOpacity(0.60)
+            : Colors.white.withOpacity(0.08)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2;
+
+      canvas.drawPath(path, fill);
+      canvas.drawPath(path, stroke);
+    }
+
+    @override
+    bool shouldRepaint(covariant _ExtremeZonePainter oldDelegate) {
+      return oldDelegate.selected != selected ||
+          oldDelegate.alignLeft != alignLeft;
+    }
+  }
+
+  ///===============================
+  /// PLACEHOLDERS
+  /// ==============================
+  ///===============================
+
+  class HistorialScreen extends StatelessWidget {
+    const HistorialScreen({super.key});
+
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Partidos Jugados')),
+        body: const Center(child: Text('Pantalla Partidos Jugados')),
       );
     }
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
+  class EstadisticasScreen extends StatelessWidget {
+    const EstadisticasScreen({super.key});
 
-class _TrapezoidZonePainter extends CustomPainter {
-  final bool selected;
-  final double topWidthFactor;
-  final double bottomWidthFactor;
-
-  _TrapezoidZonePainter({
-    required this.selected,
-    required this.topWidthFactor,
-    required this.bottomWidthFactor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double topWidth = size.width * topWidthFactor;
-    final double bottomWidth = size.width * bottomWidthFactor;
-
-    final double topLeft = (size.width - topWidth) / 2;
-    final double topRight = topLeft + topWidth;
-
-    final double bottomLeft = (size.width - bottomWidth) / 2;
-    final double bottomRight = bottomLeft + bottomWidth;
-
-    final path = Path()
-      ..moveTo(topLeft, 0)
-      ..lineTo(topRight, 0)
-      ..lineTo(bottomRight, size.height)
-      ..lineTo(bottomLeft, size.height)
-      ..close();
-
-    final fill = Paint()
-      ..color = selected
-          ? const Color(0xFF4F8CFF).withOpacity(0.24)
-          : Colors.white.withOpacity(0.04)
-      ..style = PaintingStyle.fill;
-
-    final stroke = Paint()
-      ..color = selected
-          ? const Color(0xFF4F8CFF).withOpacity(0.60)
-          : Colors.white.withOpacity(0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    canvas.drawPath(path, fill);
-    canvas.drawPath(path, stroke);
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrapezoidZonePainter oldDelegate) {
-    return oldDelegate.selected != selected ||
-        oldDelegate.topWidthFactor != topWidthFactor ||
-        oldDelegate.bottomWidthFactor != bottomWidthFactor;
-  }
-}
-
-class _ExtremeZonePainter extends CustomPainter {
-  final bool selected;
-  final bool alignLeft;
-
-  _ExtremeZonePainter({required this.selected, required this.alignLeft});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path();
-
-    if (alignLeft) {
-      path
-        ..moveTo(size.width * 0.28, 0)
-        ..lineTo(size.width, 0)
-        ..lineTo(size.width * 0.84, size.height)
-        ..lineTo(0, size.height)
-        ..close();
-    } else {
-      path
-        ..moveTo(0, 0)
-        ..lineTo(size.width * 0.72, 0)
-        ..lineTo(size.width, size.height)
-        ..lineTo(size.width * 0.16, size.height)
-        ..close();
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Estadísticas')),
+        body: const Center(child: Text('Pantalla Estadísticas')),
+      );
     }
-
-    final fill = Paint()
-      ..color = selected
-          ? const Color(0xFF4F8CFF).withOpacity(0.24)
-          : Colors.white.withOpacity(0.04)
-      ..style = PaintingStyle.fill;
-
-    final stroke = Paint()
-      ..color = selected
-          ? const Color(0xFF4F8CFF).withOpacity(0.60)
-          : Colors.white.withOpacity(0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    canvas.drawPath(path, fill);
-    canvas.drawPath(path, stroke);
   }
 
-  @override
-  bool shouldRepaint(covariant _ExtremeZonePainter oldDelegate) {
-    return oldDelegate.selected != selected ||
-        oldDelegate.alignLeft != alignLeft;
+  class EquiposScreen extends StatelessWidget {
+    const EquiposScreen({super.key});
+
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Equipos')),
+        body: const Center(child: Text('Pantalla Equipos')),
+      );
+    }
   }
-}
 
-///===============================
-/// PLACEHOLDERS
-/// ==============================
-///===============================
+  class JugadoresScreen extends StatelessWidget {
+    const JugadoresScreen({super.key});
 
-class HistorialScreen extends StatelessWidget {
-  const HistorialScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Partidos Jugados')),
-      body: const Center(child: Text('Pantalla Partidos Jugados')),
-    );
+    @override
+    Widget build(BuildContext context) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Jugadores')),
+        body: const Center(child: Text('Pantalla Jugadores')),
+      );
+    }
   }
-}
-
-class EstadisticasScreen extends StatelessWidget {
-  const EstadisticasScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Estadísticas')),
-      body: const Center(child: Text('Pantalla Estadísticas')),
-    );
-  }
-}
-
-class EquiposScreen extends StatelessWidget {
-  const EquiposScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Equipos')),
-      body: const Center(child: Text('Pantalla Equipos')),
-    );
-  }
-}
-
-class JugadoresScreen extends StatelessWidget {
-  const JugadoresScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Jugadores')),
-      body: const Center(child: Text('Pantalla Jugadores')),
-    );
-  }
-}
