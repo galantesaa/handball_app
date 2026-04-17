@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:math';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -2424,46 +2425,47 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 }
 
   Widget _buildFlatGoalAreaCompact() {
-    return Column(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _goalCell('AI')),
-              const SizedBox(width: 5),
-              Expanded(child: _goalCell('AC')),
-              const SizedBox(width: 5),
-              Expanded(child: _goalCell('AD')),
-            ],
+  return Stack(
+    children: [
+      Column(
+        children: [
+          Expanded(child: Row(children: [
+            Expanded(child: _goalCell('AI')),
+            const SizedBox(width: 5),
+            Expanded(child: _goalCell('AC')),
+            const SizedBox(width: 5),
+            Expanded(child: _goalCell('AD')),
+          ])),
+          const SizedBox(height: 3),
+          Expanded(child: Row(children: [
+            Expanded(child: _goalCell('CI')),
+            const SizedBox(width: 5),
+            Expanded(child: _goalCell('CC')),
+            const SizedBox(width: 5),
+            Expanded(child: _goalCell('CD')),
+          ])),
+          const SizedBox(height: 3),
+          Expanded(child: Row(children: [
+            Expanded(child: _goalCell('BI')),
+            const SizedBox(width: 5),
+            Expanded(child: _goalCell('BC')),
+            const SizedBox(width: 5),
+            Expanded(child: _goalCell('BD')),
+          ])),
+        ],
+      ),
+
+      // 🔥 HEATMAP
+      Positioned.fill(
+        child: IgnorePointer(
+          child: CustomPaint(
+            painter: HeatmapPainter(gameEvents),
           ),
         ),
-        const SizedBox(height: 3),
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _goalCell('CI')),
-              const SizedBox(width: 5),
-              Expanded(child: _goalCell('CC')),
-              const SizedBox(width: 5),
-              Expanded(child: _goalCell('CD')),
-            ],
-          ),
-        ),
-        const SizedBox(height: 3),
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _goalCell('BI')),
-              const SizedBox(width: 5),
-              Expanded(child: _goalCell('BC')),
-              const SizedBox(width: 5),
-              Expanded(child: _goalCell('BD')),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildPenaltyLineMarker() {
     return Column(
@@ -4169,6 +4171,89 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 }
+ ///heatmap de eventos, estadísticas detalladas por jugador, exportación de datos, etc. 
+  
+class HeatmapPainter extends CustomPainter {
+  final List<GameEvent> events;
+
+  HeatmapPainter(this.events);
+
+  final Random _random = Random(1);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final e in events) {
+      if (!e.isShotLike) continue;
+      if (e.zonaArco == null) continue;
+
+      final Offset center = _getZoneCenter(e.zonaArco!, size);
+      final int repetitions = e.resultado == 'gol' ? 5 : 4;
+
+      for (int i = 0; i < repetitions; i++) {
+        final double dx = center.dx + (_random.nextDouble() * 10 - 5);
+        final double dy = center.dy + (_random.nextDouble() * 10 - 5);
+
+        final paint = Paint()
+          ..color = _colorByResult(e.resultado)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+
+        canvas.drawCircle(Offset(dx, dy), 22, paint);
+      }
+    }
+  }
+
+  Offset _getZoneCenter(String zone, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    switch (zone) {
+      case 'AI':
+        return Offset(w * 0.2, h * 0.2);
+      case 'AC':
+        return Offset(w * 0.5, h * 0.2);
+      case 'AD':
+        return Offset(w * 0.8, h * 0.2);
+      case 'CI':
+        return Offset(w * 0.2, h * 0.5);
+      case 'CC':
+        return Offset(w * 0.5, h * 0.5);
+      case 'CD':
+        return Offset(w * 0.8, h * 0.5);
+      case 'BI':
+        return Offset(w * 0.2, h * 0.8);
+      case 'BC':
+        return Offset(w * 0.5, h * 0.8);
+      case 'BD':
+        return Offset(w * 0.8, h * 0.8);
+      default:
+        return Offset(w * 0.5, h * 0.5);
+    }
+  }
+
+  Color _colorByResult(String? result) {
+    switch (result) {
+      case 'gol':
+        return Colors.red.withOpacity(0.6);
+      case 'atajado':
+        return Colors.green.withOpacity(0.6);
+      case 'fuera':
+      case 'desvio':
+        return Colors.yellow.withOpacity(0.55);
+      default:
+        return Colors.white.withOpacity(0.3);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant HeatmapPainter oldDelegate) {
+    return oldDelegate.events != events;
+  }
+}
+  
+  ///=======================
+  ///
+  ///
+  
   class _UndoSanctionOption {
     final String label;
     final String resultado;
