@@ -2169,6 +2169,19 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                       _persistLiveMatch();
                     },
                   );
+                } else if (value == 'mvp_test') {
+                  final stats = calcularStatsMVP(gameEvents);
+                  final mvp = obtenerMVP(stats);
+                  final top3 = topJugadores(stats);
+
+                  debugPrint('===== MVP =====');
+                  debugPrint('MVP: ${mvp?.nombre} (${mvp?.score})');
+
+                  for (var p in top3) {
+                    debugPrint(
+                      '${p.nombre} -> Score: ${p.score} | Goles: ${p.goles} | Atajadas: ${p.atajadas}',
+                    );
+                  }
                 }
               },
               itemBuilder: (context) => [
@@ -2198,6 +2211,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         ? 'Seleccionar arquero'
                         : 'Arquero actual: $currentGoalkeeperNumber',
                     style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'mvp_test',
+                  child: Text(
+                    'Ver MVP (debug)',
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
               ],
@@ -4633,6 +4653,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       actorPrincipal: 'Corrección manual',
       detalle: 'Se revierte sanción',
       subtipo: 'undo_sancion',
+
       mantieneContexto: true,
       prevState: prevState,
     );
@@ -4660,6 +4681,10 @@ class HeatmapPainter extends CustomPainter {
       final int repetitions = e.resultado == 'gol' ? 5 : 4;
 
       for (int i = 0; i < repetitions; i++) {
+        final nombre = (e.actorPrincipal ?? '').trim();
+
+        if (nombre.isEmpty) continue;
+        if (nombre.toLowerCase() == 'cambio de contexto') continue;
         final double dx = center.dx + (_random.nextDouble() * 10 - 5);
         final double dy = center.dy + (_random.nextDouble() * 10 - 5);
 
@@ -4832,6 +4857,118 @@ class GameEvent {
   bool get isGoal => resultado == 'gol';
   bool get isSave => resultado == 'atajado';
   bool get isMiss => resultado == 'fuera' || resultado == 'desvio';
+}
+
+class PlayerStats {
+  final String nombre;
+  int goles = 0;
+  int tiros = 0;
+  int atajadas = 0;
+  int golesRecibidos = 0;
+  int penalesAtajados = 0;
+  int sanciones = 0;
+  int score = 0;
+
+  PlayerStats(this.nombre);
+}
+
+Map<String, PlayerStats> calcularStatsMVP(List<GameEvent> events) {
+  final Map<String, PlayerStats> stats = {};
+
+  PlayerStats getPlayer(String nombre) {
+    return stats.putIfAbsent(nombre, () => PlayerStats(nombre));
+  }
+
+  for (final e in events) {
+    final nombre = (e.actorPrincipal ?? '').trim();
+
+    if (nombre.isEmpty) continue;
+    if (nombre.toLowerCase() == 'cambio de contexto') continue;
+
+    final jugador = getPlayer(nombre);
+
+    if (e.kind == GameEventKind.tiro) {
+      jugador.tiros++;
+
+      if (e.resultado == 'gol') {
+        if (e.phase == GameEventPhase.defensa) {
+          jugador.golesRecibidos++;
+          jugador.score -= 2;
+        } else if (e.phase == GameEventPhase.ataque) {
+          jugador.goles++;
+          jugador.score += 3;
+        }
+      }
+
+      if (e.resultado == 'atajado') {
+        if (e.phase == GameEventPhase.defensa) {
+          jugador.atajadas++;
+          jugador.score += 3;
+        } else if (e.phase == GameEventPhase.ataque) {
+          jugador.score -= 2;
+        }
+      }
+
+      if (e.resultado == 'fuera' || e.resultado == 'desvio') {
+        jugador.score -= 1;
+      }
+    }
+
+    if (e.kind == GameEventKind.penal || e.kind == GameEventKind.penalTanda) {
+      jugador.tiros++;
+
+      if (e.resultado == 'atajado') {
+        if (e.phase == GameEventPhase.defensa) {
+          jugador.atajadas++;
+          jugador.penalesAtajados++;
+          jugador.score += 4;
+        } else if (e.phase == GameEventPhase.ataque) {
+          jugador.score -= 2;
+        }
+      }
+
+      if (e.resultado == 'gol') {
+        if (e.phase == GameEventPhase.defensa) {
+          jugador.golesRecibidos++;
+          jugador.score -= 1;
+        } else if (e.phase == GameEventPhase.ataque) {
+          jugador.goles++;
+          jugador.score += 3;
+        }
+      }
+
+      if (e.resultado == 'fuera') {
+        jugador.score -= 1;
+      }
+    }
+
+    if (e.kind == GameEventKind.sancion) {
+      jugador.sanciones++;
+      jugador.score -= 2;
+    }
+
+    if (e.kind == GameEventKind.contra && e.resultado == 'gol') {
+      jugador.goles++;
+      jugador.score += 4;
+    }
+  }
+  return stats;
+}
+
+PlayerStats? obtenerMVP(Map<String, PlayerStats> stats) {
+  if (stats.isEmpty) return null;
+
+  final lista = stats.values.toList()
+    ..sort((a, b) => b.score.compareTo(a.score));
+
+  return lista.first;
+}
+
+List<PlayerStats> topJugadores(Map<String, PlayerStats> stats) {
+  final lista = stats.values.toList()
+    ..sort((a, b) => b.score.compareTo(a.score));
+
+  return lista.take(3).toList();
 }
 
 GameEventKind _gameEventKindFromString(String tipo, Map<String, dynamic> map) {
