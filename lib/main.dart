@@ -697,6 +697,68 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  Future<void> _resetPartidosDePrueba() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final nuevoProximo = _defaultProximoPartido();
+    final nuevosSiguientes = _defaultSiguientesPartidos();
+
+    setState(() {
+      proximoPartido = nuevoProximo;
+      siguientesPartidos = nuevosSiguientes;
+      partidosFinalizados = [];
+      hayPartido = true;
+    });
+
+    await prefs.setString(
+      _proximoPartidoStorageKey,
+      jsonEncode(proximoPartido),
+    );
+
+    await prefs.setString(
+      _siguientesPartidosStorageKey,
+      jsonEncode(siguientesPartidos),
+    );
+
+    await prefs.setString(
+      _partidosFinalizadosStorageKey,
+      jsonEncode(partidosFinalizados),
+    );
+  }
+
+  void _confirmarResetPartidosDePrueba() {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF0F1722),
+      title: const Text(
+        'Resetear partidos de prueba',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: const Text(
+        'Esto va a restaurar Argentinos como próximo partido, volver a cargar River/SEDALO/Ferro y borrar los finalizados de prueba. ¿Querés seguir?',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            await _resetPartidosDePrueba();
+          },
+          child: const Text(
+            'Resetear',
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
   String _partidoIdentity(Map<String, dynamic> partido) {
     return [
       (partido['rival'] ?? '').toString(),
@@ -871,6 +933,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             );
           },
         ),
+        const SizedBox(height: 12),
+        _buildOutlinedAction(
+          text: 'Resetear partidos de prueba',
+          onTap: _confirmarResetPartidosDePrueba,
+        ),
         const SizedBox(height: 20),
         _buildPrimaryAction(
           text: 'Iniciar partido',
@@ -931,6 +998,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 const SizedBox(height: 18),
                 _buildLastFinishedCard(),
               ],
+              const SizedBox(height: 12),
+              _buildOutlinedAction(
+                text: 'Resetear partidos de prueba',
+                onTap: _confirmarResetPartidosDePrueba,
+              ),
               const SizedBox(height: 18),
               _buildPrimaryAction(
                 text: 'Crear partido',
@@ -1389,6 +1461,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 }
+
 /// ===============================
 /// FIXTURE
 /// ===============================
