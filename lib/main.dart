@@ -1197,71 +1197,73 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   }
 
   Future<void> _irAPartidoEnVivo() async {
-    final resultado = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PartidoEnVivoScreen(
-          partido: widget.partido,
-          estadoInicial: estadoPartido,
-          golesSanFernandoInicial: golesSanFernando,
-          golesRivalInicial: golesRival,
-          atajadasInicial: atajadas,
-          penalesInicial: penales,
-          exclusiones2MinInicial: exclusiones2Min,
-          amarillasInicial: amarillas,
-          rojasInicial: rojas,
-          perdidasInicial: perdidas,
-          recuperacionesInicial: recuperaciones,
-          penalesConvertidosSanFernandoInicial: penalesConvertidosSanFernando,
-          penalesConvertidosRivalInicial: penalesConvertidosRival,
-          eventosIniciales: eventos,
-          modoInicial: modoActual,
-          modoInicioPrimerTiempo: modoInicioPrimerTiempo,
-          modoInicioPrimerTiempoAlargue: modoInicioPrimerTiempoAlargue,
-        ),
+  final resultado = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => PartidoEnVivoScreen(
+        partido: widget.partido,
+        estadoInicial: estadoPartido,
+        golesSanFernandoInicial: golesSanFernando,
+        golesRivalInicial: golesRival,
+        atajadasInicial: atajadas,
+        penalesInicial: penales,
+        exclusiones2MinInicial: exclusiones2Min,
+        amarillasInicial: amarillas,
+        rojasInicial: rojas,
+        perdidasInicial: perdidas,
+        recuperacionesInicial: recuperaciones,
+        penalesConvertidosSanFernandoInicial: penalesConvertidosSanFernando,
+        penalesConvertidosRivalInicial: penalesConvertidosRival,
+        eventosIniciales: eventos,
+        modoInicial: modoActual,
+        modoInicioPrimerTiempo: modoInicioPrimerTiempo,
+        modoInicioPrimerTiempoAlargue: modoInicioPrimerTiempoAlargue,
       ),
-    );
+    ),
+  );
 
-    if (resultado != null && mounted) {
-      setState(() {
-        estadoPartido = (resultado['estadoPartido'] ?? estadoPartido) as String;
-        golesSanFernando =
-            (resultado['golesSanFernando'] ?? golesSanFernando) as int;
-        golesRival = (resultado['golesRival'] ?? golesRival) as int;
-        golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
+  if (resultado != null && mounted) {
+    setState(() {
+      estadoPartido = (resultado['estadoPartido'] ?? estadoPartido) as String;
+      golesSanFernando =
+          (resultado['golesSanFernando'] ?? golesSanFernando) as int;
+      golesRival = (resultado['golesRival'] ?? golesRival) as int;
+      golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
 
-        atajadas = (resultado['atajadas'] ?? atajadas) as int;
-        penales = (resultado['penales'] ?? penales) as int;
-        exclusiones2Min =
-            (resultado['exclusiones2Min'] ?? exclusiones2Min) as int;
-        amarillas = (resultado['amarillas'] ?? amarillas) as int;
-        rojas = (resultado['rojas'] ?? rojas) as int;
-        perdidas = (resultado['perdidas'] ?? perdidas) as int;
-        recuperaciones = (resultado['recuperaciones'] ?? recuperaciones) as int;
+      atajadas = (resultado['atajadas'] ?? atajadas) as int;
+      penales = (resultado['penales'] ?? penales) as int;
+      exclusiones2Min =
+          (resultado['exclusiones2Min'] ?? exclusiones2Min) as int;
+      amarillas = (resultado['amarillas'] ?? amarillas) as int;
+      rojas = (resultado['rojas'] ?? rojas) as int;
+      perdidas = (resultado['perdidas'] ?? perdidas) as int;
+      recuperaciones = (resultado['recuperaciones'] ?? recuperaciones) as int;
 
-        penalesConvertidosSanFernando =
-            (resultado['penalesConvertidosSanFernando'] ??
-                    penalesConvertidosSanFernando)
-                as int;
-        penalesConvertidosRival =
-            (resultado['penalesConvertidosRival'] ?? penalesConvertidosRival)
-                as int;
+      penalesConvertidosSanFernando =
+          (resultado['penalesConvertidosSanFernando'] ??
+                  penalesConvertidosSanFernando)
+              as int;
+      penalesConvertidosRival =
+          (resultado['penalesConvertidosRival'] ?? penalesConvertidosRival)
+              as int;
 
-        modoActual = resultado['modoActual'] as String?;
-        modoInicioPrimerTiempo = resultado['modoInicioPrimerTiempo'] as String?;
-        modoInicioPrimerTiempoAlargue =
-            resultado['modoInicioPrimerTiempoAlargue'] as String?;
+      modoActual = resultado['modoActual'] as String?;
+      modoInicioPrimerTiempo = resultado['modoInicioPrimerTiempo'] as String?;
+      modoInicioPrimerTiempoAlargue =
+          resultado['modoInicioPrimerTiempoAlargue'] as String?;
 
-        final dynamic eventosResult = resultado['eventos'];
-        if (eventosResult is List) {
-          eventos = eventosResult
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-        }
-      });
-    }
+      final dynamic eventosResult = resultado['eventos'];
+      if (eventosResult is List) {
+        eventos = eventosResult
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+
+      _syncStateToPartido();
+    });
   }
-
+}
+  
   void _abrirPlantel() {
     debugPrint('Abrir plantel');
   }
@@ -1269,6 +1271,63 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   void _abrirResumen() {
     debugPrint('Abrir resumen');
   }
+
+  @override
+  void initState() {
+  super.initState();
+
+  estadoPartido = (widget.partido['estadoPartido'] ?? 'no_iniciado') as String;
+  golesSanFernando = (widget.partido['golesSanFernando'] ?? 0) as int;
+  golesRival = (widget.partido['golesRival'] ?? 0) as int;
+  golesRecibidos = (widget.partido['golesRecibidos'] ?? 0) as int;
+
+  atajadas = (widget.partido['atajadas'] ?? 0) as int;
+  penales = (widget.partido['penales'] ?? 0) as int;
+  exclusiones2Min = (widget.partido['exclusiones2Min'] ?? 0) as int;
+  amarillas = (widget.partido['amarillas'] ?? 0) as int;
+  rojas = (widget.partido['rojas'] ?? 0) as int;
+  perdidas = (widget.partido['perdidas'] ?? 0) as int;
+  recuperaciones = (widget.partido['recuperaciones'] ?? 0) as int;
+
+  penalesConvertidosSanFernando =
+      (widget.partido['penalesConvertidosSanFernando'] ?? 0) as int;
+  penalesConvertidosRival =
+      (widget.partido['penalesConvertidosRival'] ?? 0) as int;
+
+  modoActual = widget.partido['modoActual'] as String?;
+  modoInicioPrimerTiempo = widget.partido['modoInicioPrimerTiempo'] as String?;
+  modoInicioPrimerTiempoAlargue =
+      widget.partido['modoInicioPrimerTiempoAlargue'] as String?;
+
+  final dynamic eventosRaw = widget.partido['eventos'];
+  if (eventosRaw is List) {
+    eventos = eventosRaw
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+}
+
+  void _syncStateToPartido() {
+  widget.partido['estadoPartido'] = estadoPartido;
+  widget.partido['golesSanFernando'] = golesSanFernando;
+  widget.partido['golesRival'] = golesRival;
+  widget.partido['golesRecibidos'] = golesRecibidos;
+  widget.partido['atajadas'] = atajadas;
+  widget.partido['penales'] = penales;
+  widget.partido['exclusiones2Min'] = exclusiones2Min;
+  widget.partido['amarillas'] = amarillas;
+  widget.partido['rojas'] = rojas;
+  widget.partido['perdidas'] = perdidas;
+  widget.partido['recuperaciones'] = recuperaciones;
+  widget.partido['penalesConvertidosSanFernando'] =
+      penalesConvertidosSanFernando;
+  widget.partido['penalesConvertidosRival'] = penalesConvertidosRival;
+  widget.partido['modoActual'] = modoActual;
+  widget.partido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
+  widget.partido['modoInicioPrimerTiempoAlargue'] =
+      modoInicioPrimerTiempoAlargue;
+  widget.partido['eventos'] = eventos;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -1871,34 +1930,30 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Future<void> _archiveFinishedMatchIfNeeded() async {
-    if (!_isArgentinosJuniorsOfficialMatch) {
-      await _clearPersistedLiveMatch();
-      return;
-    }
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_finishedMatchesStorageKey);
 
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_finishedMatchesStorageKey);
-
-    List<dynamic> history = [];
-    if (raw != null && raw.isNotEmpty) {
-      history = jsonDecode(raw) as List<dynamic>;
-    }
-
-    final finishedData = _toPersistedMatchMap()
-      ..['archivedAt'] = DateTime.now().toIso8601String()
-      ..['finalizado'] = true;
-
-    history.removeWhere((item) {
-      if (item is! Map) return false;
-      return (item['matchIdentity'] ?? '') == _matchIdentity;
-    });
-
-    history.add(finishedData);
-
-    await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
-    await _clearPersistedLiveMatch();
+  List<dynamic> history = [];
+  if (raw != null && raw.isNotEmpty) {
+    history = jsonDecode(raw) as List<dynamic>;
   }
 
+  final finishedData = _toPersistedMatchMap()
+    ..['archivedAt'] = DateTime.now().toIso8601String()
+    ..['finalizado'] = true
+    ..['estadoPartido'] = 'finalizado';
+
+  history.removeWhere((item) {
+    if (item is! Map) return false;
+    return (item['matchIdentity'] ?? '') == _matchIdentity;
+  });
+
+  history.add(finishedData);
+
+  await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
+  await _clearPersistedLiveMatch();
+}
+  
   Future<void> _loadSavedLiveMatchIfAny() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_liveMatchStorageKey);
@@ -4444,39 +4499,82 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  void _finalizarPartido() {
-    setState(() => estadoPartido = 'finalizado');
+  Future<void> _finalizarPartido() async {
+  setState(() {
+    estadoPartido = 'finalizado';
+    modo = null;
+    zonaTiro = null;
+    zonaArco = null;
+    penalEnCurso = false;
+    actorPenalActual = null;
+    mostrarContra = false;
+    origenJugadaActual = 'normal';
+    contraDebeCambiarModo = true;
+  });
 
-    _archiveFinishedMatchIfNeeded();
+  await _persistLiveMatch();
+  await _archiveFinishedMatchIfNeeded();
 
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (!mounted) return;
-      _goBack();
-    });
-  }
+  if (!mounted) return;
+  _goBack();
+}
 
   void _goBack() {
-    Navigator.pop(context, {
-      'estadoPartido': estadoPartido,
-      'golesSanFernando': golesSanFernando,
-      'golesRival': golesRival,
-      'golesRecibidos': golesRecibidos,
-      'atajadas': atajadas,
-      'penales': penales,
-      'exclusiones2Min': exclusiones2Min,
-      'amarillas': amarillas,
-      'rojas': rojas,
-      'perdidas': perdidas,
-      'recuperaciones': recuperaciones,
-      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-      'penalesConvertidosRival': penalesConvertidosRival,
-      'eventos': eventos,
-      'modoActual': modo,
-      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
-      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
-      'currentGoalkeeperNumber': currentGoalkeeperNumber,
-    });
-  }
+  Navigator.pop(context, {
+    'estadoPartido': estadoPartido,
+    'golesSanFernando': golesSanFernando,
+    'golesRival': golesRival,
+    'golesRecibidos': golesRecibidos,
+    'atajadas': atajadas,
+    'penales': penales,
+    'exclusiones2Min': exclusiones2Min,
+    'amarillas': amarillas,
+    'rojas': rojas,
+    'perdidas': perdidas,
+    'recuperaciones': recuperaciones,
+    'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+    'penalesConvertidosRival': penalesConvertidosRival,
+    'eventos': eventos,
+    'modoActual': modo,
+    'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+    'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+    'currentGoalkeeperNumber': currentGoalkeeperNumber,
+    'partidoFinalizado': estadoPartido == 'finalizado',
+  });
+}
+  
+  void _confirmarFinalizarPartido() {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF0F1722),
+      title: const Text(
+        'Finalizar partido',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: const Text(
+        '¿Seguro que querés finalizar el partido?',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            await _finalizarPartido();
+          },
+          child: const Text(
+            'Finalizar',
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   void _deshacerUltimoEvento() {
     if (eventos.isEmpty || gameEvents.isEmpty) return;
