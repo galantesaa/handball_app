@@ -564,36 +564,249 @@ class ProximoPartidoScreen extends StatefulWidget {
 class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   bool hayPartido = true;
 
-  final Map<String, dynamic> proximoPartido = {
-    'rival': 'Argentinos Juniors',
-    'fecha': 'Sabado 18/04',
-    'hora': '13:00',
-    'condicion': 'Local',
-    'torneo': 'Local Apertura',
-    'categoria': 'Cadetes',
-    'estado': 'Pendiente',
-  };
+  late Map<String, dynamic> proximoPartido;
+  late List<Map<String, dynamic>> siguientesPartidos;
+  List<Map<String, dynamic>> partidosFinalizados = [];
 
-  final List<Map<String, String>> siguientesPartidos = [
-    {
-      'rival': 'River Plate',
-      'fecha': 'Sab 25/04',
-      'hora': '15:30',
-      'condicion': 'Visitante',
-    },
-    {
-      'rival': 'SEDALO',
-      'fecha': 'Sab 02/05',
+  static const String _proximoPartidoStorageKey = 'proximo_partido_v1';
+  static const String _siguientesPartidosStorageKey = 'siguientes_partidos_v1';
+  static const String _partidosFinalizadosStorageKey =
+      'proximos_finalizados_v1';
+
+  @override
+  void initState() {
+    super.initState();
+
+    proximoPartido = _defaultProximoPartido();
+    siguientesPartidos = _defaultSiguientesPartidos();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadFixtureState();
+      if (!mounted) return;
+
+      setState(() {
+        _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
+      });
+
+      await _persistFixtureState();
+    });
+  }
+
+  Map<String, dynamic> _defaultProximoPartido() {
+    return {
+      'rival': 'Argentinos Juniors',
+      'fecha': 'Sabado 18/04',
       'hora': '13:00',
       'condicion': 'Local',
-    },
-    {
-      'rival': 'Ferro',
-      'fecha': 'Sab 08/05',
-      'hora': '13:00',
-      'condicion': 'Visitante',
-    },
-  ];
+      'torneo': 'Local Apertura',
+      'categoria': 'Cadetes',
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': 'assets/images/argentinos.png',
+    };
+  }
+
+  List<Map<String, dynamic>> _defaultSiguientesPartidos() {
+    return [
+      {
+        'rival': 'River Plate',
+        'fecha': 'Sab 25/04',
+        'hora': '15:30',
+        'condicion': 'Visitante',
+      },
+      {
+        'rival': 'SEDALO',
+        'fecha': 'Sab 02/05',
+        'hora': '13:00',
+        'condicion': 'Local',
+      },
+      {
+        'rival': 'Ferro',
+        'fecha': 'Sab 08/05',
+        'hora': '13:00',
+        'condicion': 'Visitante',
+      },
+    ];
+  }
+
+  Future<void> _loadFixtureState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final proximoRaw = prefs.getString(_proximoPartidoStorageKey);
+    final siguientesRaw = prefs.getString(_siguientesPartidosStorageKey);
+    final finalizadosRaw = prefs.getString(_partidosFinalizadosStorageKey);
+
+    if (proximoRaw != null && proximoRaw.isNotEmpty) {
+      proximoPartido = Map<String, dynamic>.from(jsonDecode(proximoRaw) as Map);
+    }
+
+    if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
+      final decoded = jsonDecode(siguientesRaw) as List<dynamic>;
+      siguientesPartidos = decoded
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+
+    if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
+      final decoded = jsonDecode(finalizadosRaw) as List<dynamic>;
+      partidosFinalizados = decoded
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+
+    hayPartido = proximoPartido.isNotEmpty;
+  }
+
+  Future<void> _persistFixtureState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (hayPartido && proximoPartido.isNotEmpty) {
+      await prefs.setString(
+        _proximoPartidoStorageKey,
+        jsonEncode(proximoPartido),
+      );
+    } else {
+      await prefs.remove(_proximoPartidoStorageKey);
+    }
+
+    await prefs.setString(
+      _siguientesPartidosStorageKey,
+      jsonEncode(siguientesPartidos),
+    );
+
+    await prefs.setString(
+      _partidosFinalizadosStorageKey,
+      jsonEncode(partidosFinalizados),
+    );
+  }
+
+  String _partidoIdentity(Map<String, dynamic> partido) {
+    return [
+      (partido['rival'] ?? '').toString(),
+      (partido['fecha'] ?? '').toString(),
+      (partido['hora'] ?? '').toString(),
+      (partido['condicion'] ?? '').toString(),
+    ].join('|');
+  }
+
+  bool _partidoEstaFinalizado(Map<String, dynamic> partido) {
+    return (partido['estadoPartido'] ?? '') == 'finalizado' ||
+        (partido['estado'] ?? '') == 'Finalizado';
+  }
+
+  Map<String, dynamic> _crearPartidoBaseDesdeSiguiente(
+    Map<String, dynamic> siguiente,
+  ) {
+    final String rival = (siguiente['rival'] ?? 'Rival').toString();
+
+    String? escudoRival;
+    if (rival.toLowerCase() == 'argentinos juniors') {
+      escudoRival = 'assets/images/argentinos.png';
+    }
+
+    return {
+      'rival': rival,
+      'fecha': (siguiente['fecha'] ?? '').toString(),
+      'hora': (siguiente['hora'] ?? '').toString(),
+      'condicion': (siguiente['condicion'] ?? 'Local').toString(),
+      'torneo': 'Local Apertura',
+      'categoria': 'Cadetes',
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': escudoRival,
+    };
+  }
+
+  void _promoverSiguienteSiActualEstaFinalizado({bool saveAfter = true}) {
+    if (!hayPartido || !_partidoEstaFinalizado(proximoPartido)) return;
+
+    final actualId = _partidoIdentity(proximoPartido);
+    final yaExiste = partidosFinalizados.any(
+      (p) => _partidoIdentity(p) == actualId,
+    );
+
+    if (!yaExiste) {
+      final partidoArchivado = Map<String, dynamic>.from(proximoPartido)
+        ..['estado'] = 'Finalizado'
+        ..['estadoPartido'] = 'finalizado';
+      partidosFinalizados.insert(0, partidoArchivado);
+    }
+
+    if (siguientesPartidos.isNotEmpty) {
+      final siguiente = Map<String, dynamic>.from(siguientesPartidos.removeAt(0));
+      proximoPartido = _crearPartidoBaseDesdeSiguiente(siguiente);
+      hayPartido = true;
+    } else {
+      proximoPartido = {};
+      hayPartido = false;
+    }
+
+    if (saveAfter) {
+      _persistFixtureState();
+    }
+  }
+
+  Future<void> _abrirCentroDeControl() async {
+    if (!hayPartido) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
+      ),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      if (_partidoEstaFinalizado(proximoPartido)) {
+        _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
+      }
+    });
+
+    await _persistFixtureState();
+  }
+
+  void _abrirResumenUltimoFinalizado() {
+    if (partidosFinalizados.isEmpty) return;
+    debugPrint(
+      'Abrir resumen de ${partidosFinalizados.first['rival']}',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -638,6 +851,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildMatchCard(),
         const SizedBox(height: 16),
         _buildUpcomingList(),
+        if (partidosFinalizados.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildLastFinishedCard(),
+        ],
         const SizedBox(height: 10),
         _buildSecondaryAction(
           text: 'Ver fixture completo',
@@ -657,14 +874,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         const SizedBox(height: 20),
         _buildPrimaryAction(
           text: 'Iniciar partido',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
-              ),
-            );
-          },
+          onTap: _abrirCentroDeControl,
         ),
         const SizedBox(height: 10),
         _buildOutlinedAction(
@@ -677,7 +887,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildOutlinedAction(
           text: 'Marcar como jugado',
           onTap: () {
-            debugPrint('Marcar como jugado');
+            final partidoManual = Map<String, dynamic>.from(proximoPartido)
+              ..['estado'] = 'Finalizado'
+              ..['estadoPartido'] = 'finalizado';
+            setState(() {
+              proximoPartido = partidoManual;
+              _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
+            });
+            _persistFixtureState();
           },
         ),
       ],
@@ -688,7 +905,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildScreenHeader(),
+        _buildScreenHeaderSinPartido(),
         const SizedBox(height: 24),
         Container(
           width: double.infinity,
@@ -710,6 +927,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                   color: Colors.white,
                 ),
               ),
+              if (partidosFinalizados.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                _buildLastFinishedCard(),
+              ],
               const SizedBox(height: 18),
               _buildPrimaryAction(
                 text: 'Crear partido',
@@ -745,6 +966,27 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  Widget _buildScreenHeaderSinPartido() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'San Fernando Handball',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'Cadetes · Local Apertura',
+          style: TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMatchCard() {
     return Container(
       width: double.infinity,
@@ -764,7 +1006,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStatusChip(proximoPartido['estado']),
+          _buildStatusChip((proximoPartido['estado'] ?? 'Pendiente').toString()),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -772,7 +1014,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  proximoPartido['rival'],
+                  (proximoPartido['rival'] ?? '').toString(),
                   style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w700,
@@ -789,7 +1031,59 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'Fecha',
             '${proximoPartido['fecha']} • ${proximoPartido['hora']}',
           ),
-          _buildInfoRow('Condición', proximoPartido['condicion']),
+          _buildInfoRow('Condición', (proximoPartido['condicion'] ?? '').toString()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastFinishedCard() {
+    final ultimo = partidosFinalizados.first;
+    final int golesSF = (ultimo['golesSanFernando'] ?? 0) as int;
+    final int golesR = (ultimo['golesRival'] ?? 0) as int;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Último partido finalizado',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'San Fernando vs ${ultimo['rival']}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$golesSF - $golesR',
+            style: const TextStyle(
+              color: Color(0xFFDCE4EF),
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildOutlinedAction(
+            text: 'Ver resumen',
+            onTap: _abrirResumenUltimoFinalizado,
+          ),
         ],
       ),
     );
@@ -811,12 +1105,26 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        ...siguientesPartidos.map(_buildUpcomingItem),
+        if (siguientesPartidos.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1A2B).withOpacity(0.6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'No hay más partidos cargados',
+              style: TextStyle(color: Color(0xFFAAB4C3), fontSize: 13),
+            ),
+          )
+        else
+          ...siguientesPartidos.map(_buildUpcomingItem),
       ],
     );
   }
 
-  Widget _buildUpcomingItem(Map<String, String> partido) {
+  Widget _buildUpcomingItem(Map<String, dynamic> partido) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -833,16 +1141,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
           nuevosSiguientes.add(partidoActualAnterior);
 
-          proximoPartido['rival'] = partido['rival']!;
-          proximoPartido['fecha'] = partido['fecha']!;
-          proximoPartido['hora'] = partido['hora']!;
-          proximoPartido['condicion'] = partido['condicion']!;
-          proximoPartido['estado'] = 'Pendiente';
+          proximoPartido = _crearPartidoBaseDesdeSiguiente(partido);
 
-          siguientesPartidos
-            ..clear()
-            ..addAll(nuevosSiguientes);
+          siguientesPartidos = nuevosSiguientes
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
         });
+
+        _persistFixtureState();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -871,7 +1177,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                partido['rival']!,
+                (partido['rival'] ?? '').toString(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -885,7 +1191,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             ),
             const SizedBox(width: 10),
             Text(
-              partido['condicion']!,
+              (partido['condicion'] ?? '').toString(),
               style: const TextStyle(color: Color(0xFF4DA3FF), fontSize: 12),
             ),
           ],
@@ -1083,7 +1389,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 }
-
 /// ===============================
 /// FIXTURE
 /// ===============================
@@ -3520,144 +3825,145 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showNormalPenaltyResultSheet() {
-    final String? currentModo = modo;
-    final String? currentZonaArco = zonaArco;
+  final String? currentModo = modo;
+  final String? currentZonaArco = zonaArco;
 
-    if (currentZonaArco == null || currentModo == null) return;
+  if (currentZonaArco == null || currentModo == null) return;
 
-    final String actor = currentModo == 'defensa'
-        ? _currentGoalkeeperActorName
-        : _resolvePrimaryActorForShot(
-            eventMode: currentModo,
-            allowGoalkeeperInAttack: true,
-          );
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $currentZonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _floatingOption('Gol', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-
-                  mostrarContra = false;
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Atajado', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'defensa') {
-                    atajadas++;
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  } else {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: true,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Fuera', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'ataque') {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  } else {
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
+  final String actor = currentModo == 'defensa'
+      ? _currentGoalkeeperActorName
+      : _resolvePrimaryActorForShot(
+          eventMode: currentModo,
+          allowGoalkeeperInAttack: true,
         );
-      },
-    );
-  }
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $currentZonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              setState(() {
+                penales++;
+
+                if (modoAntesDelEvento == 'ataque') {
+                  golesSanFernando++;
+                  modo = 'defensa';
+                } else {
+                  golesRival++;
+                  golesRecibidos++;
+                  modo = 'ataque';
+                }
+
+                mostrarContra = false;
+                contraDebeCambiarModo = true;
+              });
+
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              setState(() {
+                penales++;
+
+                if (modoAntesDelEvento == 'defensa') {
+                  atajadas++;
+                }
+
+                // 🔥 NUEVA LÓGICA:
+                // no cambia modo automáticamente
+                // solo habilita contra
+                mostrarContra = true;
+                contraDebeCambiarModo = true;
+              });
+
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: true,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _clearSelection(keepContra: true);
+              Navigator.pop(context);
+            }),
+
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentModo;
+
+              setState(() {
+                penales++;
+
+                if (modoAntesDelEvento == 'ataque') {
+                  modo = 'defensa';
+                  mostrarContra = false;
+                } else {
+                  modo = 'ataque';
+                  mostrarContra = true;
+                  contraDebeCambiarModo = false;
+                }
+              });
+
+              _registrarEvento(
+                tipo: 'penal',
+                resultado: 'fuera',
+                actorPrincipal: actor,
+                zonaArcoValor: currentZonaArco,
+                subtipo: 'penal_7m',
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   void _showPenaltyShootoutResultSheet() {
     final String? currentModo = modo;
@@ -4024,134 +4330,135 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showZoneActionSheet() {
-    if (zonaArco == null || modo == null) return;
+  if (zonaArco == null || modo == null) return;
 
-    final String currentMode = modo!;
-    final String actor = _resolvePrimaryActorForShot(
-      eventMode: currentMode,
-      allowGoalkeeperInAttack: true,
-    );
+  final String currentMode = modo!;
+  final String actor = _resolvePrimaryActorForShot(
+    eventMode: currentMode,
+    allowGoalkeeperInAttack: true,
+  );
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Resultado → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Resultado → $zonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
 
-              _floatingOption('Gol', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentMode;
 
-                setState(() {
-                  if (modoAntesDelEvento == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
+              setState(() {
+                if (modoAntesDelEvento == 'ataque') {
+                  golesSanFernando++;
+                  modo = 'defensa';
+                } else {
+                  golesRival++;
+                  golesRecibidos++;
+                  modo = 'ataque';
+                }
+                mostrarContra = false;
+                contraDebeCambiarModo = true;
+              });
+
+              _registrarEvento(
+                tipo: 'tiro',
+                resultado: 'gol',
+                actorPrincipal: actor,
+                zonaTiroValor: zonaTiro,
+                zonaArcoValor: zonaArco,
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _clearSelection();
+              Navigator.pop(context);
+            }),
+
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentMode;
+
+              setState(() {
+                if (modoAntesDelEvento == 'defensa') {
+                  atajadas++;
+                }
+
+                // 🔥 NUEVA LÓGICA:
+                // no cambia modo automáticamente
+                // solo habilita contra
+                mostrarContra = true;
+                contraDebeCambiarModo = true;
+              });
+
+              _registrarEvento(
+                tipo: 'tiro',
+                resultado: 'atajado',
+                actorPrincipal: actor,
+                zonaTiroValor: zonaTiro,
+                zonaArcoValor: zonaArco,
+                mantieneContexto: true,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
+
+              _clearSelection(keepContra: true);
+              Navigator.pop(context);
+            }),
+
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentMode;
+
+              setState(() {
+                if (modoAntesDelEvento == 'ataque') {
+                  modo = 'defensa';
                   mostrarContra = false;
-                });
+                } else {
+                  modo = 'ataque';
+                  mostrarContra = true;
+                  contraDebeCambiarModo = false;
+                }
+              });
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
+              _registrarEvento(
+                tipo: 'tiro',
+                resultado: 'fuera',
+                actorPrincipal: actor,
+                zonaTiroValor: zonaTiro,
+                zonaArcoValor: zonaArco,
+                mantieneContexto: false,
+                prevState: prevState,
+                modoEvento: modoAntesDelEvento,
+              );
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Atajado', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-
-                setState(() {
-                  if (modoAntesDelEvento == 'defensa') {
-                    atajadas++;
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  } else {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: true,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Fuera', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-
-                setState(() {
-                  if (modoAntesDelEvento == 'ataque') {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  } else {
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+              _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+              Navigator.pop(context);
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Widget _floatingOption(String text, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
