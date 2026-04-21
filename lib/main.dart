@@ -4,6 +4,8 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
+
 /// ===============================
 /// PUNTO DE ENTRADA
 /// ===============================
@@ -645,10 +647,11 @@ class _PressableTileState extends State<_PressableTile> {
 /// ===============================
 
 class ProximoPartidoScreen extends StatefulWidget {
-  const ProximoPartidoScreen({super.key});
+  
+const ProximoPartidoScreen({super.key});
 
   @override
-  State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
+State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
 }
 
 class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
@@ -1128,36 +1131,115 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
-  void _confirmarResetPartidosDePrueba() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF0F1722),
-        title: const Text(
-          'Resetear fixture de prueba',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Esto va a reconstruir el fixture base, mantener los partidos ya finalizados y recalcular el próximo pendiente. ¿Querés seguir?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _resetPartidosDePrueba();
-            },
-            child: const Text('Resetear', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  Future<void> _cargarArgentinosManual() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  const matchIdentity =
+      'apertura|cadetes|18/04|argentinos juniors|local';
+
+  final partidoBase = {
+    'rival': 'Argentinos Juniors',
+    'fechaNumero': 4,
+    'fecha': '18/04',
+    'hora': '13:00',
+    'condicion': 'Local',
+    'torneo': 'Apertura',
+    'categoria': 'Cadetes',
+    'estado': 'Finalizado',
+    'estadoPartido': 'finalizado',
+    'golesSanFernando': 30,
+    'golesRival': 26,
+    'golesRecibidos': 26,
+    'atajadas': 14,
+    'penales': 6,
+    'exclusiones2Min': 5,
+    'amarillas': 0,
+    'rojas': 0,
+    'perdidas': 11,
+    'recuperaciones': 18,
+    'penalesConvertidosSanFernando': 0,
+    'penalesConvertidosRival': 0,
+    'eventos': <Map<String, dynamic>>[],
+    'modoActual': null,
+    'modoInicioPrimerTiempo': null,
+    'modoInicioPrimerTiempoAlargue': null,
+    'currentGoalkeeperNumber': null,
+    'escudoRival': 'assets/images/argentinos.png',
+  };
+
+  final entry = {
+    'version': 1,
+    'matchIdentity': matchIdentity,
+    'partido': partidoBase,
+    'estadoPartido': 'finalizado',
+    'golesSanFernando': 30,
+    'golesRival': 26,
+    'golesRecibidos': 26,
+    'atajadas': 14,
+    'penales': 6,
+    'exclusiones2Min': 5,
+    'amarillas': 0,
+    'rojas': 0,
+    'perdidas': 11,
+    'recuperaciones': 18,
+    'penalesConvertidosSanFernando': 0,
+    'penalesConvertidosRival': 0,
+    'penalesIntentadosSanFernando': 0,
+    'penalesIntentadosRival': 0,
+    'modo': null,
+    'zonaTiro': null,
+    'zonaArco': null,
+    'penalEnCurso': false,
+    'actorPenalActual': null,
+    'mostrarContra': false,
+    'contraDebeCambiarModo': true,
+    'origenJugadaActual': 'normal',
+    'modoInicioPrimerTiempo': null,
+    'modoInicioPrimerTiempoAlargue': null,
+    'currentGoalkeeperNumber': null,
+    'eventos': <Map<String, dynamic>>[],
+    'archivedAt': DateTime.now().toIso8601String(),
+    'finalizado': true,
+  };
+
+  final raw = prefs.getString(_finishedMatchesStorageKey);
+
+  List<dynamic> history = [];
+  if (raw != null && raw.isNotEmpty) {
+    history = jsonDecode(raw) as List<dynamic>;
   }
 
+  history.removeWhere((item) {
+    if (item is! Map) return false;
+    return (item['matchIdentity'] ?? '') == matchIdentity;
+  });
+
+  history.add(entry);
+
+  await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
+}
+
+  void _confirmarResetPartidosDePrueba() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.clear();
+
+  await _cargarArgentinosManual();
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Datos reiniciados + Argentinos cargado'),
+    ),
+  );
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const HomeScreen()),
+    (route) => false,
+  );
+}
+  
   String _partidoIdentity(Map<String, dynamic> partido) {
     return [
       (partido['torneo'] ?? '').toString(),

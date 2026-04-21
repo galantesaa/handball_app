@@ -1,3 +1,12 @@
+class PartidoEnJuegoScreen extends StatefulWidget {
+  final Map<String, dynamic> partido;
+
+  const PartidoEnJuegoScreen({super.key, required this.partido});
+
+  @override
+  State<PartidoEnJuegoScreen> createState() => _PartidoEnJuegoScreenState();
+}
+
 class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   String estadoPartido = 'no_iniciado';
 

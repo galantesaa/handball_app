@@ -1,3 +1,48 @@
+class PartidoEnVivoScreen extends StatefulWidget {
+  final Map<String, dynamic> partido;
+
+  final String estadoInicial;
+  final int golesSanFernandoInicial;
+  final int golesRivalInicial;
+  final int atajadasInicial;
+  final int penalesInicial;
+  final int exclusiones2MinInicial;
+  final int amarillasInicial;
+  final int rojasInicial;
+  final int perdidasInicial;
+  final int recuperacionesInicial;
+  final int penalesConvertidosSanFernandoInicial;
+  final int penalesConvertidosRivalInicial;
+  final List<Map<String, dynamic>> eventosIniciales;
+  final String? modoInicial;
+  final String? modoInicioPrimerTiempo;
+  final String? modoInicioPrimerTiempoAlargue;
+
+  const PartidoEnVivoScreen({
+    super.key,
+    required this.partido,
+    required this.estadoInicial,
+    required this.golesSanFernandoInicial,
+    required this.golesRivalInicial,
+    required this.atajadasInicial,
+    required this.penalesInicial,
+    required this.exclusiones2MinInicial,
+    required this.amarillasInicial,
+    required this.rojasInicial,
+    required this.perdidasInicial,
+    required this.recuperacionesInicial,
+    required this.penalesConvertidosSanFernandoInicial,
+    required this.penalesConvertidosRivalInicial,
+    required this.eventosIniciales,
+    required this.modoInicial,
+    required this.modoInicioPrimerTiempo,
+    required this.modoInicioPrimerTiempoAlargue,
+  });
+
+  @override
+  State<PartidoEnVivoScreen> createState() => _PartidoEnVivoScreenState();
+}
+
 class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   late String estadoPartido;
   late List<GameEvent> gameEvents;

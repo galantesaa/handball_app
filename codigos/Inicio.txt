@@ -1,0 +1,49 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:math';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:handball_app/services/storage_service.dart';
+
+
+/// ===============================
+/// PUNTO DE ENTRADA
+/// ===============================
+///
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
+  );
+
+  runApp(const GoalKeeperApp());
+}
+
+/// ===============================
+/// APP RAÍZ
+/// ===============================
+
+class GoalKeeperApp extends StatelessWidget {
+  const GoalKeeperApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Handball SGS',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0A0E14),
+        fontFamily: 'Roboto',
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}

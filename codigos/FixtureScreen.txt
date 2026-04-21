@@ -3,8 +3,8 @@ class FixtureScreen extends StatelessWidget {
   final String torneo;
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
-    'finished_matches_history_v1';
-  
+      'finished_matches_history_v1';
+
   const FixtureScreen({
     super.key,
     required this.categoria,
@@ -180,92 +180,91 @@ class FixtureScreen extends StatelessWidget {
   }
 
   String _normalizeValue(dynamic value) {
-  return (value ?? '')
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replaceAll('á', 'a')
-      .replaceAll('é', 'e')
-      .replaceAll('í', 'i')
-      .replaceAll('ó', 'o')
-      .replaceAll('ú', 'u');
-}
-
-  String _matchIdentityForPartido(Map<String, dynamic> partido) {
-  return [
-    _normalizeValue(partido['torneo']),
-    _normalizeValue(partido['categoria']),
-    _normalizeValue(partido['fecha']),
-    _normalizeValue(partido['rival']),
-    _normalizeValue(partido['condicion']),
-  ].join('|');
-}
-
-  Map<String, dynamic> _mergePersistedStateIntoPartido(
-  Map<String, dynamic> base,
-  Map<String, dynamic> data,
-) {
-  return {
-    ...base,
-    'estado': (data['estadoPartido'] ?? '') == 'finalizado'
-        ? 'Finalizado'
-        : (base['estado'] ?? 'Pendiente'),
-    'estadoPartido': data['estadoPartido'] ?? base['estadoPartido'],
-    'golesSanFernando': data['golesSanFernando'] ?? base['golesSanFernando'],
-    'golesRival': data['golesRival'] ?? base['golesRival'],
-    'golesRecibidos': data['golesRecibidos'] ?? base['golesRecibidos'],
-    'atajadas': data['atajadas'] ?? base['atajadas'],
-    'penales': data['penales'] ?? base['penales'],
-    'exclusiones2Min': data['exclusiones2Min'] ?? base['exclusiones2Min'],
-    'amarillas': data['amarillas'] ?? base['amarillas'],
-    'rojas': data['rojas'] ?? base['rojas'],
-    'perdidas': data['perdidas'] ?? base['perdidas'],
-    'recuperaciones': data['recuperaciones'] ?? base['recuperaciones'],
-    'penalesConvertidosSanFernando':
-        data['penalesConvertidosSanFernando'] ??
-        base['penalesConvertidosSanFernando'],
-    'penalesConvertidosRival':
-        data['penalesConvertidosRival'] ??
-        base['penalesConvertidosRival'],
-    'modoActual': data['modo'] ?? base['modoActual'],
-    'modoInicioPrimerTiempo':
-        data['modoInicioPrimerTiempo'] ?? base['modoInicioPrimerTiempo'],
-    'modoInicioPrimerTiempoAlargue':
-        data['modoInicioPrimerTiempoAlargue'] ??
-        base['modoInicioPrimerTiempoAlargue'],
-    'currentGoalkeeperNumber':
-        data['currentGoalkeeperNumber'] ?? base['currentGoalkeeperNumber'],
-    'eventos': data['eventos'] ?? base['eventos'],
-  };
-}
-
-  Future<Map<String, dynamic>> _resolverPartidoConEstadoReal(
-  Map<String, dynamic> partidoBase,
-) async {
-  final prefs = await SharedPreferences.getInstance();
-  final identity = _matchIdentityForPartido(partidoBase);
-
-  final rawLive = prefs.getString(_liveMatchStorageKey);
-  if (rawLive != null && rawLive.isNotEmpty) {
-    final data = Map<String, dynamic>.from(jsonDecode(rawLive) as Map);
-    if ((data['matchIdentity'] ?? '') == identity) {
-      return _mergePersistedStateIntoPartido(partidoBase, data);
-    }
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u');
   }
 
-  final rawFinished = prefs.getString(_finishedMatchesStorageKey);
-  if (rawFinished != null && rawFinished.isNotEmpty) {
-    final decoded = jsonDecode(rawFinished) as List<dynamic>;
-    for (final item in decoded) {
-      final data = Map<String, dynamic>.from(item as Map);
+  String _matchIdentityForPartido(Map<String, dynamic> partido) {
+    return [
+      _normalizeValue(partido['torneo']),
+      _normalizeValue(partido['categoria']),
+      _normalizeValue(partido['fecha']),
+      _normalizeValue(partido['rival']),
+      _normalizeValue(partido['condicion']),
+    ].join('|');
+  }
+
+  Map<String, dynamic> _mergePersistedStateIntoPartido(
+    Map<String, dynamic> base,
+    Map<String, dynamic> data,
+  ) {
+    return {
+      ...base,
+      'estado': (data['estadoPartido'] ?? '') == 'finalizado'
+          ? 'Finalizado'
+          : (base['estado'] ?? 'Pendiente'),
+      'estadoPartido': data['estadoPartido'] ?? base['estadoPartido'],
+      'golesSanFernando': data['golesSanFernando'] ?? base['golesSanFernando'],
+      'golesRival': data['golesRival'] ?? base['golesRival'],
+      'golesRecibidos': data['golesRecibidos'] ?? base['golesRecibidos'],
+      'atajadas': data['atajadas'] ?? base['atajadas'],
+      'penales': data['penales'] ?? base['penales'],
+      'exclusiones2Min': data['exclusiones2Min'] ?? base['exclusiones2Min'],
+      'amarillas': data['amarillas'] ?? base['amarillas'],
+      'rojas': data['rojas'] ?? base['rojas'],
+      'perdidas': data['perdidas'] ?? base['perdidas'],
+      'recuperaciones': data['recuperaciones'] ?? base['recuperaciones'],
+      'penalesConvertidosSanFernando':
+          data['penalesConvertidosSanFernando'] ??
+          base['penalesConvertidosSanFernando'],
+      'penalesConvertidosRival':
+          data['penalesConvertidosRival'] ?? base['penalesConvertidosRival'],
+      'modoActual': data['modo'] ?? base['modoActual'],
+      'modoInicioPrimerTiempo':
+          data['modoInicioPrimerTiempo'] ?? base['modoInicioPrimerTiempo'],
+      'modoInicioPrimerTiempoAlargue':
+          data['modoInicioPrimerTiempoAlargue'] ??
+          base['modoInicioPrimerTiempoAlargue'],
+      'currentGoalkeeperNumber':
+          data['currentGoalkeeperNumber'] ?? base['currentGoalkeeperNumber'],
+      'eventos': data['eventos'] ?? base['eventos'],
+    };
+  }
+
+  Future<Map<String, dynamic>> _resolverPartidoConEstadoReal(
+    Map<String, dynamic> partidoBase,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final identity = _matchIdentityForPartido(partidoBase);
+
+    final rawLive = prefs.getString(_liveMatchStorageKey);
+    if (rawLive != null && rawLive.isNotEmpty) {
+      final data = Map<String, dynamic>.from(jsonDecode(rawLive) as Map);
       if ((data['matchIdentity'] ?? '') == identity) {
         return _mergePersistedStateIntoPartido(partidoBase, data);
       }
     }
-  }
 
-  return partidoBase;
-}
+    final rawFinished = prefs.getString(_finishedMatchesStorageKey);
+    if (rawFinished != null && rawFinished.isNotEmpty) {
+      final decoded = jsonDecode(rawFinished) as List<dynamic>;
+      for (final item in decoded) {
+        final data = Map<String, dynamic>.from(item as Map);
+        if ((data['matchIdentity'] ?? '') == identity) {
+          return _mergePersistedStateIntoPartido(partidoBase, data);
+        }
+      }
+    }
+
+    return partidoBase;
+  }
 
   String? _rivalShieldAssetByName(String rival) {
     switch (rival.toLowerCase()) {
@@ -356,23 +355,23 @@ class FixtureScreen extends StatelessWidget {
   }
 
   Future<void> _abrirPartido(
-  BuildContext context,
-  Map<String, dynamic> partido,
-) async {
-  final partidoReal = await _resolverPartidoConEstadoReal(
-    Map<String, dynamic>.from(partido),
-  );
+    BuildContext context,
+    Map<String, dynamic> partido,
+  ) async {
+    final partidoReal = await _resolverPartidoConEstadoReal(
+      Map<String, dynamic>.from(partido),
+    );
 
-  if (!context.mounted) return;
+    if (!context.mounted) return;
 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => PartidoEnJuegoScreen(partido: partidoReal),
-    ),
-  );
-}
-  
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PartidoEnJuegoScreen(partido: partidoReal),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final partidos = _obtenerFixturePorCategoriaYTorneo();
