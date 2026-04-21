@@ -49,6 +49,888 @@ class GoalKeeperApp extends StatelessWidget {
 }
 
 /// ===============================
+/// ===============================
+/// PLANTEL
+/// ===============================
+/// ===============================
+
+class PlayerProfile {
+  final String playerId;
+  final String clubId;
+  final String nombre;
+  final String apellido;
+  final String? posicion;
+  final String? numeroPreferido;
+  final bool esArquero;
+  final bool esCuerpoTecnico;
+
+  const PlayerProfile({
+    required this.playerId,
+    required this.clubId,
+    required this.nombre,
+    required this.apellido,
+    this.posicion,
+    this.numeroPreferido,
+    required this.esArquero,
+    this.esCuerpoTecnico = false,
+  });
+
+  String get nombreCompleto => '$nombre $apellido'.trim();
+
+  String get displayName {
+    final numero = (numeroPreferido ?? '').trim();
+    if (numero.isEmpty || numero == 'DT') {
+      return '$apellido, $nombre'.trim();
+    }
+    return '$numero · $apellido, $nombre'.trim();
+  }
+}
+
+class RosterAssignment {
+  final String playerId;
+  final String categoria;
+  final String temporada;
+  final String? numeroEnCategoria;
+  final bool activo;
+
+  const RosterAssignment({
+    required this.playerId,
+    required this.categoria,
+    required this.temporada,
+    this.numeroEnCategoria,
+    this.activo = true,
+  });
+}
+
+class ClubContext {
+  final String clubId;
+  final String clubNombre;
+  final String escudoAsset;
+
+  const ClubContext({
+    required this.clubId,
+    required this.clubNombre,
+    required this.escudoAsset,
+  });
+}
+
+class RosterRepository {
+  static const ClubContext currentClub = ClubContext(
+    clubId: 'san_fernando',
+    clubNombre: 'San Fernando Handball',
+    escudoAsset: 'assets/images/san_fernando.png',
+  );
+
+  static const List<PlayerProfile> players = [
+    PlayerProfile(
+      playerId: 'sf_bautista_galante_saavedra',
+      clubId: 'san_fernando',
+      nombre: 'Bautista',
+      apellido: 'Galante Saavedra',
+      posicion: 'Arquero',
+      numeroPreferido: '33',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_juan_frascarelli',
+      clubId: 'san_fernando',
+      nombre: 'Juan',
+      apellido: 'Frascarelli',
+      posicion: 'Pivot',
+      numeroPreferido: '77',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_julian_della_vecchia',
+      clubId: 'san_fernando',
+      nombre: 'Julian',
+      apellido: 'Della Vecchia',
+      posicion: 'Central',
+      numeroPreferido: '54',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_joaquin_leon_rodriguez',
+      clubId: 'san_fernando',
+      nombre: 'Joaquin',
+      apellido: 'Leon Rodriguez',
+      posicion: 'Extremo izquierdo',
+      numeroPreferido: '26',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_juan_pundang',
+      clubId: 'san_fernando',
+      nombre: 'Juan',
+      apellido: 'Pundang',
+      posicion: 'Extremo derecho',
+      numeroPreferido: '78',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_francisco_parente',
+      clubId: 'san_fernando',
+      nombre: 'Francisco',
+      apellido: 'Parente',
+      posicion: 'Lateral derecho',
+      numeroPreferido: '2',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lucas_fontana_bondar',
+      clubId: 'san_fernando',
+      nombre: 'Lucas',
+      apellido: 'Fontana Bondar',
+      posicion: 'Extremo izquierdo',
+      numeroPreferido: '7',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_bautista_villarino',
+      clubId: 'san_fernando',
+      nombre: 'Bautista',
+      apellido: 'Villarino',
+      posicion: 'Extremo derecho',
+      numeroPreferido: '32',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_ulises_lopez_aranda',
+      clubId: 'san_fernando',
+      nombre: 'Ulises',
+      apellido: 'Lopez Aranda',
+      posicion: 'Extremo izquierdo',
+      numeroPreferido: '17',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_felipe_palacios',
+      clubId: 'san_fernando',
+      nombre: 'Felipe',
+      apellido: 'Palacios',
+      posicion: 'Lateral derecho',
+      numeroPreferido: '61',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_agustin_del_groso',
+      clubId: 'san_fernando',
+      nombre: 'Agustin',
+      apellido: 'Del Groso',
+      posicion: 'Pivot',
+      numeroPreferido: '37',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_facundo_avero',
+      clubId: 'san_fernando',
+      nombre: 'Facundo',
+      apellido: 'Avero',
+      posicion: 'Pivot',
+      numeroPreferido: '55',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lorenzo_guinazu',
+      clubId: 'san_fernando',
+      nombre: 'Lorenzo',
+      apellido: 'Guiñazu',
+      posicion: 'Lateral izquierdo',
+      numeroPreferido: '4',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lautaro_zapata',
+      clubId: 'san_fernando',
+      nombre: 'Lautaro',
+      apellido: 'Zapata',
+      posicion: 'Arquero',
+      numeroPreferido: '1',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_gabriel_farias',
+      clubId: 'san_fernando',
+      nombre: 'Gabriel',
+      apellido: 'Farias',
+      posicion: 'DT',
+      numeroPreferido: 'DT',
+      esArquero: false,
+      esCuerpoTecnico: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lorenzo_baron_siccardi',
+      clubId: 'san_fernando',
+      nombre: 'Lorenzo',
+      apellido: 'Baron Siccardi',
+      numeroPreferido: '5',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_luciano_farfallini',
+      clubId: 'san_fernando',
+      nombre: 'Luciano',
+      apellido: 'Farfallini',
+      numeroPreferido: '7',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_valentin_villar_senra',
+      clubId: 'san_fernando',
+      nombre: 'Valentin',
+      apellido: 'Villar Senra',
+      numeroPreferido: '8',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_juan_manuel_medan',
+      clubId: 'san_fernando',
+      nombre: 'Juan Manuel',
+      apellido: 'Medan',
+      numeroPreferido: '9',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_francisco_javier_sanches',
+      clubId: 'san_fernando',
+      nombre: 'Francisco Javier',
+      apellido: 'Sanches',
+      posicion: 'Arquero',
+      numeroPreferido: '12',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_mario_bautista_salgado',
+      clubId: 'san_fernando',
+      nombre: 'Mario Bautista',
+      apellido: 'Salgado',
+      numeroPreferido: '16',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_bautista_dominguez_bianco',
+      clubId: 'san_fernando',
+      nombre: 'Bautista',
+      apellido: 'Dominguez Bianco',
+      numeroPreferido: '17',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_agustin_emanuel_drewanz',
+      clubId: 'san_fernando',
+      nombre: 'Agustin Emanuel',
+      apellido: 'Drewanz',
+      numeroPreferido: '20',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_tiziano_folino_carames',
+      clubId: 'san_fernando',
+      nombre: 'Tiziano',
+      apellido: 'Folino Carames',
+      numeroPreferido: '22',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_felipe_verdejo',
+      clubId: 'san_fernando',
+      nombre: 'Felipe',
+      apellido: 'Verdejo',
+      posicion: 'Arquero',
+      numeroPreferido: '23',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lucas_riesgo_santos',
+      clubId: 'san_fernando',
+      nombre: 'Lucas',
+      apellido: 'Riesgo Santos',
+      numeroPreferido: '26',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_alvaro_joaquin_alcaraz',
+      clubId: 'san_fernando',
+      nombre: 'Alvaro Joaquin',
+      apellido: 'Alcaraz',
+      numeroPreferido: '28',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_jairo_uriel_perez',
+      clubId: 'san_fernando',
+      nombre: 'Jairo Uriel',
+      apellido: 'Perez',
+      numeroPreferido: '39',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_benicio_dominguez_rividdi',
+      clubId: 'san_fernando',
+      nombre: 'Benicio',
+      apellido: 'Dominguez Rividdi',
+      numeroPreferido: '74',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_alejo_ricalde',
+      clubId: 'san_fernando',
+      nombre: 'Alejo',
+      apellido: 'Ricalde',
+      numeroPreferido: '76',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_federico_fernandez',
+      clubId: 'san_fernando',
+      nombre: 'Federico',
+      apellido: 'Fernandez',
+      posicion: 'DT',
+      numeroPreferido: 'DT',
+      esArquero: false,
+      esCuerpoTecnico: true,
+    ),
+  ];
+
+  static const List<RosterAssignment> assignments = [
+    RosterAssignment(
+      playerId: 'sf_bautista_galante_saavedra',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '33',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_frascarelli',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '77',
+    ),
+    RosterAssignment(
+      playerId: 'sf_julian_della_vecchia',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '54',
+    ),
+    RosterAssignment(
+      playerId: 'sf_joaquin_leon_rodriguez',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '26',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_pundang',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '78',
+    ),
+    RosterAssignment(
+      playerId: 'sf_francisco_parente',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '2',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lucas_fontana_bondar',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '7',
+    ),
+    RosterAssignment(
+      playerId: 'sf_bautista_villarino',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '32',
+    ),
+    RosterAssignment(
+      playerId: 'sf_ulises_lopez_aranda',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '17',
+    ),
+    RosterAssignment(
+      playerId: 'sf_felipe_palacios',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '61',
+    ),
+    RosterAssignment(
+      playerId: 'sf_agustin_del_groso',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '37',
+    ),
+    RosterAssignment(
+      playerId: 'sf_facundo_avero',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '55',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lorenzo_guinazu',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '4',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lautaro_zapata',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '1',
+    ),
+    RosterAssignment(
+      playerId: 'sf_gabriel_farias',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: 'DT',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lorenzo_baron_siccardi',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '5',
+    ),
+    RosterAssignment(
+      playerId: 'sf_luciano_farfallini',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '7',
+    ),
+    RosterAssignment(
+      playerId: 'sf_valentin_villar_senra',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '8',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_manuel_medan',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '9',
+    ),
+    RosterAssignment(
+      playerId: 'sf_francisco_javier_sanches',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '12',
+    ),
+    RosterAssignment(
+      playerId: 'sf_mario_bautista_salgado',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '16',
+    ),
+    RosterAssignment(
+      playerId: 'sf_bautista_dominguez_bianco',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '17',
+    ),
+    RosterAssignment(
+      playerId: 'sf_agustin_emanuel_drewanz',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '20',
+    ),
+    RosterAssignment(
+      playerId: 'sf_tiziano_folino_carames',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '22',
+    ),
+    RosterAssignment(
+      playerId: 'sf_felipe_verdejo',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '23',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lucas_riesgo_santos',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '26',
+    ),
+    RosterAssignment(
+      playerId: 'sf_alvaro_joaquin_alcaraz',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '28',
+    ),
+    RosterAssignment(
+      playerId: 'sf_jairo_uriel_perez',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '39',
+    ),
+    RosterAssignment(
+      playerId: 'sf_benicio_dominguez_rividdi',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '74',
+    ),
+    RosterAssignment(
+      playerId: 'sf_alejo_ricalde',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '76',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_pundang',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '78',
+    ),
+    RosterAssignment(
+      playerId: 'sf_federico_fernandez',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: 'DT',
+    ),
+  ];
+
+  static List<PlayerProfile> rosterForCategory({
+    required String categoria,
+    required String temporada,
+    bool includeStaff = false,
+  }) {
+    final ids = assignments
+        .where((a) =>
+            a.categoria == categoria &&
+            a.temporada == temporada &&
+            a.activo)
+        .map((a) => a.playerId)
+        .toSet();
+
+    final result = players.where((p) {
+      if (!ids.contains(p.playerId)) return false;
+      if (!includeStaff && p.esCuerpoTecnico) return false;
+      return true;
+    }).toList();
+
+    result.sort((a, b) {
+      final aNum = int.tryParse(a.numeroPreferido ?? '');
+      final bNum = int.tryParse(b.numeroPreferido ?? '');
+      if (aNum == null && bNum == null) return a.apellido.compareTo(b.apellido);
+      if (aNum == null) return 1;
+      if (bNum == null) return -1;
+      return aNum.compareTo(bNum);
+    });
+
+    return result;
+  }
+
+  static List<PlayerProfile> goalkeepersForCategory({
+    required String categoria,
+    required String temporada,
+  }) {
+    return rosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+    ).where((p) => p.esArquero).toList();
+  }
+
+  static PlayerProfile? findByPreferredNumber(String? number) {
+    if (number == null) return null;
+    for (final p in players) {
+      if (p.numeroPreferido == number) return p;
+    }
+    return null;
+  }
+}
+
+class MatchSquadConfig {
+  final Set<String> convocadosIds;
+  final Set<String> arquerosIds;
+
+  const MatchSquadConfig({
+    required this.convocadosIds,
+    required this.arquerosIds,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'convocadosIds': convocadosIds.toList(),
+      'arquerosIds': arquerosIds.toList(),
+    };
+  }
+
+  factory MatchSquadConfig.fromMap(Map<String, dynamic>? map) {
+    if (map == null) {
+      return const MatchSquadConfig(
+        convocadosIds: <String>{},
+        arquerosIds: <String>{},
+      );
+    }
+
+    final convocadosRaw = (map['convocadosIds'] as List?) ?? const [];
+    final arquerosRaw = (map['arquerosIds'] as List?) ?? const [];
+
+    return MatchSquadConfig(
+      convocadosIds: convocadosRaw.map((e) => e.toString()).toSet(),
+      arquerosIds: arquerosRaw.map((e) => e.toString()).toSet(),
+    );
+  }
+}
+
+class MatchSquadScreen extends StatefulWidget {
+  final Map<String, dynamic> partido;
+
+  const MatchSquadScreen({
+    super.key,
+    required this.partido,
+  });
+
+  @override
+  State<MatchSquadScreen> createState() => _MatchSquadScreenState();
+}
+
+class _MatchSquadScreenState extends State<MatchSquadScreen> {
+  late Set<String> convocadosIds;
+  late Set<String> arquerosIds;
+
+  String get categoria => (widget.partido['categoria'] ?? 'Cadetes').toString();
+  String get temporada => '2026';
+
+  @override
+  void initState() {
+    super.initState();
+
+    final saved = MatchSquadConfig.fromMap(
+      widget.partido['matchSquad'] as Map<String, dynamic>?,
+    );
+
+    convocadosIds = {...saved.convocadosIds};
+    arquerosIds = {...saved.arquerosIds};
+
+    if (convocadosIds.isEmpty) {
+      final base = RosterRepository.rosterForCategory(
+        categoria: categoria,
+        temporada: temporada,
+      );
+
+      convocadosIds = base
+          .where((p) => !p.esCuerpoTecnico)
+          .map((p) => p.playerId)
+          .toSet();
+
+      arquerosIds = base
+          .where((p) => p.esArquero)
+          .map((p) => p.playerId)
+          .toSet();
+    }
+  }
+
+  List<PlayerProfile> get _titularesCategoria {
+    return RosterRepository.rosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+    ).where((p) => !p.esCuerpoTecnico).toList();
+  }
+
+  List<PlayerProfile> get _cadetesExtras {
+    if (categoria != 'Juveniles') return [];
+
+    final juvenilesIds = _titularesCategoria.map((e) => e.playerId).toSet();
+
+    return RosterRepository.rosterForCategory(
+      categoria: 'Cadetes',
+      temporada: temporada,
+    ).where((p) => !juvenilesIds.contains(p.playerId) && !p.esCuerpoTecnico).toList();
+  }
+
+  void _toggleConvocado(PlayerProfile player, bool? selected) {
+    setState(() {
+      final value = selected ?? false;
+
+      if (value) {
+        convocadosIds.add(player.playerId);
+      } else {
+        convocadosIds.remove(player.playerId);
+        arquerosIds.remove(player.playerId);
+      }
+    });
+  }
+
+  void _toggleArquero(PlayerProfile player, bool? selected) {
+    setState(() {
+      final value = selected ?? false;
+
+      if (value) {
+        convocadosIds.add(player.playerId);
+        arquerosIds.add(player.playerId);
+      } else {
+        arquerosIds.remove(player.playerId);
+      }
+    });
+  }
+
+  void _guardar() {
+    widget.partido['matchSquad'] = MatchSquadConfig(
+      convocadosIds: convocadosIds,
+      arquerosIds: arquerosIds,
+    ).toMap();
+
+    Navigator.pop(context, widget.partido['matchSquad']);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Plantel del partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              children: [
+                Text(
+                  '${widget.partido['categoria']} · ${widget.partido['torneo']}',
+                  style: const TextStyle(
+                    color: Color(0xFFD4DCE7),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildSectionCard(
+                  title: 'Convocados ${categoria}',
+                  players: _titularesCategoria,
+                ),
+                if (_cadetesExtras.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Cadetes habilitados para subir',
+                    players: _cadetesExtras,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _guardar,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F8CFF),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: const Text(
+                      'Guardar convocatoria',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required List<PlayerProfile> players,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...players.map((p) {
+            final convocado = convocadosIds.contains(p.playerId);
+            final arquero = arquerosIds.contains(p.playerId);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF182338).withOpacity(0.75),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          p.displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Checkbox(
+                        value: convocado,
+                        onChanged: (v) => _toggleConvocado(p, v),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          p.esArquero ? 'Arquero disponible' : 'Jugador de campo',
+                          style: const TextStyle(
+                            color: Color(0xFFAAB4C3),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: arquero,
+                        onChanged: p.esArquero
+                            ? (v) => _toggleArquero(p, v)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+/// ===============================
 /// HOME PRINCIPAL
 /// ===============================
 ///
@@ -3448,10 +4330,25 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     }
   }
 
-  void _abrirPlantel() {
-    debugPrint('Abrir plantel');
-  }
+  Future<void> _abrirPlantel() async {
+  final resultado = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => MatchSquadScreen(partido: widget.partido),
+    ),
+  );
 
+  if (resultado != null && mounted) {
+    setState(() {
+      widget.partido['matchSquad'] = resultado;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Plantel del partido actualizado')),
+    );
+  }
+}
+  
   void _abrirResumen() {
     if (!_partidoFinalizado) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -4030,10 +4927,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   String? modoInicioPrimerTiempo;
   String? modoInicioPrimerTiempoAlargue;
 
-  String _currentFieldPlayerActorName() {
-    return 'Jugador genérico';
-  }
+  PlayerProfile? _currentFieldPlayer;
 
+  String _currentFieldPlayerActorName() {
+    if (_currentFieldPlayer == null) return 'Jugador';
+
+    return _currentFieldPlayer!.displayName;
+  }
+  
   String _resolvePrimaryActorForShot({
     required String eventMode,
     bool allowGoalkeeperInAttack = false,
@@ -4094,11 +4995,33 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         _normalizeValue(widget.partido['condicion']) == 'local';
   }
 
-  String get _currentGoalkeeperActorName {
-    if (currentGoalkeeperNumber == null) return 'Arquero genérico';
-    return 'Arquero $currentGoalkeeperNumber';
+  PlayerProfile? _getCurrentGoalkeeperProfile() {
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+  final arqueros = RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  if (arqueros.isEmpty) return null;
+
+  if (currentGoalkeeperNumber == null) return arqueros.first;
+
+  for (final gk in arqueros) {
+    if (gk.numeroPreferido == currentGoalkeeperNumber) {
+      return gk;
+    }
   }
 
+  return arqueros.first;
+}
+
+  String get _currentGoalkeeperActorName {
+    final gk = _getCurrentGoalkeeperProfile();
+    if (gk == null) return 'Arquero';
+    return gk.displayName;
+  }
+  
   String? _rivalShieldAsset() {
     switch (_normalizeValue(widget.partido['rival'])) {
       case 'argentinos juniors':
@@ -4466,18 +5389,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 } else if (value == 'goalkeeper') {
                   await _showGoalkeeperSelectorSheet(
                     title: 'Cambiar arquero activo',
-                    onSelected33: () {
-                      setState(() {
-                        currentGoalkeeperNumber = '33';
-                      });
-                      _persistLiveMatch();
-                    },
-                    onSelected1: () {
-                      setState(() {
-                        currentGoalkeeperNumber = '1';
-                      });
-                      _persistLiveMatch();
-                    },
                   );
                 }
               },
@@ -6126,70 +7037,117 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  Future<void> _showGoalkeeperSelectorSheet({
-    required VoidCallback onSelected33,
-    required VoidCallback onSelected1,
-    String title = 'Seleccionar arquero',
-  }) async {
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  Future<void> _showFieldPlayerSelector() async {
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+  final jugadores = RosterRepository.rosterForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  await showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Seleccionar jugador',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              _floatingOption('Arquero 33', () {
-                Navigator.pop(context);
-                onSelected33();
-              }),
-              _floatingOption('Arquero 1', () {
-                Navigator.pop(context);
-                onSelected1();
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+            ),
+            const SizedBox(height: 16),
 
+            ...jugadores.map((p) {
+              return _floatingOption(p.displayName, () {
+                Navigator.pop(context);
+
+                setState(() {
+                  _currentFieldPlayer = p;
+                });
+              });
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+  Future<void> _showGoalkeeperSelectorSheet({
+  String title = 'Seleccionar arquero',
+  VoidCallback? onAfterSelected,
+}) async {
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+  final arqueros = RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  await showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (arqueros.isEmpty)
+              const Text(
+                'No hay arqueros cargados para esta categoría',
+                style: TextStyle(color: Colors.white70),
+              )
+            else
+              ...arqueros.map((gk) {
+                return _floatingOption(gk.displayName, () {
+                  Navigator.pop(context);
+                  setState(() {
+                    currentGoalkeeperNumber = gk.numeroPreferido;
+                  });
+                  _persistLiveMatch();
+                  onAfterSelected?.call();
+                });
+              }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Future<void> _selectGoalkeeperForCurrentPeriod({
-    required VoidCallback onAfterSelect,
-    String title = 'Seleccionar arquero inicial',
-  }) async {
-    await _showGoalkeeperSelectorSheet(
-      title: title,
-      onSelected33: () {
-        setState(() {
-          currentGoalkeeperNumber = '33';
-        });
-        _persistLiveMatch();
-        onAfterSelect();
-      },
-      onSelected1: () {
-        setState(() {
-          currentGoalkeeperNumber = '1';
-        });
-        _persistLiveMatch();
-        onAfterSelect();
-      },
-    );
-  }
-
+  required VoidCallback onAfterSelect,
+  String title = 'Seleccionar arquero inicial',
+}) async {
+  await _showGoalkeeperSelectorSheet(
+    title: title,
+    onAfterSelected: onAfterSelect,
+  );
+}
+  
   void _showSancionSheet(String actor) {
     showModalBottomSheet(
       context: context,

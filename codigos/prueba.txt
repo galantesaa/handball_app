@@ -1,0 +1,44 @@
+Widget _buildPerspectiveZoneCell({
+    required String shortLabel,
+    required String fullLabel,
+    required bool isSelected,
+    required double topWidthFactor,
+    required double bottomWidthFactor,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap:
+          _isPlayLocked() ||
+              _isPenaltyShootout() ||
+              penalEnCurso ||
+              modo == null
+          ? null
+          : () {
+              setState(() {
+                zonaTiro = (zonaTiro == fullLabel) ? null : fullLabel;
+                zonaArco = null;
+                mostrarContra = false;
+                origenJugadaActual = 'normal';
+              });
+            },
+      child: CustomPaint(
+        painter: _TrapezoidZonePainter(
+          selected: isSelected,
+          topWidthFactor: topWidthFactor,
+          bottomWidthFactor: bottomWidthFactor,
+        ),
+        child: Center(
+          child: Text(
+            shortLabel,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFDCE4EF),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
