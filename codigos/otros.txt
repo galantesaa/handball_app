@@ -1,3 +1,10 @@
+///===============================
+///===============================
+/// OTROS
+///==============================
+///===============================
+
+
 class _UndoSanctionOption {
   final String label;
   final String resultado;
@@ -347,22 +354,12 @@ class _ExtremeZonePainter extends CustomPainter {
   }
 }
 
+
 ///===============================
 /// PLACEHOLDERS
 /// ==============================
 ///===============================
 
-class HistorialScreen extends StatelessWidget {
-  const HistorialScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Partidos Jugados')),
-      body: const Center(child: Text('Pantalla Partidos Jugados')),
-    );
-  }
-}
 
 class EstadisticasScreen extends StatelessWidget {
   const EstadisticasScreen({super.key});

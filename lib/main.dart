@@ -1466,8 +1466,102 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         const SizedBox(height: 16),
         _buildUpcomingList(),
         if (partidosFinalizados.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildFinishedMatchesSection(),
+          const SizedBox(height: 20),
+
+          const Text(
+            'Último partido finalizado',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Builder(
+            builder: (context) {
+              final partidosOrdenados =
+                  List<Map<String, dynamic>>.from(partidosFinalizados);
+
+              partidosOrdenados.sort((a, b) {
+                final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
+                final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+
+                if (aDate == null && bDate == null) return 0;
+                if (aDate == null) return 1;
+                if (bDate == null) return -1;
+
+                return bDate.compareTo(aDate);
+              });
+
+              final partido = partidosOrdenados.first;
+
+              final rival = (partido['rival'] ?? '').toString();
+              final golesSanFernando = (partido['golesSanFernando'] ?? 0) as int;
+              final golesRival = (partido['golesRival'] ?? 0) as int;
+              final condicion = (partido['condicion'] ?? '').toString();
+
+              final esLocal = condicion == 'Local';
+
+              final nombreLocal = esLocal ? 'San Fernando' : rival;
+              final nombreVisitante = esLocal ? rival : 'San Fernando';
+
+              final marcador = esLocal
+                  ? '$golesSanFernando - $golesRival'
+                  : '$golesRival - $golesSanFernando';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$nombreLocal vs $nombreVisitante',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      marcador,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResumenPartidoFinalizadoScreen(
+                              partido: Map<String, dynamic>.from(partido),
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Ver resumen',
+                        style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ],
         const SizedBox(height: 10),
         _buildSecondaryAction(
@@ -2155,12 +2249,40 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   String _rivalTexto() => (partido['rival'] ?? 'Rival').toString();
 
   String? _rivalShieldAsset() {
-    final rival = _rivalTexto().toLowerCase();
-    if (rival == 'argentinos juniors') {
-      return 'assets/images/argentinos.png';
-    }
-    return null;
+  final rival = _rivalTexto().toLowerCase();
+
+  if (rival.contains('argentinos')) return 'assets/images/argentinos.png';
+  if (rival.contains('ferro')) return 'assets/images/ferro.png';
+  if (rival.contains('vélez') || rival.contains('velez')) {
+    return 'assets/images/velez.png';
   }
+  if (rival.contains('campana')) return 'assets/images/campana.png';
+  if (rival.contains('river')) return 'assets/images/river.png';
+  if (rival.contains('dorrego')) return 'assets/images/dorrego.png';
+  if (rival.contains('ballester')) return 'assets/images/ballester.png';
+  if (rival.contains('s.a.g.a.b.') || rival.contains('sagab')) {
+    return 'assets/images/sagab.png';
+  }
+  if (rival.contains('quilmes')) return 'assets/images/quilmes.png';
+  if (rival.contains('lanús') || rival.contains('lanus')) {
+    return 'assets/images/lanus.png';
+  }
+  if (rival.contains('s.e.d.a.l.o.') || rival.contains('sedalo')) {
+    return 'assets/images/sedalo.png';
+  }
+  if (rival.contains('vicente lópez') || rival.contains('vicente lopez')) {
+    return 'assets/images/vicente_lopez.png';
+  }
+  if (rival.contains('estudiantes')) {
+    return 'assets/images/estudiantes_lp.png';
+  }
+  if (rival.contains('ward')) return 'assets/images/ward.png';
+  if (rival.contains('luján') || rival.contains('lujan')) {
+    return 'assets/images/nsl.png';
+  }
+
+  return null;
+}
 
   List<Map<String, dynamic>> _eventosImportantes() {
     final items = _eventos
@@ -2422,7 +2544,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreLocal,
-                  assetPath: 'assets/images/san_fernando.png',
+                  assetPath: _somosLocales
+                      ? 'assets/images/san_fernando.png'
+                      : _rivalShieldAsset(),
                   condicion: 'Local',
                 ),
               ),
@@ -2442,7 +2566,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreVisitante,
-                  assetPath: _rivalShieldAsset(),
+                  assetPath: _somosLocales
+                      ? _rivalShieldAsset()
+                      : 'assets/images/san_fernando.png',
                   condicion: 'Visitante',
                 ),
               ),
@@ -3818,8 +3944,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 /// PARTIDO EN VIVO
 /// ===============================
 /// ===============================
-///
-///
+
 
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
@@ -6867,8 +6992,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 }
 
 ///=======================
+///=======================
 ///heatmap de eventos, estadísticas detalladas por jugador, exportación de datos, etc.
 ///=======================
+//=======================
 
 class HeatmapPainter extends CustomPainter {
   final List<GameEvent> events;
@@ -6947,9 +7074,422 @@ class HeatmapPainter extends CustomPainter {
   }
 }
 
-///=======================
-///heatmap de eventos, estadísticas detalladas por jugador, exportación de datos, etc.
-///======================
+///===============================
+///===============================
+/// HISTORIAL
+///==============================
+///===============================
+
+class HistorialScreen extends StatefulWidget {
+  const HistorialScreen({super.key});
+
+  @override
+  State<HistorialScreen> createState() => _HistorialScreenState();
+}
+
+class _HistorialScreenState extends State<HistorialScreen> {
+  static const String _finishedMatchesStorageKey =
+      'finished_matches_history_v1';
+
+  List<Map<String, dynamic>> _todos = [];
+  List<Map<String, dynamic>> _filtrados = [];
+
+  String _categoriaSeleccionada = 'Todas';
+  String _torneoSeleccionado = 'Todos';
+  String _busqueda = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarHistorial();
+  }
+
+  Future<void> _cargarHistorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_finishedMatchesStorageKey);
+
+    List<Map<String, dynamic>> items = [];
+
+    if (raw != null && raw.isNotEmpty) {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+
+      items = decoded.map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        final partido = Map<String, dynamic>.from(
+          (map['partido'] as Map?)?.cast<String, dynamic>() ??
+              <String, dynamic>{},
+        );
+
+        return {
+          ...partido,
+          'archivedAt': map['archivedAt'],
+          'matchIdentity': map['matchIdentity'],
+          'golesSanFernando':
+              map['golesSanFernando'] ?? partido['golesSanFernando'] ?? 0,
+          'golesRival': map['golesRival'] ?? partido['golesRival'] ?? 0,
+          'golesRecibidos':
+              map['golesRecibidos'] ?? partido['golesRecibidos'] ?? 0,
+          'atajadas': map['atajadas'] ?? partido['atajadas'] ?? 0,
+          'penales': map['penales'] ?? partido['penales'] ?? 0,
+          'exclusiones2Min':
+              map['exclusiones2Min'] ?? partido['exclusiones2Min'] ?? 0,
+          'amarillas': map['amarillas'] ?? partido['amarillas'] ?? 0,
+          'rojas': map['rojas'] ?? partido['rojas'] ?? 0,
+          'perdidas': map['perdidas'] ?? partido['perdidas'] ?? 0,
+          'recuperaciones':
+              map['recuperaciones'] ?? partido['recuperaciones'] ?? 0,
+          'eventos': map['eventos'] ?? partido['eventos'] ?? <dynamic>[],
+          'estado': 'Finalizado',
+          'estadoPartido': 'finalizado',
+        };
+      }).toList();
+
+      items.sort((a, b) {
+        final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
+        final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return bDate.compareTo(aDate);
+      });
+    }
+
+    setState(() {
+      _todos = items;
+      _aplicarFiltros();
+    });
+  }
+
+  void _aplicarFiltros() {
+    final q = _busqueda.trim().toLowerCase();
+
+    _filtrados = _todos.where((p) {
+      final rival = (p['rival'] ?? '').toString().toLowerCase();
+      final categoria = (p['categoria'] ?? '').toString();
+      final torneo = (p['torneo'] ?? '').toString();
+
+      final okCategoria =
+          _categoriaSeleccionada == 'Todas' ||
+          categoria == _categoriaSeleccionada;
+
+      final okTorneo =
+          _torneoSeleccionado == 'Todos' || torneo == _torneoSeleccionado;
+
+      final okBusqueda = q.isEmpty || rival.contains(q);
+
+      return okCategoria && okTorneo && okBusqueda;
+    }).toList();
+  }
+
+  String? _rivalShieldAsset(String rival) {
+    final r = rival.toLowerCase();
+
+    if (r.contains('argentinos')) return 'assets/images/argentinos.png';
+    if (r.contains('ferro')) return 'assets/images/ferro.png';
+    if (r.contains('vélez') || r.contains('velez')) {
+      return 'assets/images/velez.png';
+    }
+    if (r.contains('campana')) return 'assets/images/campana.png';
+    if (r.contains('river')) return 'assets/images/river.png';
+    if (r.contains('dorrego')) return 'assets/images/dorrego.png';
+    if (r.contains('ballester')) return 'assets/images/ballester.png';
+    if (r.contains('s.a.g.a.b.') || r.contains('sagab')) {
+      return 'assets/images/sagab.png';
+    }
+    if (r.contains('quilmes')) return 'assets/images/quilmes.png';
+    if (r.contains('lanús') || r.contains('lanus')) {
+      return 'assets/images/lanus.png';
+    }
+    if (r.contains('s.e.d.a.l.o.') || r.contains('sedalo')) {
+      return 'assets/images/sedalo.png';
+    }
+    if (r.contains('vicente lópez') || r.contains('vicente lopez')) {
+      return 'assets/images/vicente_lopez.png';
+    }
+    if (r.contains('estudiantes')) {
+      return 'assets/images/estudiantes_lp.png';
+    }
+    if (r.contains('ward')) return 'assets/images/ward.png';
+    if (r.contains('luján') || r.contains('lujan')) {
+      return 'assets/images/nsl.png';
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Partidos Jugados'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: const Color(0xFF05080D).withOpacity(0.88),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                  child: Column(
+                    children: [
+                      TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _busqueda = value;
+                            _aplicarFiltros();
+                          });
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por rival',
+                          hintStyle: const TextStyle(
+                            color: Color(0xFFAAB4C3),
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Color(0xFFAAB4C3),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFF0F1722).withOpacity(0.85),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildDropdown<String>(
+                              value: _categoriaSeleccionada,
+                              items: const ['Todas', 'Cadetes', 'Juveniles'],
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  _categoriaSeleccionada = value;
+                                  _aplicarFiltros();
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildDropdown<String>(
+                              value: _torneoSeleccionado,
+                              items: const ['Todos', 'Apertura', 'Clausura'],
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  _torneoSeleccionado = value;
+                                  _aplicarFiltros();
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _filtrados.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No hay partidos cargados',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                          itemCount: _filtrados.length,
+                          itemBuilder: (context, index) {
+                            final partido = _filtrados[index];
+                            final rival =
+                                (partido['rival'] ?? 'Rival').toString();
+                            final escudo = _rivalShieldAsset(rival);
+                            final golesSF =
+                                (partido['golesSanFernando'] ?? 0) as int;
+                            final golesR =
+                                (partido['golesRival'] ?? 0) as int;
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ResumenPartidoFinalizadoScreen(
+                                          partido: partido,
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFF0F1722).withOpacity(0.84),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.04),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 54,
+                                      height: 54,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                      ),
+                                      padding: const EdgeInsets.all(8),
+                                      child: Center(
+                                        child: escudo == null
+                                            ? const Icon(
+                                                Icons.sports_handball,
+                                                color: Color(0xFF1C2B44),
+                                                size: 22,
+                                              )
+                                            : Image.asset(
+                                                escudo,
+                                                fit: BoxFit.contain,
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'San Fernando vs $rival',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${partido['categoria']} · ${partido['torneo']}',
+                                            style: const TextStyle(
+                                              color: Color(0xFFAAB4C3),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${partido['fecha']} • ${partido['hora']}',
+                                            style: const TextStyle(
+                                              color: Color(0xFFAAB4C3),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '$golesSF - $golesR',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Ver resumen',
+                                          style: TextStyle(
+                                            color: Color(0xFF4F8CFF),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdown<T>({
+    required T value,
+    required List<T> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.85),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          dropdownColor: const Color(0xFF0F1722),
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          iconEnabledColor: Colors.white,
+          isExpanded: true,
+          items: items.map((item) {
+            return DropdownMenuItem<T>(
+              value: item,
+              child: Text(
+                item.toString(),
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+///===============================
+///===============================
+/// OTROS
+///==============================
+///===============================
+
 
 class _UndoSanctionOption {
   final String label;
@@ -7300,22 +7840,12 @@ class _ExtremeZonePainter extends CustomPainter {
   }
 }
 
+
 ///===============================
 /// PLACEHOLDERS
 /// ==============================
 ///===============================
 
-class HistorialScreen extends StatelessWidget {
-  const HistorialScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Partidos Jugados')),
-      body: const Center(child: Text('Pantalla Partidos Jugados')),
-    );
-  }
-}
 
 class EstadisticasScreen extends StatelessWidget {
   const EstadisticasScreen({super.key});

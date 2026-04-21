@@ -1,3 +1,8 @@
+/// ===============================
+/// HOME PRINCIPAL
+/// ===============================
+///
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 

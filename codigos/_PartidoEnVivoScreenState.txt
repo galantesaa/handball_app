@@ -1,3 +1,11 @@
+/// ===============================
+/// ===============================
+/// PARTIDO EN VIVO
+/// ===============================
+/// ===============================
+///
+///
+
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 

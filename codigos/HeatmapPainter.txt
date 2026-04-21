@@ -1,3 +1,9 @@
+///=======================
+///=======================
+///heatmap de eventos, estadísticas detalladas por jugador, exportación de datos, etc.
+///=======================
+//=======================
+
 class HeatmapPainter extends CustomPainter {
   final List<GameEvent> events;
 

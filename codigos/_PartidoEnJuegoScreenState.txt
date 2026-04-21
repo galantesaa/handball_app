@@ -1,3 +1,9 @@
+/// ===============================
+/// ===============================
+/// CENTRO DE CONTROL
+/// ===============================
+/// ===============================
+
 class PartidoEnJuegoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 

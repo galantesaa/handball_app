@@ -1,3 +1,9 @@
+/// ===============================
+/// ===============================
+/// RESUMEN DEL PARTIDO FINALIZADO
+/// ===============================
+/// ===============================
+
 class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   final Map<String, dynamic> partido;
 
@@ -77,12 +83,40 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   String _rivalTexto() => (partido['rival'] ?? 'Rival').toString();
 
   String? _rivalShieldAsset() {
-    final rival = _rivalTexto().toLowerCase();
-    if (rival == 'argentinos juniors') {
-      return 'assets/images/argentinos.png';
-    }
-    return null;
+  final rival = _rivalTexto().toLowerCase();
+
+  if (rival.contains('argentinos')) return 'assets/images/argentinos.png';
+  if (rival.contains('ferro')) return 'assets/images/ferro.png';
+  if (rival.contains('vélez') || rival.contains('velez')) {
+    return 'assets/images/velez.png';
   }
+  if (rival.contains('campana')) return 'assets/images/campana.png';
+  if (rival.contains('river')) return 'assets/images/river.png';
+  if (rival.contains('dorrego')) return 'assets/images/dorrego.png';
+  if (rival.contains('ballester')) return 'assets/images/ballester.png';
+  if (rival.contains('s.a.g.a.b.') || rival.contains('sagab')) {
+    return 'assets/images/sagab.png';
+  }
+  if (rival.contains('quilmes')) return 'assets/images/quilmes.png';
+  if (rival.contains('lanús') || rival.contains('lanus')) {
+    return 'assets/images/lanus.png';
+  }
+  if (rival.contains('s.e.d.a.l.o.') || rival.contains('sedalo')) {
+    return 'assets/images/sedalo.png';
+  }
+  if (rival.contains('vicente lópez') || rival.contains('vicente lopez')) {
+    return 'assets/images/vicente_lopez.png';
+  }
+  if (rival.contains('estudiantes')) {
+    return 'assets/images/estudiantes_lp.png';
+  }
+  if (rival.contains('ward')) return 'assets/images/ward.png';
+  if (rival.contains('luján') || rival.contains('lujan')) {
+    return 'assets/images/nsl.png';
+  }
+
+  return null;
+}
 
   List<Map<String, dynamic>> _eventosImportantes() {
     final items = _eventos
@@ -344,7 +378,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreLocal,
-                  assetPath: 'assets/images/san_fernando.png',
+                  assetPath: _somosLocales
+                      ? 'assets/images/san_fernando.png'
+                      : _rivalShieldAsset(),
                   condicion: 'Local',
                 ),
               ),
@@ -364,7 +400,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreVisitante,
-                  assetPath: _rivalShieldAsset(),
+                  assetPath: _somosLocales
+                      ? _rivalShieldAsset()
+                      : 'assets/images/san_fernando.png',
                   condicion: 'Visitante',
                 ),
               ),
