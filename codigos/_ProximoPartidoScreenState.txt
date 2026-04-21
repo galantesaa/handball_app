@@ -838,25 +838,41 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
           Builder(
             builder: (context) {
-              final partido = partidosFinalizados.last;
+              final partidosOrdenados =
+                  List<Map<String, dynamic>>.from(partidosFinalizados);
 
-              final rival = partido['rival'] ?? '';
-              final golesLocal = partido['golesLocal'] ?? 0;
-              final golesVisitante = partido['golesVisitante'] ?? 0;
-              final condicion = partido['condicion'] ?? '';
+              partidosOrdenados.sort((a, b) {
+                final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
+                final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+
+                if (aDate == null && bDate == null) return 0;
+                if (aDate == null) return 1;
+                if (bDate == null) return -1;
+
+                return bDate.compareTo(aDate);
+              });
+
+              final partido = partidosOrdenados.first;
+
+              final rival = (partido['rival'] ?? '').toString();
+              final golesSanFernando = (partido['golesSanFernando'] ?? 0) as int;
+              final golesRival = (partido['golesRival'] ?? 0) as int;
+              final condicion = (partido['condicion'] ?? '').toString();
 
               final esLocal = condicion == 'Local';
 
               final nombreLocal = esLocal ? 'San Fernando' : rival;
               final nombreVisitante = esLocal ? rival : 'San Fernando';
 
-              final marcador = '$golesLocal - $golesVisitante';
+              final marcador = esLocal
+                  ? '$golesSanFernando - $golesRival'
+                  : '$golesRival - $golesSanFernando';
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
@@ -885,12 +901,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => ResumenPartidoFinalizadoScreen(
-                              partido: {
-                                'rival': rival,
-                                'golesSanFernando': golesLocal,
-                                'golesRival': golesVisitante,
-                                'condicion': condicion,
-                              },
+                              partido: Map<String, dynamic>.from(partido),
                             ),
                           ),
                         );
@@ -908,7 +919,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               );
             },
           ),
-        ]
+        ],
         const SizedBox(height: 10),
         _buildSecondaryAction(
           text: 'Ver fixture completo',
