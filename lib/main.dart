@@ -1529,12 +1529,14 @@ class _PressableTileState extends State<_PressableTile> {
 /// ===============================
 
 class ProximoPartidoScreen extends StatefulWidget {
-  
-const ProximoPartidoScreen({super.key});
+  final String categoria;
+  final String torneo;
 
-  @override
-State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
-}
+  const ProximoPartidoScreen({
+    super.key,
+    required this.categoria,
+    required this.torneo,
+  });
 
 class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   bool hayPartido = true;
@@ -1571,7 +1573,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Map<String, dynamic> _defaultProximoPartido() {
-    final fixtureCadetes = _buildFixtureCompleto(categoria: 'Cadetes');
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
     return fixtureCadetes.firstWhere(
       (p) =>
@@ -1841,7 +1843,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
-    final fixtureCadetes = _buildFixtureCompleto(categoria: 'Cadetes');
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
     return fixtureCadetes
         .where((p) {
@@ -1944,7 +1946,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   Future<void> _resetPartidosDePrueba() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final fixtureCadetes = _buildFixtureCompleto(categoria: 'Cadetes');
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
     final Map<String, Map<String, dynamic>> finalizadosPorId = {
       for (final p in partidosFinalizados)
