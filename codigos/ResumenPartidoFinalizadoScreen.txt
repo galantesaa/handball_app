@@ -1,0 +1,545 @@
+class ResumenPartidoFinalizadoScreen extends StatelessWidget {
+  final Map<String, dynamic> partido;
+
+  const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
+
+  bool get _somosLocales => (partido['condicion'] ?? 'Local') == 'Local';
+
+  String get _nombreLocal =>
+      _somosLocales ? 'San Fernando' : (partido['rival'] ?? 'Rival').toString();
+
+  String get _nombreVisitante =>
+      _somosLocales ? (partido['rival'] ?? 'Rival').toString() : 'San Fernando';
+
+  int get _golesSanFernando => (partido['golesSanFernando'] ?? 0) as int;
+  int get _golesRival => (partido['golesRival'] ?? 0) as int;
+
+  int get _golesLocal => _somosLocales ? _golesSanFernando : _golesRival;
+  int get _golesVisitante => _somosLocales ? _golesRival : _golesSanFernando;
+
+  int get _atajadas => (partido['atajadas'] ?? 0) as int;
+  int get _golesRecibidos => (partido['golesRecibidos'] ?? _golesRival) as int;
+  int get _penales => (partido['penales'] ?? 0) as int;
+  int get _perdidas => (partido['perdidas'] ?? 0) as int;
+  int get _recuperaciones => (partido['recuperaciones'] ?? 0) as int;
+  int get _exclusiones2Min => (partido['exclusiones2Min'] ?? 0) as int;
+  int get _amarillas => (partido['amarillas'] ?? 0) as int;
+  int get _rojas => (partido['rojas'] ?? 0) as int;
+
+  List<dynamic> get _eventos =>
+      (partido['eventos'] as List<dynamic>? ?? const []);
+
+  double get _eficaciaArquero {
+    final total = _atajadas + _golesRecibidos;
+    if (total == 0) return 0;
+    return (_atajadas / total) * 100;
+  }
+
+  int get _golesAFavor => _golesSanFernando;
+
+  int get _golesEnContra => _golesRival;
+
+  int get _tirosTotales {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      return tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+    }).length;
+  }
+
+  int get _tirosGol {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      return (map['resultado'] ?? '').toString() == 'gol';
+    }).length;
+  }
+
+  int get _tirosAtajados {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      return (map['resultado'] ?? '').toString() == 'atajado';
+    }).length;
+  }
+
+  int get _tirosFuera {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final r = (map['resultado'] ?? '').toString();
+      return r == 'fuera' || r == 'desvio';
+    }).length;
+  }
+
+  String _fechaTexto() => (partido['fecha'] ?? '-').toString();
+  String _horaTexto() => (partido['hora'] ?? '-').toString();
+  String _condicionTexto() => (partido['condicion'] ?? '-').toString();
+  String _torneoTexto() => (partido['torneo'] ?? '-').toString();
+  String _categoriaTexto() => (partido['categoria'] ?? '-').toString();
+  String _rivalTexto() => (partido['rival'] ?? 'Rival').toString();
+
+  String? _rivalShieldAsset() {
+    final rival = _rivalTexto().toLowerCase();
+    if (rival == 'argentinos juniors') {
+      return 'assets/images/argentinos.png';
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _eventosImportantes() {
+    final items = _eventos
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .where((map) {
+          final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+          final resultado = (map['resultado'] ?? '').toString();
+
+          if (tipo == 'sancion') return true;
+          if (tipo == 'penal' || tipo == 'penal_tanda') return true;
+          if (resultado == 'gol' || resultado == 'atajado') return true;
+          if (tipo == 'perdida' || tipo == 'recuperacion') return true;
+
+          return false;
+        })
+        .toList();
+
+    return items.reversed.take(5).toList();
+  }
+
+  String _tituloEvento(Map<String, dynamic> e) {
+    final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
+    final resultado = (e['resultado'] ?? '').toString();
+
+    if (tipo == 'tiro' && resultado == 'gol') return 'Gol';
+    if (tipo == 'tiro' && resultado == 'atajado') return 'Atajada';
+    if (tipo == 'tiro' && (resultado == 'fuera' || resultado == 'desvio')) {
+      return 'Tiro fuera';
+    }
+
+    if (tipo == 'penal' && resultado == 'gol') return 'Gol de penal';
+    if (tipo == 'penal' && resultado == 'atajado') return 'Penal atajado';
+    if (tipo == 'penal' && resultado == 'fuera') return 'Penal fuera';
+
+    if (tipo == 'penal_tanda' && resultado == 'gol') return 'Gol en penales';
+    if (tipo == 'penal_tanda' && resultado == 'atajado') {
+      return 'Atajado en penales';
+    }
+    if (tipo == 'penal_tanda' && resultado == 'fuera') {
+      return 'Errado en penales';
+    }
+
+    if (tipo == 'sancion') {
+      if (resultado == 'exclusion_2_min') return 'Exclusión 2 min';
+      if (resultado == 'tarjeta_amarilla') return 'Tarjeta amarilla';
+      if (resultado == 'tarjeta_roja') return 'Tarjeta roja';
+      return 'Sanción';
+    }
+
+    if (tipo == 'perdida' && resultado == 'perdida') return 'Pérdida';
+    if (tipo == 'perdida' && resultado == 'recuperacion') return 'Recuperación';
+
+    return tipo.isEmpty ? 'Evento' : tipo;
+  }
+
+  String _subtituloEvento(Map<String, dynamic> e) {
+    final actor = (e['actorPrincipal'] ?? '-').toString();
+    final zonaTiro = (e['zonaTiro'] ?? '').toString();
+    final zonaArco = (e['zonaArco'] ?? '').toString();
+
+    final partes = <String>[actor];
+
+    if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
+      partes.add(zonaTiro);
+    }
+    if (zonaArco.isNotEmpty && zonaArco != 'null') {
+      partes.add(zonaArco);
+    }
+
+    return partes.join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eventosImportantes = _eventosImportantes();
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Resumen del partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_categoriaTexto()} · ${_torneoTexto()}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFD4DCE7),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildHeaderCard(),
+                  const SizedBox(height: 16),
+                  _buildKpiGrid(),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Datos del partido',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Rival', _rivalTexto()),
+                        _buildInfoRow('Fecha', _fechaTexto()),
+                        _buildInfoRow('Hora', _horaTexto()),
+                        _buildInfoRow('Condición', _condicionTexto()),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Arquero',
+                    child: Column(
+                      children: [
+                        _buildInfoRow(
+                          'Eficacia',
+                          '${_eficaciaArquero.toStringAsFixed(1)}%',
+                        ),
+                        _buildInfoRow('Atajadas', '$_atajadas'),
+                        _buildInfoRow('Goles recibidos', '$_golesRecibidos'),
+                        _buildInfoRow('Penales en contra', '$_penales'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Ataque y juego',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Goles a favor', '$_golesAFavor'),
+                        _buildInfoRow('Goles en contra', '$_golesEnContra'),
+                        _buildInfoRow('Tiros registrados', '$_tirosTotales'),
+                        _buildInfoRow('Tiros con gol', '$_tirosGol'),
+                        _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
+                        _buildInfoRow('Tiros fuera', '$_tirosFuera'),
+                        _buildInfoRow('Pérdidas', '$_perdidas'),
+                        _buildInfoRow('Recuperaciones', '$_recuperaciones'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Disciplina',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Exclusiones 2 min', '$_exclusiones2Min'),
+                        _buildInfoRow('Tarjetas amarillas', '$_amarillas'),
+                        _buildInfoRow('Tarjetas rojas', '$_rojas'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Momentos importantes',
+                    child: eventosImportantes.isEmpty
+                        ? const Text(
+                            'No hay eventos destacados para mostrar.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 13,
+                            ),
+                          )
+                        : Column(
+                            children: eventosImportantes.map((e) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF182338,
+                                    ).withOpacity(0.75),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _tituloEvento(e),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _subtituloEvento(e),
+                                        style: const TextStyle(
+                                          color: Color(0xFFAAB4C3),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C2B44).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              'Finalizado',
+              style: TextStyle(
+                color: Color(0xFFDCE4EF),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: _nombreLocal,
+                  assetPath: 'assets/images/san_fernando.png',
+                  condicion: 'Local',
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '$_golesLocal - $_golesVisitante',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: _nombreVisitante,
+                  assetPath: _rivalShieldAsset(),
+                  condicion: 'Visitante',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiGrid() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildKpiCard(
+                'Eficacia',
+                '${_eficaciaArquero.toStringAsFixed(1)}%',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: _buildKpiCard('Atajadas', '$_atajadas')),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _buildKpiCard('Pérdidas', '$_perdidas')),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildKpiCard('Recuperaciones', '$_recuperaciones'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKpiCard(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamSide({
+    required String nombre,
+    required String condicion,
+    String? assetPath,
+  }) {
+    return Column(
+      children: [
+        Text(
+          condicion,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 62,
+          height: 62,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Center(
+            child: assetPath == null
+                ? const Icon(
+                    Icons.sports_handball,
+                    color: Color(0xFF1C2B44),
+                    size: 24,
+                  )
+                : Image.asset(assetPath, fit: BoxFit.contain),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          nombre,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

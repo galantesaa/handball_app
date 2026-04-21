@@ -1,0 +1,459 @@
+class FixtureScreen extends StatelessWidget {
+  final String categoria;
+  final String torneo;
+
+  const FixtureScreen({
+    super.key,
+    required this.categoria,
+    required this.torneo,
+  });
+
+  List<DateTime> _generarSabadosDesde({
+    required DateTime inicio,
+    required int cantidad,
+  }) {
+    return List.generate(cantidad, (i) => inicio.add(Duration(days: i * 7)));
+  }
+
+  String _formatFecha(DateTime d) {
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm';
+  }
+
+  List<Map<String, dynamic>> _buildAperturaBase({required String categoria}) {
+    return [
+      {
+        'fechaNumero': 1,
+        'fecha': '21/03',
+        'hora': '13:00',
+        'local': 'Municipalidad de Vicente López',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 2,
+        'fecha': '28/03',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'Colegio Ward',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 3,
+        'fecha': '11/04',
+        'hora': '13:00',
+        'local': 'S.A.G. Villa Ballester',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 4,
+        'fecha': '18/04',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'Argentinos Juniors',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 5,
+        'fecha': '25/04',
+        'hora': '13:00',
+        'local': 'Ferro Carril Oeste',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 6,
+        'fecha': '02/05',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'C.A. Vélez Sarsfield',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 7,
+        'fecha': '09/05',
+        'hora': '13:00',
+        'local': 'Campana Boat Club',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 8,
+        'fecha': '16/05',
+        'hora': '13:00',
+        'local': 'S.A.G.A.B.',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 9,
+        'fecha': '23/05',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'C.A. River Plate',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 10,
+        'fecha': '30/05',
+        'hora': '13:00',
+        'local': 'Dorrego Handball',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 11,
+        'fecha': '06/06',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'Estudiantes de La Plata',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 12,
+        'fecha': '20/06',
+        'hora': '13:00',
+        'local': 'S.E.D.A.L.O.',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 13,
+        'fecha': '27/06',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'C.A. Lanús',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 14,
+        'fecha': '04/07',
+        'hora': '13:00',
+        'local': 'Nuestra Señora de Luján',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 15,
+        'fecha': '11/07',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'A.A.C.F. Quilmes',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+    ];
+  }
+
+  List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
+    final apertura = _buildAperturaBase(categoria: categoria);
+    final sabados = _generarSabadosDesde(
+      inicio: DateTime(2026, 8, 8),
+      cantidad: apertura.length,
+    );
+
+    return List.generate(apertura.length, (i) {
+      final p = Map<String, dynamic>.from(apertura[i]);
+      p['torneo'] = 'Clausura';
+      p['fecha'] = _formatFecha(sabados[i]);
+      return p;
+    });
+  }
+
+  String? _rivalShieldAssetByName(String rival) {
+    switch (rival.toLowerCase()) {
+      case 'argentinos juniors':
+        return 'assets/images/argentinos.png';
+      case 'ferro carril oeste':
+        return 'assets/images/ferro.png';
+      case 's.a.g. villa ballester':
+        return 'assets/images/ballester.png';
+      case 'colegio ward':
+        return 'assets/images/ward.png';
+      case 'municipalidad de vicente lópez':
+        return 'assets/images/vicente_lopez.png';
+      case 'c.a. vélez sarsfield':
+        return 'assets/images/velez.png';
+      case 'campana boat club':
+        return 'assets/images/campana.png';
+      case 's.a.g.a.b.':
+        return 'assets/images/sagab.png';
+      case 'c.a. river plate':
+        return 'assets/images/river.png';
+      case 'dorrego handball':
+        return 'assets/images/dorrego.png';
+      case 'estudiantes de la plata':
+        return 'assets/images/estudiantes_lp.png';
+      case 's.e.d.a.l.o.':
+        return 'assets/images/sedalo.png';
+      case 'c.a. lanús':
+        return 'assets/images/lanus.png';
+      case 'nuestra señora de luján':
+        return 'assets/images/nsl.png';
+      case 'a.a.c.f. quilmes':
+        return 'assets/images/quilmes.png';
+      default:
+        return null;
+    }
+  }
+
+  Map<String, dynamic> _convertirAFixturePartido(Map<String, dynamic> raw) {
+    final bool somosLocales =
+        (raw['local'] ?? '').toString() == 'San Fernando Handball';
+
+    final rival = somosLocales
+        ? (raw['visitante'] ?? 'Rival').toString()
+        : (raw['local'] ?? 'Rival').toString();
+
+    return {
+      'rival': rival,
+      'fechaNumero': raw['fechaNumero'],
+      'fecha': raw['fecha'],
+      'hora': raw['hora'],
+      'condicion': somosLocales ? 'Local' : 'Visitante',
+      'torneo': raw['torneo'],
+      'categoria': raw['categoria'],
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': _rivalShieldAssetByName(rival),
+    };
+  }
+
+  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
+    if (torneo == 'Apertura') {
+      return _buildAperturaBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+    }
+
+    return _buildClausuraBase(
+      categoria: categoria,
+    ).map(_convertirAFixturePartido).toList();
+  }
+
+  void _abrirPartido(BuildContext context, Map<String, dynamic> partido) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PartidoEnJuegoScreen(partido: partido)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final partidos = _obtenerFixturePorCategoriaYTorneo();
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Fixture'),
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              children: [
+                Text(
+                  '$categoria · $torneo',
+                  style: const TextStyle(
+                    color: Color(0xFFD4DCE7),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ...partidos.map((p) => _buildFixtureCard(context, p)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
+    final bool somosLocales = (partido['condicion'] ?? 'Local') == 'Local';
+    final String rival = (partido['rival'] ?? 'Rival').toString();
+    final String fecha = (partido['fecha'] ?? '-').toString();
+    final String hora = (partido['hora'] ?? '-').toString();
+    final int fechaNumero = (partido['fechaNumero'] ?? 0) as int;
+    final String? escudoRival = partido['escudoRival'] as String?;
+
+    return GestureDetector(
+      onTap: () => _abrirPartido(context, partido),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.88),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatusChip('Fecha $fechaNumero'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: Center(
+                    child: escudoRival == null
+                        ? const Icon(
+                            Icons.sports_handball,
+                            color: Color(0xFF1C2B44),
+                            size: 22,
+                          )
+                        : Image.asset(escudoRival, fit: BoxFit.contain),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    rival,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow('Fecha', fecha),
+            _buildInfoRow('Hora', hora),
+            _buildInfoRow('Condición', somosLocales ? 'Local' : 'Visitante'),
+            const SizedBox(height: 12),
+            _buildOpenButton(
+              text: 'Abrir partido',
+              onTap: () => _abrirPartido(context, partido),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338).withOpacity(0.95),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status,
+        style: const TextStyle(
+          fontSize: 12,
+          color: Color(0xFFDCE4EF),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOpenButton({required String text, required VoidCallback onTap}) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
