@@ -107,10 +107,40 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   String? _rivalShieldAsset() {
-    if (_normalizeValue(widget.partido['rival']) == 'argentinos juniors') {
-      return 'assets/images/argentinos.png';
+    switch (_normalizeValue(widget.partido['rival'])) {
+      case 'argentinos juniors':
+        return 'assets/images/argentinos.png';
+      case 'ferro carril oeste':
+        return 'assets/images/ferro.png';
+      case 's.a.g. villa ballester':
+        return 'assets/images/ballester.png';
+      case 'colegio ward':
+        return 'assets/images/ward.png';
+      case 'municipalidad de vicente lopez':
+        return 'assets/images/vicente_lopez.png';
+      case 'c.a. velez sarsfield':
+        return 'assets/images/velez.png';
+      case 'campana boat club':
+        return 'assets/images/campana.png';
+      case 's.a.g.a.b.':
+        return 'assets/images/sagab.png';
+      case 'c.a. river plate':
+        return 'assets/images/river.png';
+      case 'dorrego handball':
+        return 'assets/images/dorrego.png';
+      case 'estudiantes de la plata':
+        return 'assets/images/estudiantes_lp.png';
+      case 's.e.d.a.l.o.':
+        return 'assets/images/sedalo.png';
+      case 'c.a. lanus':
+        return 'assets/images/lanus.png';
+      case 'nuestra senora de lujan':
+        return 'assets/images/nsl.png';
+      case 'a.a.c.f. quilmes':
+        return 'assets/images/quilmes.png';
+      default:
+        return null;
     }
-    return null;
   }
 
   Map<String, dynamic> _toPersistedMatchMap() {

@@ -9,6 +9,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   static const String _siguientesPartidosStorageKey = 'siguientes_partidos_v1';
   static const String _partidosFinalizadosStorageKey =
       'proximos_finalizados_v1';
+  static const String _liveMatchStorageKey = 'live_match_current_v1';
+  static const String _finishedMatchesStorageKey =
+      'finished_matches_history_v1';
 
   @override
   void initState() {
@@ -259,11 +262,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       case 'colegio ward':
         return 'assets/images/ward.png';
       case 'municipalidad de vicente lópez':
-        return 'assets/images/vilo.png';
+        return 'assets/images/vicente_lopez.png';
       case 'c.a. vélez sarsfield':
         return 'assets/images/velez.png';
       case 'campana boat club':
-        return 'assets/images/campana_boat_club.png';
+        return 'assets/images/campana.png';
       case 's.a.g.a.b.':
         return 'assets/images/sagab.png';
       case 'c.a. river plate':
@@ -277,7 +280,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       case 'c.a. lanús':
         return 'assets/images/lanus.png';
       case 'nuestra señora de luján':
-        return 'assets/images/lujan.png';
+        return 'assets/images/nsl.png';
       case 'a.a.c.f. quilmes':
         return 'assets/images/quilmes.png';
       default:
@@ -317,6 +320,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'torneo': p['torneo'],
             'categoria': p['categoria'],
             'fechaNumero': p['fechaNumero'],
+            'escudorival': p['escudoRival'],
           };
         })
         .toList();
@@ -328,6 +332,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     final proximoRaw = prefs.getString(_proximoPartidoStorageKey);
     final siguientesRaw = prefs.getString(_siguientesPartidosStorageKey);
     final finalizadosRaw = prefs.getString(_partidosFinalizadosStorageKey);
+    final finishedHistoryRaw = prefs.getString(_finishedMatchesStorageKey);
 
     if (proximoRaw != null && proximoRaw.isNotEmpty) {
       proximoPartido = Map<String, dynamic>.from(jsonDecode(proximoRaw) as Map);
@@ -340,12 +345,31 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           .toList();
     }
 
+    List<Map<String, dynamic>> finalizadosDesdeProximo = [];
+    List<Map<String, dynamic>> finalizadosDesdeHistory = [];
+
     if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
       final decoded = jsonDecode(finalizadosRaw) as List<dynamic>;
-      partidosFinalizados = decoded
+      finalizadosDesdeProximo = decoded
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
+
+    if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
+      final decoded = jsonDecode(finishedHistoryRaw) as List<dynamic>;
+      finalizadosDesdeHistory = decoded
+          .map(
+            (e) => _partidoDesdeFinishedHistoryEntry(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList();
+    }
+
+    partidosFinalizados = _mergeFinalizados(
+      desdeProximoScreen: finalizadosDesdeProximo,
+      desdeFinishedHistory: finalizadosDesdeHistory,
+    );
 
     hayPartido = proximoPartido.isNotEmpty;
   }
@@ -414,6 +438,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'torneo': p['torneo'],
             'categoria': p['categoria'],
             'fechaNumero': p['fechaNumero'],
+            'escudoRival': p['escudoRival'],
           };
         }).toList();
         hayPartido = true;
@@ -454,7 +479,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           style: TextStyle(color: Colors.white),
         ),
         content: const Text(
-          'Esto va a restaurar el fixture base de prueba y borrar los partidos finalizados guardados en esta pantalla. ¿Querés seguir?',
+          'Esto va a reconstruir el fixture base, mantener los partidos ya finalizados y recalcular el próximo pendiente. ¿Querés seguir?',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -476,11 +501,79 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   String _partidoIdentity(Map<String, dynamic> partido) {
     return [
+      (partido['torneo'] ?? '').toString(),
+      (partido['categoria'] ?? '').toString(),
       (partido['rival'] ?? '').toString(),
       (partido['fecha'] ?? '').toString(),
       (partido['hora'] ?? '').toString(),
       (partido['condicion'] ?? '').toString(),
     ].join('|');
+  }
+
+  Map<String, dynamic> _partidoDesdeFinishedHistoryEntry(
+    Map<String, dynamic> entry,
+  ) {
+    final base = Map<String, dynamic>.from(
+      (entry['partido'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{},
+    );
+
+    return {
+      ...base,
+      'estado': 'Finalizado',
+      'estadoPartido': 'finalizado',
+      'golesSanFernando':
+          entry['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
+      'golesRival': entry['golesRival'] ?? base['golesRival'] ?? 0,
+      'golesRecibidos': entry['golesRecibidos'] ?? base['golesRecibidos'] ?? 0,
+      'atajadas': entry['atajadas'] ?? base['atajadas'] ?? 0,
+      'penales': entry['penales'] ?? base['penales'] ?? 0,
+      'exclusiones2Min':
+          entry['exclusiones2Min'] ?? base['exclusiones2Min'] ?? 0,
+      'amarillas': entry['amarillas'] ?? base['amarillas'] ?? 0,
+      'rojas': entry['rojas'] ?? base['rojas'] ?? 0,
+      'perdidas': entry['perdidas'] ?? base['perdidas'] ?? 0,
+      'recuperaciones': entry['recuperaciones'] ?? base['recuperaciones'] ?? 0,
+      'penalesConvertidosSanFernando':
+          entry['penalesConvertidosSanFernando'] ??
+          base['penalesConvertidosSanFernando'] ??
+          0,
+      'penalesConvertidosRival':
+          entry['penalesConvertidosRival'] ??
+          base['penalesConvertidosRival'] ??
+          0,
+      'eventos':
+          entry['eventos'] ?? base['eventos'] ?? <Map<String, dynamic>>[],
+      'archivedAt': entry['archivedAt'] ?? entry['timestamp'],
+    };
+  }
+
+  List<Map<String, dynamic>> _mergeFinalizados({
+    required List<Map<String, dynamic>> desdeProximoScreen,
+    required List<Map<String, dynamic>> desdeFinishedHistory,
+  }) {
+    final Map<String, Map<String, dynamic>> unicos = {};
+
+    for (final p in [...desdeProximoScreen, ...desdeFinishedHistory]) {
+      final partido = Map<String, dynamic>.from(p)
+        ..['estado'] = 'Finalizado'
+        ..['estadoPartido'] = 'finalizado';
+      unicos[_partidoIdentity(partido)] = partido;
+    }
+
+    final lista = unicos.values.toList();
+
+    lista.sort((a, b) {
+      final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
+      final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
+    });
+
+    return lista;
   }
 
   bool _partidoEstaFinalizado(Map<String, dynamic> partido) {
@@ -520,7 +613,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       'modoInicioPrimerTiempo': null,
       'modoInicioPrimerTiempoAlargue': null,
       'currentGoalkeeperNumber': null,
-      'escudoRival': _rivalShieldAssetByName(rival),
+      'escudoRival': siguiente['escudoRival'] ?? _rivalShieldAssetByName(rival),
     };
   }
 
@@ -633,7 +726,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildUpcomingList(),
         if (partidosFinalizados.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _buildLastFinishedCard(),
+          _buildFinishedMatchesSection(),
         ],
         const SizedBox(height: 10),
         _buildSecondaryAction(
@@ -714,7 +807,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               ),
               if (partidosFinalizados.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                _buildLastFinishedCard(),
+                _buildFinishedMatchesSection(),
               ],
               const SizedBox(height: 12),
               _buildOutlinedAction(
@@ -757,26 +850,34 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Widget _buildScreenHeaderSinPartido() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'San Fernando Handball',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          'Cadetes · Local Apertura',
-          style: TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
-        ),
-      ],
-    );
-  }
+  final ultimo = partidosFinalizados.isNotEmpty ? partidosFinalizados.first : null;
 
+  final categoria = ultimo?['categoria']?.toString() ?? 'Cadetes';
+  final torneo = ultimo?['torneo']?.toString() ?? 'Apertura';
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'San Fernando Handball',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        '$categoria · $torneo',
+        style: const TextStyle(
+          fontSize: 14,
+          color: Color(0xFFD4DCE7),
+        ),
+      ),
+    ],
+  );
+}
+  
   Widget _buildMatchCard() {
     return Container(
       width: double.infinity,
@@ -802,7 +903,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              _buildTeamBadge(),
+              _buildTeamBadge(
+                assetPath: proximoPartido['escudoRival'] as String?,
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -832,10 +935,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
-  Widget _buildLastFinishedCard() {
-    final ultimo = partidosFinalizados.first;
-    final int golesSF = (ultimo['golesSanFernando'] ?? 0) as int;
-    final int golesR = (ultimo['golesRival'] ?? 0) as int;
+  Widget _buildFinishedMatchesSection() {
+    final visibles = partidosFinalizados.take(3).toList();
 
     return Container(
       width: double.infinity,
@@ -849,42 +950,74 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Último partido finalizado',
+            'Partidos finalizados',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'San Fernando vs ${ultimo['rival']}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$golesSF - $golesR',
-            style: const TextStyle(
-              color: Color(0xFFDCE4EF),
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
           const SizedBox(height: 12),
-          _buildOutlinedAction(
-            text: 'Ver resumen',
-            onTap: _abrirResumenUltimoFinalizado,
-          ),
+          ...visibles.map((partido) {
+            final int golesSF = (partido['golesSanFernando'] ?? 0) as int;
+            final int golesR = (partido['golesRival'] ?? 0) as int;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF182338).withOpacity(0.75),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'San Fernando vs ${partido['rival']}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$golesSF - $golesR',
+                      style: const TextStyle(
+                        color: Color(0xFFDCE4EF),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildOutlinedAction(
+                      text: 'Ver resumen',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResumenPartidoFinalizadoScreen(
+                              partido: partido,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
         ],
       ),
     );
   }
 
   Widget _buildUpcomingList() {
+    final visibles = siguientesPartidos.take(3).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -900,7 +1033,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        if (siguientesPartidos.isEmpty)
+        if (visibles.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -914,12 +1047,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             ),
           )
         else
-          ...siguientesPartidos.map(_buildUpcomingItem),
+          ...visibles.map(_buildUpcomingItem),
       ],
     );
   }
 
   Widget _buildUpcomingItem(Map<String, dynamic> partido) {
+    final String? escudoRival = partido['escudoRival'] as String?;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -928,6 +1063,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'fecha': proximoPartido['fecha'].toString(),
             'hora': proximoPartido['hora'].toString(),
             'condicion': proximoPartido['condicion'].toString(),
+            'torneo': proximoPartido['torneo'].toString(),
+            'categoria': proximoPartido['categoria'].toString(),
+            'fechaNumero': proximoPartido['fechaNumero'],
+            'escudoRival': proximoPartido['escudoRival'],
           };
 
           final nuevosSiguientes = siguientesPartidos
@@ -963,10 +1102,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               ),
               padding: const EdgeInsets.all(6),
               child: Center(
-                child: Image.asset(
-                  'assets/images/san_fernando.png',
-                  fit: BoxFit.contain,
-                ),
+                child: escudoRival == null
+                    ? const Icon(
+                        Icons.sports_handball,
+                        size: 18,
+                        color: Color(0xFF1C2B44),
+                      )
+                    : Image.asset(escudoRival, fit: BoxFit.contain),
               ),
             ),
             const SizedBox(width: 10),
@@ -995,7 +1137,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
-  Widget _buildTeamBadge() {
+  Widget _buildTeamBadge({String? assetPath}) {
     return Container(
       width: 58,
       height: 58,
@@ -1005,10 +1147,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       ),
       padding: const EdgeInsets.all(8),
       child: Center(
-        child: Image.asset(
-          'assets/images/san_fernando.png',
-          fit: BoxFit.contain,
-        ),
+        child: assetPath == null
+            ? const Icon(
+                Icons.sports_handball,
+                color: Color(0xFF1C2B44),
+                size: 24,
+              )
+            : Image.asset(assetPath, fit: BoxFit.contain),
       ),
     );
   }
