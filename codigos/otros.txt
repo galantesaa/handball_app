@@ -4,7 +4,6 @@
 ///==============================
 ///===============================
 
-
 class _UndoSanctionOption {
   final String label;
   final String resultado;
@@ -354,12 +353,10 @@ class _ExtremeZonePainter extends CustomPainter {
   }
 }
 
-
 ///===============================
 /// PLACEHOLDERS
 /// ==============================
 ///===============================
-
 
 class EstadisticasScreen extends StatelessWidget {
   const EstadisticasScreen({super.key});

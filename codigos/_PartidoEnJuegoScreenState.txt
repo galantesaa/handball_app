@@ -132,24 +132,24 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   }
 
   Future<void> _abrirPlantel() async {
-  final resultado = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => MatchSquadScreen(partido: widget.partido),
-    ),
-  );
-
-  if (resultado != null && mounted) {
-    setState(() {
-      widget.partido['matchSquad'] = resultado;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Plantel del partido actualizado')),
+    final resultado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MatchSquadScreen(partido: widget.partido),
+      ),
     );
+
+    if (resultado != null && mounted) {
+      setState(() {
+        widget.partido['matchSquad'] = resultado;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Plantel del partido actualizado')),
+      );
+    }
   }
-}
-  
+
   void _abrirResumen() {
     if (!_partidoFinalizado) {
       ScaffoldMessenger.of(context).showSnackBar(

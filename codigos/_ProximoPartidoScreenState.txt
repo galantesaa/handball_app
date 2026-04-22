@@ -88,17 +88,23 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Map<String, dynamic> _defaultProximoPartido() {
-    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+  final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    return fixture.firstWhere(
+  return fixture.firstWhere(
+    (p) =>
+        p['torneo'] == widget.torneo &&
+        p['categoria'] == widget.categoria &&
+        p['estadoPartido'] != 'finalizado' &&
+        !partidosFinalizados.any((f) => _partidoIdentity(f) == _partidoIdentity(p)),
+    orElse: () => fixture.firstWhere(
       (p) =>
           p['torneo'] == widget.torneo &&
-          p['categoria'] == widget.categoria &&
-          p['fechaNumero'] == 1,
+          p['categoria'] == widget.categoria,
       orElse: () => fixture.first,
-    );
-  }
-
+    ),
+  );
+}
+  
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
@@ -261,8 +267,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return List.generate(apertura.length, (i) {
       final p = Map<String, dynamic>.from(apertura[i]);
+      final tmpLocal = p['local'];
+      p['local'] = p['visitante'];
+      p['visitante'] = tmpLocal;
       p['torneo'] = 'Clausura';
       p['fecha'] = _formatFecha(sabados[i]);
+      
       return p;
     });
   }
@@ -358,28 +368,41 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
-    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+  final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    final partidosDelContexto = fixture.where((p) {
-      return p['torneo'] == widget.torneo && p['categoria'] == widget.categoria;
-    }).toList();
+  final identidadesFinalizadas = partidosFinalizados
+      .map((p) => _partidoIdentity(p))
+      .toSet();
 
-    if (partidosDelContexto.length <= 1) return [];
+  final pendientes = fixture.where((p) {
+    return p['torneo'] == widget.torneo &&
+        p['categoria'] == widget.categoria &&
+        !identidadesFinalizadas.contains(_partidoIdentity(p));
+  }).toList();
 
-    return partidosDelContexto.skip(1).map((p) {
-      return {
-        'rival': p['rival'],
-        'fecha': p['fecha'],
-        'hora': p['hora'],
-        'condicion': p['condicion'],
-        'torneo': p['torneo'],
-        'categoria': p['categoria'],
-        'fechaNumero': p['fechaNumero'],
-        'escudoRival': p['escudoRival'],
-      };
-    }).toList();
-  }
+  if (pendientes.isEmpty) return [];
 
+  final identidadProximo = _partidoIdentity(proximoPartido);
+
+  final siguientes = pendientes
+      .where((p) => _partidoIdentity(p) != identidadProximo)
+      .toList();
+
+  return siguientes.take(3).map((p) {
+    return {
+      'rival': p['rival'],
+      'fecha': p['fecha'],
+      'hora': p['hora'],
+      'condicion': p['condicion'],
+      'torneo': p['torneo'],
+      'categoria': p['categoria'],
+      'fechaNumero': p['fechaNumero'],
+      'escudoRival': p['escudoRival'],
+      'estado': p['estado'],
+    };
+  }).toList();
+}
+  
   Future<void> _loadFixtureState() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -596,12 +619,19 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     await prefs.remove(_siguientesPartidosStorageKey);
     await prefs.remove(_partidosFinalizadosStorageKey);
 
-    await _cargarArgentinosManual();
+    if (widget.categoria == 'Cadetes' && widget.torneo == 'Apertura') {
+      await _cargarArgentinosManual();
+    }
 
     if (!mounted) return;
 
+    final mensaje =
+        widget.categoria == 'Cadetes' && widget.torneo == 'Apertura'
+            ? 'Datos reiniciados + Argentinos cargado'
+            : 'Datos reiniciados';
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Datos reiniciados + Argentinos cargado')),
+      SnackBar(content: Text(mensaje)),
     );
 
     Navigator.pushAndRemoveUntil(
@@ -836,9 +866,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildMatchCard(),
         const SizedBox(height: 16),
         _buildUpcomingList(),
-        if (partidosFinalizados.isNotEmpty) ...[
+        /*if (partidosFinalizados.isNotEmpty) ...[
           const SizedBox(height: 20),
-
           const Text(
             'Último partido finalizado',
             style: TextStyle(
@@ -939,7 +968,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               );
             },
           ),
-        ],
+        ],*/
         const SizedBox(height: 10),
         _buildSecondaryAction(
           text: 'Ver fixture completo',

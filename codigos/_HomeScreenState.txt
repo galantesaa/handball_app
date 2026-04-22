@@ -66,34 +66,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSection(BuildContext context, String title) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) {
-        switch (title) {
-          case 'Próximo partido':
-            return ProximoPartidoScreen(
-              categoria: categoriaSeleccionada,
-              torneo: torneoSeleccionado,
-            );
-          case 'Partidos jugados':
-            return const HistorialScreen();
-          case 'Estadísticas':
-            return const EstadisticasScreen();
-          case 'Equipo':
-            return const EquiposScreen();
-          case 'Jugadores':
-            return const JugadoresScreen();
-          default:
-            return Scaffold(
-              appBar: AppBar(title: Text(title)),
-              body: Center(child: Text('Pantalla $title')),
-            );
-        }
-      },
-    ),
-  );
-}
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          switch (title) {
+            case 'Próximo partido':
+              return ProximoPartidoScreen(
+                categoria: categoriaSeleccionada,
+                torneo: torneoSeleccionado,
+              );
+            case 'Partidos jugados':
+              return const HistorialScreen();
+            case 'Estadísticas':
+              return const EstadisticasScreen();
+            case 'Equipo':
+              return const EquiposScreen();
+            case 'Jugadores':
+              return const JugadoresScreen();
+            default:
+              return Scaffold(
+                appBar: AppBar(title: Text(title)),
+                body: Center(child: Text('Pantalla $title')),
+              );
+          }
+        },
+      ),
+    );
+  }
 
   void _abrirFixtureActual() {
     Navigator.push(

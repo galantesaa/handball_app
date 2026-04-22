@@ -171,20 +171,25 @@ class FixtureScreen extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
-    final apertura = _buildAperturaBase(categoria: categoria);
-    final sabados = _generarSabadosDesde(
-      inicio: DateTime(2026, 8, 8),
-      cantidad: apertura.length,
-    );
+  final apertura = _buildAperturaBase(categoria: categoria);
+  final sabados = _generarSabadosDesde(
+    inicio: DateTime(2026, 8, 8),
+    cantidad: apertura.length,
+  );
 
-    return List.generate(apertura.length, (i) {
-      final p = Map<String, dynamic>.from(apertura[i]);
-      p['torneo'] = 'Clausura';
-      p['fecha'] = _formatFecha(sabados[i]);
-      return p;
-    });
-  }
+  return List.generate(apertura.length, (i) {
+    final p = Map<String, dynamic>.from(apertura[i]);
 
+    final tmpLocal = p['local'];
+    p['local'] = p['visitante'];
+    p['visitante'] = tmpLocal;
+
+    p['torneo'] = 'Clausura';
+    p['fecha'] = _formatFecha(sabados[i]);
+    return p;
+  });
+}
+  
   String _normalizeValue(dynamic value) {
     return (value ?? '')
         .toString()

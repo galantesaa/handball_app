@@ -161,9 +161,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.88),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
           ),
           SafeArea(
             child: Column(
@@ -182,9 +180,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Buscar por rival',
-                          hintStyle: const TextStyle(
-                            color: Color(0xFFAAB4C3),
-                          ),
+                          hintStyle: const TextStyle(color: Color(0xFFAAB4C3)),
                           prefixIcon: const Icon(
                             Icons.search,
                             color: Color(0xFFAAB4C3),
@@ -248,13 +244,12 @@ class _HistorialScreenState extends State<HistorialScreen> {
                           itemCount: _filtrados.length,
                           itemBuilder: (context, index) {
                             final partido = _filtrados[index];
-                            final rival =
-                                (partido['rival'] ?? 'Rival').toString();
+                            final rival = (partido['rival'] ?? 'Rival')
+                                .toString();
                             final escudo = _rivalShieldAsset(rival);
                             final golesSF =
                                 (partido['golesSanFernando'] ?? 0) as int;
-                            final golesR =
-                                (partido['golesRival'] ?? 0) as int;
+                            final golesR = (partido['golesRival'] ?? 0) as int;
 
                             return GestureDetector(
                               onTap: () {
@@ -272,8 +267,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color:
-                                      const Color(0xFF0F1722).withOpacity(0.84),
+                                  color: const Color(
+                                    0xFF0F1722,
+                                  ).withOpacity(0.84),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: Colors.white.withOpacity(0.04),

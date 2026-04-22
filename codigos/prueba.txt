@@ -1,44 +1,133 @@
-Widget _buildPerspectiveZoneCell({
-    required String shortLabel,
-    required String fullLabel,
-    required bool isSelected,
-    required double topWidthFactor,
-    required double bottomWidthFactor,
-  }) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap:
-          _isPlayLocked() ||
-              _isPenaltyShootout() ||
-              penalEnCurso ||
-              modo == null
-          ? null
-          : () {
-              setState(() {
-                zonaTiro = (zonaTiro == fullLabel) ? null : fullLabel;
-                zonaArco = null;
-                mostrarContra = false;
-                origenJugadaActual = 'normal';
-              });
-            },
-      child: CustomPaint(
-        painter: _TrapezoidZonePainter(
-          selected: isSelected,
-          topWidthFactor: topWidthFactor,
-          bottomWidthFactor: bottomWidthFactor,
-        ),
-        child: Center(
-          child: Text(
-            shortLabel,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFDCE4EF),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 1.15,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+A Dart VM Service on M2101K6G is available at: http://127.0.0.1:49630/UUGHCKWWLoM=/
+The Flutter DevTools debugger and profiler on M2101K6G is available at:
+http://127.0.0.1:49630/UUGHCKWWLoM=/devtools/?uri=ws://127.0.0.1:49630/UUGHCKWWLoM=/ws
+E/FileUtils(20449): err write to mi_exception_log
+I/Choreographer(20449): Skipped 528 frames!  The application may be doing too much work on its main thread.
+D/FlutterRenderer(20449): Width is zero. 0,0
+D/FlutterJNI(20449): Sending viewport metrics to the engine.
+E/libEGL  (20449): pre_cache appList: ,,
+D/VRI[MainActivity](20449): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:3779 android.view.ViewRootImpl.doTraversal:2543 android.view.ViewRootImpl$TraversalRunnable.run:9465 android.view.Choreographer$CallbackRecord.run:1451 android.view.Choreographer$CallbackRecord.run:1459 
+D/SurfaceView(20449): UPDATE null, mIsCastMode = false
+E/libEGL  (20449): pre_cache appList: ,,
+E/FileUtils(20449): err write to mi_exception_log
+E/FileUtils(20449): err write to mi_exception_log
+E/LB      (20449): fail to open node: No such file or directory
+I/Choreographer(20449): Skipped 166 frames!  The application may be doing too much work on its main thread.
+D/DecorView[](20449): getWindowModeFromSystem  windowmode is 1
+D/DecorView[](20449): updateDecorCaptionStatus windowMode is 1
+D/FlutterJNI(20449): Sending viewport metrics to the engine.
+D/VRI[MainActivity](20449): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:3779 android.view.ViewRootImpl.doTraversal:2543 android.view.ViewRootImpl$TraversalRunnable.run:9465 android.view.Choreographer$CallbackRecord.run:1451 android.view.Choreographer$CallbackRecord.run:1459 
+D/SurfaceView(20449): UPDATE Surface(name=SurfaceView[com.example.handball_app/com.example.handball_app.MainActivity])/@0x388c3a5, mIsProjectionMode = false
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/VRI[MainActivity](20449): vri.Setup new sync id=0 syncSeqId=0
+D/le.handball_app(20449): MiuiProcessManagerServiceStub setSchedFifo
+I/MiuiProcessManagerImpl(20449): setSchedFifo pid:20449, mode:3
+W/Parcel  (20449): Expecting binder but got null!
+E/FileUtils(20449): err write to mi_exception_log
+E/FileUtils(20449): err write to mi_exception_log
+D/VRI[MainActivity](20449): vri.reportDrawFinished syncSeqId=0 android.view.ViewRootImpl.lambda$createSyncIfNeeded$4$android-view-ViewRootImpl:3847 android.view.ViewRootImpl$$ExternalSyntheticLambda1.run:6 android.os.Handler.handleCallback:942 android.os.Handler.dispatchMessage:99 android.os.Looper.loopOnce:211 
+I/OpenGLRenderer(20449): Davey! duration=1459ms; Flags=1, FrameTimelineVsyncId=4038919, IntendedVsync=17713374574467, Vsync=17714757288067, InputEventId=0, HandleInputStart=17714763157094, AnimationStart=17714763159907, PerformTraversalsStart=17714763161209, DrawStart=17714808819073, FrameDeadline=17713390241133, FrameInterval=17714762985063, FrameStartTime=8329600, SyncQueued=17714810639803, SyncStart=17714810824386, IssueDrawCommandsStart=17714815402198, SwapBuffers=17714825687771, FrameCompleted=17714833784594, DequeueBufferDuration=9355886, QueueBufferDuration=909688, GpuCompleted=17714833784594, SwapBuffersCompleted=17714827088761, DisplayPresentTime=0, CommandSubmissionCompleted=17714825687771, 
+D/FlutterJNI(20449): Sending viewport metrics to the engine.
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus true
+I/HandWritingStubImpl(20449): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(20449): getCurrentKeyboardType: 1
+I/HandWritingStubImpl(20449): getCurrentKeyboardType: 1
+D/FlutterJNI(20449): Sending viewport metrics to the engine.
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus false
+E/BinderMonitor(20449): err open binder_delay errno=2
+E/FileUtils(20449): err write to mi_exception_log
+E/FileUtils(20449): err write to mi_exception_log
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus false
+W/FinalizerDaemon(20449): type=1400 audit(0.0:16010): avc: denied { getopt } for path="/dev/socket/usap_pool_primary" scontext=u:r:untrusted_app:s0:c183,c258,c512,c768 tcontext=u:r:zygote:s0 tclass=unix_stream_socket permissive=0 app=com.example.handball_app
+D/ProfileInstaller(20449): Installing profile for com.example.handball_app
+E/FileUtils(20449): err write to mi_exception_log
+I/ForceDarkHelperStubImpl(20449): setViewRootImplForceDark: false for com.example.handball_app.MainActivity@ed07ec5, reason: AppDarkModeEnable
+D/AppScoutStateMachine(20449): 20449-ScoutStateMachinecreated
+E/FileUtils(20449): err write to mi_exception_log
+D/VRI[MainActivity](20449): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:3779 android.view.ViewRootImpl.doTraversal:2543 android.view.ViewRootImpl$TraversalRunnable.run:9465 android.view.Choreographer$CallbackRecord.run:1451 android.view.Choreographer$CallbackRecord.run:1459 
+D/SurfaceView(20449): UPDATE Surface(name=SurfaceView[com.example.handball_app/com.example.handball_app.MainActivity])/@0xbd498c9, mIsProjectionMode = false
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/VRI[MainActivity](20449): vri.Setup new sync id=1 syncSeqId=0
+D/VRI[MainActivity](20449): vri.reportDrawFinished syncSeqId=0 android.view.ViewRootImpl.lambda$createSyncIfNeeded$4$android-view-ViewRootImpl:3847 android.view.ViewRootImpl$$ExternalSyntheticLambda1.run:6 android.os.Handler.handleCallback:942 android.os.Handler.dispatchMessage:99 android.os.Looper.loopOnce:211 
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus true
+I/HandWritingStubImpl(20449): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(20449): getCurrentKeyboardType: 1
+W/MirrorManager(20449): this model don't Support
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+E/FileUtils(20449): err write to mi_exception_log
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/flutter (20449): EVENTO -> tipo:tiro resultado:gol modo:ataque actor:Jugador zonaTiro:Extremo izquierdo zonaArco:BI
+I/flutter (20449): EVENTO -> tipo:tiro resultado:gol modo:defensa actor:23 · Verdejo, Felipe zonaTiro:Extremo izquierdo zonaArco:BI
+I/flutter (20449): EVENTO -> tipo:tiro resultado:atajado modo:defensa actor:33 · Galante Saavedra, Bautista zonaTiro:Extremo izquierdo zonaArco:BD
+I/flutter (20449): EVENTO -> tipo:tiro resultado:atajado modo:defensa actor:23 · Verdejo, Felipe zonaTiro:Extremo izquierdo zonaArco:BC
+I/flutter (20449): EVENTO -> tipo:tiro resultado:atajado modo:defensa actor:33 · Galante Saavedra, Bautista zonaTiro:Extremo derecho zonaArco:CD
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus false
+E/FileUtils(20449): err write to mi_exception_log
+E/FileUtils(20449): err write to mi_exception_log
+I/ForceDarkHelperStubImpl(20449): setViewRootImplForceDark: false for com.example.handball_app.MainActivity@ed07ec5, reason: AppDarkModeEnable
+D/AppScoutStateMachine(20449): 20449-ScoutStateMachinecreated
+D/FlutterJNI(20449): Sending viewport metrics to the engine.
+E/FileUtils(20449): err write to mi_exception_log
+D/FlutterJNI(20449): Sending viewport metrics to the engine.
+D/VRI[MainActivity](20449): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:3779 android.view.ViewRootImpl.doTraversal:2543 android.view.ViewRootImpl$TraversalRunnable.run:9465 android.view.Choreographer$CallbackRecord.run:1451 android.view.Choreographer$CallbackRecord.run:1459 
+D/SurfaceView(20449): UPDATE Surface(name=SurfaceView[com.example.handball_app/com.example.handball_app.MainActivity])/@0x29260db, mIsProjectionMode = false
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/SurfaceControl(20449): nativeSetScreenProjection ===> setScreenProjection
+D/VRI[MainActivity](20449): vri.Setup new sync id=2 syncSeqId=0
+E/FileUtils(20449): err write to mi_exception_log
+D/VRI[MainActivity](20449): vri.reportDrawFinished syncSeqId=0 android.view.ViewRootImpl.lambda$createSyncIfNeeded$4$android-view-ViewRootImpl:3847 android.view.ViewRootImpl$$ExternalSyntheticLambda1.run:6 android.os.Handler.handleCallback:942 android.os.Handler.dispatchMessage:99 android.os.Looper.loopOnce:211 
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus true
+I/HandWritingStubImpl(20449): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(20449): getCurrentKeyboardType: 1
+I/flutter (20449): EVENTO -> tipo:tiro resultado:atajado modo:defensa actor:33 · Galante Saavedra, Bautista zonaTiro:Extremo izquierdo zonaArco:AI
+I/flutter (20449): EVENTO -> tipo:contra resultado:inicio_contra modo:ataque actor:Cambio de contexto zonaTiro:null zonaArco:null
+I/flutter (20449): EVENTO -> tipo:tiro resultado:gol modo:ataque actor:Jugador zonaTiro:Extremo derecho zonaArco:AD
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/LongScreenshotUtils(20449):  focus:true
+I/LongScreenshotUtils(20449): current ratio width:1.0, height:1.0
+W/OnBackInvokedCallback(20449): OnBackInvokedCallback is not enabled for the application.
+W/OnBackInvokedCallback(20449): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/LongScreenshotUtils(20449):  focus:true
+I/LongScreenshotUtils(20449): current ratio width:1.0, height:1.0
+D/DecorView[](20449): onWindowFocusChanged hasWindowFocus false
+E/FileUtils(20449): err write to mi_exception_log
+E/FileUtils(20449): err write to mi_exception_log
+E/FileUtils(20449): err write to mi_exception_log
+Lost connection to device.
+PS C:\appflutter\handball_app> 

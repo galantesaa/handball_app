@@ -572,12 +572,6 @@ class RosterRepository {
       numeroEnCategoria: '76',
     ),
     RosterAssignment(
-      playerId: 'sf_juan_pundang',
-      categoria: 'Juveniles',
-      temporada: '2026',
-      numeroEnCategoria: '78',
-    ),
-    RosterAssignment(
       playerId: 'sf_federico_fernandez',
       categoria: 'Juveniles',
       temporada: '2026',
@@ -849,7 +843,7 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     required List<PlayerProfile> players,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.88),
         borderRadius: BorderRadius.circular(20),
@@ -866,14 +860,14 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           ...players.map((p) {
             final convocado = convocadosIds.contains(p.playerId);
             final arquero = arquerosIds.contains(p.playerId);
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF182338).withOpacity(0.75),
                 borderRadius: BorderRadius.circular(16),
@@ -1554,8 +1548,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       'fecha': '18/04',
       'hora': '13:00',
       'condicion': 'Local',
-      'torneo': widget.torneo,
-      'categoria': widget.categoria,
+      'torneo': 'Apertura',
+      'categoria': 'Cadetes',
       'estado': 'Finalizado',
       'estadoPartido': 'finalizado',
       'golesSanFernando': 30,
@@ -1615,17 +1609,23 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Map<String, dynamic> _defaultProximoPartido() {
-    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+  final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    return fixture.firstWhere(
+  return fixture.firstWhere(
+    (p) =>
+        p['torneo'] == widget.torneo &&
+        p['categoria'] == widget.categoria &&
+        p['estadoPartido'] != 'finalizado' &&
+        !partidosFinalizados.any((f) => _partidoIdentity(f) == _partidoIdentity(p)),
+    orElse: () => fixture.firstWhere(
       (p) =>
           p['torneo'] == widget.torneo &&
-          p['categoria'] == widget.categoria &&
-          p['fechaNumero'] == 1,
+          p['categoria'] == widget.categoria,
       orElse: () => fixture.first,
-    );
-  }
-
+    ),
+  );
+}
+  
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
@@ -1788,8 +1788,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return List.generate(apertura.length, (i) {
       final p = Map<String, dynamic>.from(apertura[i]);
+      final tmpLocal = p['local'];
+      p['local'] = p['visitante'];
+      p['visitante'] = tmpLocal;
       p['torneo'] = 'Clausura';
       p['fecha'] = _formatFecha(sabados[i]);
+      
       return p;
     });
   }
@@ -1885,28 +1889,41 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
-    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+  final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    final partidosDelContexto = fixture.where((p) {
-      return p['torneo'] == widget.torneo && p['categoria'] == widget.categoria;
-    }).toList();
+  final identidadesFinalizadas = partidosFinalizados
+      .map((p) => _partidoIdentity(p))
+      .toSet();
 
-    if (partidosDelContexto.length <= 1) return [];
+  final pendientes = fixture.where((p) {
+    return p['torneo'] == widget.torneo &&
+        p['categoria'] == widget.categoria &&
+        !identidadesFinalizadas.contains(_partidoIdentity(p));
+  }).toList();
 
-    return partidosDelContexto.skip(1).map((p) {
-      return {
-        'rival': p['rival'],
-        'fecha': p['fecha'],
-        'hora': p['hora'],
-        'condicion': p['condicion'],
-        'torneo': p['torneo'],
-        'categoria': p['categoria'],
-        'fechaNumero': p['fechaNumero'],
-        'escudoRival': p['escudoRival'],
-      };
-    }).toList();
-  }
+  if (pendientes.isEmpty) return [];
 
+  final identidadProximo = _partidoIdentity(proximoPartido);
+
+  final siguientes = pendientes
+      .where((p) => _partidoIdentity(p) != identidadProximo)
+      .toList();
+
+  return siguientes.take(3).map((p) {
+    return {
+      'rival': p['rival'],
+      'fecha': p['fecha'],
+      'hora': p['hora'],
+      'condicion': p['condicion'],
+      'torneo': p['torneo'],
+      'categoria': p['categoria'],
+      'fechaNumero': p['fechaNumero'],
+      'escudoRival': p['escudoRival'],
+      'estado': p['estado'],
+    };
+  }).toList();
+}
+  
   Future<void> _loadFixtureState() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -2123,12 +2140,19 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     await prefs.remove(_siguientesPartidosStorageKey);
     await prefs.remove(_partidosFinalizadosStorageKey);
 
-    await _cargarArgentinosManual();
+    if (widget.categoria == 'Cadetes' && widget.torneo == 'Apertura') {
+      await _cargarArgentinosManual();
+    }
 
     if (!mounted) return;
 
+    final mensaje =
+        widget.categoria == 'Cadetes' && widget.torneo == 'Apertura'
+            ? 'Datos reiniciados + Argentinos cargado'
+            : 'Datos reiniciados';
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Datos reiniciados + Argentinos cargado')),
+      SnackBar(content: Text(mensaje)),
     );
 
     Navigator.pushAndRemoveUntil(
@@ -2363,9 +2387,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         _buildMatchCard(),
         const SizedBox(height: 16),
         _buildUpcomingList(),
-        if (partidosFinalizados.isNotEmpty) ...[
+        /*if (partidosFinalizados.isNotEmpty) ...[
           const SizedBox(height: 20),
-
           const Text(
             'Último partido finalizado',
             style: TextStyle(
@@ -2466,7 +2489,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               );
             },
           ),
-        ],
+        ],*/
         const SizedBox(height: 10),
         _buildSecondaryAction(
           text: 'Ver fixture completo',
@@ -3070,7 +3093,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
 /// ===============================
 /// ===============================
-///
 /// RESUMEN DEL PARTIDO FINALIZADO
 /// ===============================
 /// ===============================
@@ -3826,20 +3848,25 @@ class FixtureScreen extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
-    final apertura = _buildAperturaBase(categoria: categoria);
-    final sabados = _generarSabadosDesde(
-      inicio: DateTime(2026, 8, 8),
-      cantidad: apertura.length,
-    );
+  final apertura = _buildAperturaBase(categoria: categoria);
+  final sabados = _generarSabadosDesde(
+    inicio: DateTime(2026, 8, 8),
+    cantidad: apertura.length,
+  );
 
-    return List.generate(apertura.length, (i) {
-      final p = Map<String, dynamic>.from(apertura[i]);
-      p['torneo'] = 'Clausura';
-      p['fecha'] = _formatFecha(sabados[i]);
-      return p;
-    });
-  }
+  return List.generate(apertura.length, (i) {
+    final p = Map<String, dynamic>.from(apertura[i]);
 
+    final tmpLocal = p['local'];
+    p['local'] = p['visitante'];
+    p['visitante'] = tmpLocal;
+
+    p['torneo'] = 'Clausura';
+    p['fecha'] = _formatFecha(sabados[i]);
+    return p;
+  });
+}
+  
   String _normalizeValue(dynamic value) {
     return (value ?? '')
         .toString()
@@ -5017,39 +5044,54 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         _normalizeValue(widget.partido['condicion']) == 'local';
   }
 
-  List<PlayerProfile> _availableGoalkeepersForMatch() {
-    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
-    final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
+  List<PlayerProfile> get _jugadoresConvocados {
+  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
 
-    if (matchSquad != null) {
-      final config = MatchSquadConfig.fromMap(matchSquad);
-
-      final convocados = RosterRepository.rosterForCategory(
-        categoria: categoria,
-        temporada: '2026',
-      );
-
-      final arquerosConvocados = convocados.where((p) {
-        return config.arquerosIds.contains(p.playerId);
-      }).toList();
-
-      if (arquerosConvocados.isNotEmpty) {
-        return arquerosConvocados;
-      }
-    }
-
-    return RosterRepository.goalkeepersForCategory(
-      categoria: categoria,
+  if (squadMap == null) {
+    return RosterRepository.rosterForCategory(
+      categoria: widget.partido['categoria'],
       temporada: '2026',
     );
   }
 
+  final squad = MatchSquadConfig.fromMap(squadMap);
+
+  return RosterRepository.players
+      .where((p) => squad.convocadosIds.contains(p.playerId))
+      .toList();
+}
+  
+  List<PlayerProfile> _availableGoalkeepersForMatch() {
+  final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+  if (matchSquad != null) {
+    final config = MatchSquadConfig.fromMap(matchSquad);
+
+    final arquerosConvocados = RosterRepository.players.where((p) {
+      return p.esArquero && config.arquerosIds.contains(p.playerId);
+    }).toList();
+
+    if (arquerosConvocados.isNotEmpty) {
+      return arquerosConvocados;
+    }
+  }
+
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+  return RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+}
+  
   PlayerProfile? _getCurrentGoalkeeperProfile() {
     final arqueros = _availableGoalkeepersForMatch();
 
     if (arqueros.isEmpty) return null;
 
-    if (currentGoalkeeperNumber == null) return arqueros.first;
+    if (currentGoalkeeperNumber == null) {
+      return arqueros.first;
+    }
 
     for (final gk in arqueros) {
       if (gk.numeroPreferido == currentGoalkeeperNumber) {
@@ -5338,6 +5380,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   bool get _somosLocales => widget.partido['condicion'] == 'Local';
 
+  String get _nombreLocalEnVivo =>
+      _somosLocales ? 'San Fernando' : (widget.partido['rival'] ?? 'Rival').toString();
+
+  String get _nombreVisitanteEnVivo =>
+      _somosLocales ? (widget.partido['rival'] ?? 'Rival').toString() : 'San Fernando';
+
+  String? get _escudoLocalEnVivo =>
+      _somosLocales ? 'assets/images/san_fernando.png' : _rivalShieldAsset();
+
+  String? get _escudoVisitanteEnVivo =>
+      _somosLocales ? _rivalShieldAsset() : 'assets/images/san_fernando.png';
+
   int _golesLocal() => _somosLocales ? golesSanFernando : golesRival;
   int _golesVisitante() => _somosLocales ? golesRival : golesSanFernando;
 
@@ -5353,51 +5407,51 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   bool get _fueraGestureEnabled => !_isPlayLocked() && modo != null;
 
   Widget _buildCompactScoreBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.88),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: Row(
-        children: [
-          _buildMiniTeamTag('L'),
-          const SizedBox(width: 8),
-          _buildMiniShield(assetPath: 'assets/images/san_fernando.png'),
-          const Spacer(),
-          Column(
-            children: [
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.88),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Colors.white.withOpacity(0.04)),
+    ),
+    child: Row(
+      children: [
+        _buildMiniTeamTag('L'),
+        const SizedBox(width: 8),
+        _buildMiniShield(assetPath: _escudoLocalEnVivo),
+        const Spacer(),
+        Column(
+          children: [
+            Text(
+              '${_golesLocal()} - ${_golesVisitante()}',
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            if (_isPenaltyShootout()) ...[
+              const SizedBox(height: 4),
               Text(
-                '${_golesLocal()} - ${_golesVisitante()}',
+                '(${_penalesLocal()} - ${_penalesVisitante()})',
                 style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  fontSize: 13,
+                  color: Color(0xFFAAB4C3),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              if (_isPenaltyShootout()) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '(${_penalesLocal()} - ${_penalesVisitante()})',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFAAB4C3),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ],
-          ),
-          const Spacer(),
-          _buildMiniShield(assetPath: _rivalShieldAsset()),
-          const SizedBox(width: 8),
-          _buildMiniTeamTag('V'),
-        ],
-      ),
-    );
-  }
-
+          ],
+        ),
+        const Spacer(),
+        _buildMiniShield(assetPath: _escudoVisitanteEnVivo),
+        const SizedBox(width: 8),
+        _buildMiniTeamTag('V'),
+      ],
+    ),
+  );
+}
+  
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -7082,51 +7136,52 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Future<void> _showFieldPlayerSelector() async {
-    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+  final jugadores = _jugadoresConvocados
+      .where((p) => !p.esArquero && !p.esCuerpoTecnico)
+      .toList();
 
-    final jugadores = RosterRepository.rosterForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    );
-
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Seleccionar jugador',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  await showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Seleccionar jugador',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-
+            ),
+            const SizedBox(height: 16),
+            if (jugadores.isEmpty)
+              const Text(
+                'No hay jugadores de campo convocados para este partido',
+                style: TextStyle(color: Colors.white70),
+              )
+            else
               ...jugadores.map((p) {
                 return _floatingOption(p.displayName, () {
                   Navigator.pop(context);
-
                   setState(() {
                     _currentFieldPlayer = p;
                   });
                 });
               }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Future<void> _showGoalkeeperSelectorSheet({
     String title = 'Seleccionar arquero',
     VoidCallback? onAfterSelected,

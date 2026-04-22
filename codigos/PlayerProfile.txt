@@ -524,12 +524,6 @@ class RosterRepository {
       numeroEnCategoria: '76',
     ),
     RosterAssignment(
-      playerId: 'sf_juan_pundang',
-      categoria: 'Juveniles',
-      temporada: '2026',
-      numeroEnCategoria: '78',
-    ),
-    RosterAssignment(
       playerId: 'sf_federico_fernandez',
       categoria: 'Juveniles',
       temporada: '2026',
@@ -543,10 +537,10 @@ class RosterRepository {
     bool includeStaff = false,
   }) {
     final ids = assignments
-        .where((a) =>
-            a.categoria == categoria &&
-            a.temporada == temporada &&
-            a.activo)
+        .where(
+          (a) =>
+              a.categoria == categoria && a.temporada == temporada && a.activo,
+        )
         .map((a) => a.playerId)
         .toSet();
 
@@ -624,10 +618,7 @@ class MatchSquadConfig {
 class MatchSquadScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
-  const MatchSquadScreen({
-    super.key,
-    required this.partido,
-  });
+  const MatchSquadScreen({super.key, required this.partido});
 
   @override
   State<MatchSquadScreen> createState() => _MatchSquadScreenState();
@@ -682,9 +673,11 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     final juvenilesIds = _titularesCategoria.map((e) => e.playerId).toSet();
 
     return RosterRepository.rosterForCategory(
-      categoria: 'Cadetes',
-      temporada: temporada,
-    ).where((p) => !juvenilesIds.contains(p.playerId) && !p.esCuerpoTecnico).toList();
+          categoria: 'Cadetes',
+          temporada: temporada,
+        )
+        .where((p) => !juvenilesIds.contains(p.playerId) && !p.esCuerpoTecnico)
+        .toList();
   }
 
   void _toggleConvocado(PlayerProfile player, bool? selected) {
@@ -802,7 +795,7 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     required List<PlayerProfile> players,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.88),
         borderRadius: BorderRadius.circular(20),
@@ -819,14 +812,14 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           ...players.map((p) {
             final convocado = convocadosIds.contains(p.playerId);
             final arquero = arquerosIds.contains(p.playerId);
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF182338).withOpacity(0.75),
                 borderRadius: BorderRadius.circular(16),
@@ -855,7 +848,9 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          p.esArquero ? 'Arquero disponible' : 'Jugador de campo',
+                          p.esArquero
+                              ? 'Arquero disponible'
+                              : 'Jugador de campo',
                           style: const TextStyle(
                             color: Color(0xFFAAB4C3),
                             fontSize: 12,
