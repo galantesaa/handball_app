@@ -1,3 +1,9 @@
+/// ===============================
+/// ===============================
+/// PARTIDO EN VIVO
+/// ===============================
+/// ===============================
+
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
@@ -82,8 +88,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   String? modoInicioPrimerTiempo;
   String? modoInicioPrimerTiempoAlargue;
 
+  PlayerProfile? _currentFieldPlayer;
+
   String _currentFieldPlayerActorName() {
-    return 'Jugador genérico';
+    if (_currentFieldPlayer == null) return 'Jugador';
+
+    return _currentFieldPlayer!.displayName;
   }
 
   String _resolvePrimaryActorForShot({
@@ -146,9 +156,54 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         _normalizeValue(widget.partido['condicion']) == 'local';
   }
 
+  List<PlayerProfile> _availableGoalkeepersForMatch() {
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+  final matchSquad =
+      widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+  if (matchSquad != null) {
+    final config = MatchSquadConfig.fromMap(matchSquad);
+
+    final convocados = RosterRepository.rosterForCategory(
+      categoria: categoria,
+      temporada: '2026',
+    );
+
+    final arquerosConvocados = convocados.where((p) {
+      return config.arquerosIds.contains(p.playerId);
+    }).toList();
+
+    if (arquerosConvocados.isNotEmpty) {
+      return arquerosConvocados;
+    }
+  }
+
+  return RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+}
+
+  PlayerProfile? _getCurrentGoalkeeperProfile() {
+  final arqueros = _availableGoalkeepersForMatch();
+
+  if (arqueros.isEmpty) return null;
+
+  if (currentGoalkeeperNumber == null) return arqueros.first;
+
+  for (final gk in arqueros) {
+    if (gk.numeroPreferido == currentGoalkeeperNumber) {
+      return gk;
+    }
+  }
+
+  return arqueros.first;
+}
+  
   String get _currentGoalkeeperActorName {
-    if (currentGoalkeeperNumber == null) return 'Arquero genérico';
-    return 'Arquero $currentGoalkeeperNumber';
+    final gk = _getCurrentGoalkeeperProfile();
+    if (gk == null) return 'Arquero';
+    return gk.displayName;
   }
 
   String? _rivalShieldAsset() {
@@ -518,18 +573,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 } else if (value == 'goalkeeper') {
                   await _showGoalkeeperSelectorSheet(
                     title: 'Cambiar arquero activo',
-                    onSelected33: () {
-                      setState(() {
-                        currentGoalkeeperNumber = '33';
-                      });
-                      _persistLiveMatch();
-                    },
-                    onSelected1: () {
-                      setState(() {
-                        currentGoalkeeperNumber = '1';
-                      });
-                      _persistLiveMatch();
-                    },
                   );
                 }
               },
@@ -2178,11 +2221,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  Future<void> _showGoalkeeperSelectorSheet({
-    required VoidCallback onSelected33,
-    required VoidCallback onSelected1,
-    String title = 'Seleccionar arquero',
-  }) async {
+  Future<void> _showFieldPlayerSelector() async {
+    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+    final jugadores = RosterRepository.rosterForCategory(
+      categoria: categoria,
+      temporada: '2026',
+    );
+
     await showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF0F1722),
@@ -2195,22 +2241,24 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
+              const Text(
+                'Seleccionar jugador',
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 16),
-              _floatingOption('Arquero 33', () {
-                Navigator.pop(context);
-                onSelected33();
-              }),
-              _floatingOption('Arquero 1', () {
-                Navigator.pop(context);
-                onSelected1();
+
+              ...jugadores.map((p) {
+                return _floatingOption(p.displayName, () {
+                  Navigator.pop(context);
+
+                  setState(() {
+                    _currentFieldPlayer = p;
+                  });
+                });
               }),
             ],
           ),
@@ -2219,26 +2267,63 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
+  Future<void> _showGoalkeeperSelectorSheet({
+  String title = 'Seleccionar arquero',
+  VoidCallback? onAfterSelected,
+}) async {
+  final arqueros = _availableGoalkeepersForMatch();
+
+  await showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (arqueros.isEmpty)
+              const Text(
+                'No hay arqueros convocados para este partido',
+                style: TextStyle(color: Colors.white70),
+              )
+            else
+              ...arqueros.map((gk) {
+                return _floatingOption(gk.displayName, () {
+                  Navigator.pop(context);
+                  setState(() {
+                    currentGoalkeeperNumber = gk.numeroPreferido;
+                  });
+                  _persistLiveMatch();
+                  onAfterSelected?.call();
+                });
+              }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Future<void> _selectGoalkeeperForCurrentPeriod({
     required VoidCallback onAfterSelect,
     String title = 'Seleccionar arquero inicial',
   }) async {
     await _showGoalkeeperSelectorSheet(
       title: title,
-      onSelected33: () {
-        setState(() {
-          currentGoalkeeperNumber = '33';
-        });
-        _persistLiveMatch();
-        onAfterSelect();
-      },
-      onSelected1: () {
-        setState(() {
-          currentGoalkeeperNumber = '1';
-        });
-        _persistLiveMatch();
-        onAfterSelect();
-      },
+      onAfterSelected: onAfterSelect,
     );
   }
 

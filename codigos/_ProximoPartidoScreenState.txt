@@ -4,24 +4,66 @@
 /// ===============================
 
 class ProximoPartidoScreen extends StatefulWidget {
-  
-const ProximoPartidoScreen({super.key});
+  final String categoria;
+  final String torneo;
+
+  const ProximoPartidoScreen({
+    super.key,
+    required this.categoria,
+    required this.torneo,
+  });
 
   @override
-State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
+  State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
 }
 
 class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   bool hayPartido = true;
 
+  Map<String, dynamic> _crearPartidoArgentinos() {
+    return {
+      'rival': 'Argentinos Juniors',
+      'fechaNumero': 4,
+      'fecha': '18/04',
+      'hora': '13:00',
+      'condicion': 'Local',
+      'torneo': widget.torneo,
+      'categoria': widget.categoria,
+      'estado': 'Finalizado',
+      'estadoPartido': 'finalizado',
+      'golesSanFernando': 30,
+      'golesRival': 26,
+      'golesRecibidos': 26,
+      'atajadas': 14,
+      'penales': 6,
+      'exclusiones2Min': 5,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 11,
+      'recuperaciones': 18,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': 'assets/images/argentinos.png',
+    };
+  }
+
   late Map<String, dynamic> proximoPartido;
   late List<Map<String, dynamic>> siguientesPartidos;
   List<Map<String, dynamic>> partidosFinalizados = [];
 
-  static const String _proximoPartidoStorageKey = 'proximo_partido_v1';
-  static const String _siguientesPartidosStorageKey = 'siguientes_partidos_v1';
-  static const String _partidosFinalizadosStorageKey =
-      'proximos_finalizados_v1';
+  String get _proximoPartidoStorageKey =>
+      'proximo_partido_${widget.categoria}_${widget.torneo}';
+
+  String get _siguientesPartidosStorageKey =>
+      'siguientes_${widget.categoria}_${widget.torneo}';
+
+  String get _partidosFinalizadosStorageKey =>
+      'finalizados_${widget.categoria}_${widget.torneo}';
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
       'finished_matches_history_v1';
@@ -46,14 +88,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Map<String, dynamic> _defaultProximoPartido() {
-    final fixtureCadetes = _buildFixtureCompleto(categoria: 'Cadetes');
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    return fixtureCadetes.firstWhere(
+    return fixture.firstWhere(
       (p) =>
-          p['torneo'] == 'Apertura' &&
-          p['categoria'] == 'Cadetes' &&
-          p['fechaNumero'] == 5,
-      orElse: () => fixtureCadetes.first,
+          p['torneo'] == widget.torneo &&
+          p['categoria'] == widget.categoria &&
+          p['fechaNumero'] == 1,
+      orElse: () => fixture.first,
     );
   }
 
@@ -316,27 +358,26 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
-    final fixtureCadetes = _buildFixtureCompleto(categoria: 'Cadetes');
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    return fixtureCadetes
-        .where((p) {
-          return p['torneo'] == 'Apertura' &&
-              p['categoria'] == 'Cadetes' &&
-              (p['fechaNumero'] as int) > 5;
-        })
-        .map((p) {
-          return {
-            'rival': p['rival'],
-            'fecha': p['fecha'],
-            'hora': p['hora'],
-            'condicion': p['condicion'],
-            'torneo': p['torneo'],
-            'categoria': p['categoria'],
-            'fechaNumero': p['fechaNumero'],
-            'escudoRival': p['escudoRival'],
-          };
-        })
-        .toList();
+    final partidosDelContexto = fixture.where((p) {
+      return p['torneo'] == widget.torneo && p['categoria'] == widget.categoria;
+    }).toList();
+
+    if (partidosDelContexto.length <= 1) return [];
+
+    return partidosDelContexto.skip(1).map((p) {
+      return {
+        'rival': p['rival'],
+        'fecha': p['fecha'],
+        'hora': p['hora'],
+        'condicion': p['condicion'],
+        'torneo': p['torneo'],
+        'categoria': p['categoria'],
+        'fechaNumero': p['fechaNumero'],
+        'escudoRival': p['escudoRival'],
+      };
+    }).toList();
   }
 
   Future<void> _loadFixtureState() async {
@@ -419,7 +460,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   Future<void> _resetPartidosDePrueba() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final fixtureCadetes = _buildFixtureCompleto(categoria: 'Cadetes');
+    final fixture = _buildFixtureCompleto(
+      categoria: widget.categoria,
+    ).where((p) => p['torneo'] == widget.torneo).toList();
 
     final Map<String, Map<String, dynamic>> finalizadosPorId = {
       for (final p in partidosFinalizados)
@@ -429,7 +472,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     final List<Map<String, dynamic>> pendientes = [];
     final List<Map<String, dynamic>> finalizadosConservados = [];
 
-    for (final partido in fixtureCadetes) {
+    for (final partido in fixture) {
       final id = _partidoIdentity(partido);
 
       if (finalizadosPorId.containsKey(id)) {
@@ -489,114 +532,85 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _cargarArgentinosManual() async {
-  final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
-  const matchIdentity =
-      'apertura|cadetes|18/04|argentinos juniors|local';
+    final partidoBase = _crearPartidoArgentinos();
 
-  final partidoBase = {
-    'rival': 'Argentinos Juniors',
-    'fechaNumero': 4,
-    'fecha': '18/04',
-    'hora': '13:00',
-    'condicion': 'Local',
-    'torneo': 'Apertura',
-    'categoria': 'Cadetes',
-    'estado': 'Finalizado',
-    'estadoPartido': 'finalizado',
-    'golesSanFernando': 30,
-    'golesRival': 26,
-    'golesRecibidos': 26,
-    'atajadas': 14,
-    'penales': 6,
-    'exclusiones2Min': 5,
-    'amarillas': 0,
-    'rojas': 0,
-    'perdidas': 11,
-    'recuperaciones': 18,
-    'penalesConvertidosSanFernando': 0,
-    'penalesConvertidosRival': 0,
-    'eventos': <Map<String, dynamic>>[],
-    'modoActual': null,
-    'modoInicioPrimerTiempo': null,
-    'modoInicioPrimerTiempoAlargue': null,
-    'currentGoalkeeperNumber': null,
-    'escudoRival': 'assets/images/argentinos.png',
-  };
+    final matchIdentity = _partidoIdentity(partidoBase);
 
-  final entry = {
-    'version': 1,
-    'matchIdentity': matchIdentity,
-    'partido': partidoBase,
-    'estadoPartido': 'finalizado',
-    'golesSanFernando': 30,
-    'golesRival': 26,
-    'golesRecibidos': 26,
-    'atajadas': 14,
-    'penales': 6,
-    'exclusiones2Min': 5,
-    'amarillas': 0,
-    'rojas': 0,
-    'perdidas': 11,
-    'recuperaciones': 18,
-    'penalesConvertidosSanFernando': 0,
-    'penalesConvertidosRival': 0,
-    'penalesIntentadosSanFernando': 0,
-    'penalesIntentadosRival': 0,
-    'modo': null,
-    'zonaTiro': null,
-    'zonaArco': null,
-    'penalEnCurso': false,
-    'actorPenalActual': null,
-    'mostrarContra': false,
-    'contraDebeCambiarModo': true,
-    'origenJugadaActual': 'normal',
-    'modoInicioPrimerTiempo': null,
-    'modoInicioPrimerTiempoAlargue': null,
-    'currentGoalkeeperNumber': null,
-    'eventos': <Map<String, dynamic>>[],
-    'archivedAt': DateTime.now().toIso8601String(),
-    'finalizado': true,
-  };
+    final entry = {
+      'version': 1,
+      'matchIdentity': matchIdentity,
+      'partido': partidoBase,
+      'estadoPartido': 'finalizado',
+      'golesSanFernando': 30,
+      'golesRival': 26,
+      'golesRecibidos': 26,
+      'atajadas': 14,
+      'penales': 6,
+      'exclusiones2Min': 5,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 11,
+      'recuperaciones': 18,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'penalesIntentadosSanFernando': 0,
+      'penalesIntentadosRival': 0,
+      'modo': null,
+      'zonaTiro': null,
+      'zonaArco': null,
+      'penalEnCurso': false,
+      'actorPenalActual': null,
+      'mostrarContra': false,
+      'contraDebeCambiarModo': true,
+      'origenJugadaActual': 'normal',
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'eventos': <Map<String, dynamic>>[],
+      'archivedAt': DateTime.now().toIso8601String(),
+      'finalizado': true,
+    };
 
-  final raw = prefs.getString(_finishedMatchesStorageKey);
+    final raw = prefs.getString(_finishedMatchesStorageKey);
 
-  List<dynamic> history = [];
-  if (raw != null && raw.isNotEmpty) {
-    history = jsonDecode(raw) as List<dynamic>;
+    List<dynamic> history = [];
+    if (raw != null && raw.isNotEmpty) {
+      history = jsonDecode(raw) as List<dynamic>;
+    }
+
+    history.removeWhere((item) {
+      if (item is! Map) return false;
+      return (item['matchIdentity'] ?? '') == matchIdentity;
+    });
+
+    history.add(entry);
+
+    await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
   }
 
-  history.removeWhere((item) {
-    if (item is! Map) return false;
-    return (item['matchIdentity'] ?? '') == matchIdentity;
-  });
-
-  history.add(entry);
-
-  await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
-}
-
   void _confirmarResetPartidosDePrueba() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_proximoPartidoStorageKey);
+    await prefs.remove(_siguientesPartidosStorageKey);
+    await prefs.remove(_partidosFinalizadosStorageKey);
 
-  await _cargarArgentinosManual();
+    await _cargarArgentinosManual();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Datos reiniciados + Argentinos cargado'),
-    ),
-  );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Datos reiniciados + Argentinos cargado')),
+    );
 
-  Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (_) => const HomeScreen()),
-    (route) => false,
-  );
-}
-  
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
+  }
+
   String _partidoIdentity(Map<String, dynamic> partido) {
     return [
       (partido['torneo'] ?? '').toString(),
@@ -838,12 +852,17 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
           Builder(
             builder: (context) {
-              final partidosOrdenados =
-                  List<Map<String, dynamic>>.from(partidosFinalizados);
+              final partidosOrdenados = List<Map<String, dynamic>>.from(
+                partidosFinalizados,
+              );
 
               partidosOrdenados.sort((a, b) {
-                final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
-                final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+                final aDate = DateTime.tryParse(
+                  (a['archivedAt'] ?? '').toString(),
+                );
+                final bDate = DateTime.tryParse(
+                  (b['archivedAt'] ?? '').toString(),
+                );
 
                 if (aDate == null && bDate == null) return 0;
                 if (aDate == null) return 1;
@@ -855,7 +874,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               final partido = partidosOrdenados.first;
 
               final rival = (partido['rival'] ?? '').toString();
-              final golesSanFernando = (partido['golesSanFernando'] ?? 0) as int;
+              final golesSanFernando =
+                  (partido['golesSanFernando'] ?? 0) as int;
               final golesRival = (partido['golesRival'] ?? 0) as int;
               final condicion = (partido['condicion'] ?? '').toString();
 
