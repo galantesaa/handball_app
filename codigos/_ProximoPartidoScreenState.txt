@@ -27,8 +27,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       'fecha': '18/04',
       'hora': '13:00',
       'condicion': 'Local',
-      'torneo': widget.torneo,
-      'categoria': widget.categoria,
+      'torneo': 'Apertura',
+      'categoria': 'Cadetes',
       'estado': 'Finalizado',
       'estadoPartido': 'finalizado',
       'golesSanFernando': 30,
@@ -91,20 +91,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
   return fixture.firstWhere(
-    (p) =>
-        p['torneo'] == widget.torneo &&
-        p['categoria'] == widget.categoria &&
-        p['estadoPartido'] != 'finalizado' &&
-        !partidosFinalizados.any((f) => _partidoIdentity(f) == _partidoIdentity(p)),
-    orElse: () => fixture.firstWhere(
-      (p) =>
-          p['torneo'] == widget.torneo &&
-          p['categoria'] == widget.categoria,
-      orElse: () => fixture.first,
-    ),
-  );
+  (p) =>
+      p['torneo'] == widget.torneo &&
+      p['categoria'] == widget.categoria &&
+      p['estadoPartido'] != 'finalizado',
+  orElse: () => fixture.first,
+);
 }
-  
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
@@ -276,7 +269,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       return p;
     });
   }
-
+  
   Map<String, dynamic> _convertirAFixturePartido(Map<String, dynamic> raw) {
     final bool somosLocales =
         (raw['local'] ?? '').toString() == 'San Fernando Handball';
