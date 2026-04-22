@@ -4405,6 +4405,11 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     }
   }
 
+  /// ===============================
+  /// ABRIR RESUMEN
+  /// Construye primero el partido con la base 2.0 (PartidoModel)
+  /// y luego lo convierte a Map para no romper la pantalla actual.
+  /// ===============================
   void _abrirResumen() {
     if (!_partidoFinalizado) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -4417,29 +4422,25 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       return;
     }
 
-    final Map<String, dynamic> partidoResumen = {
-      'rival': widget.partido['rival'],
-      'fecha': widget.partido['fecha'],
-      'hora': widget.partido['hora'],
-      'condicion': widget.partido['condicion'],
-      'torneo': widget.partido['torneo'],
-      'categoria': widget.partido['categoria'],
-      'estado': 'Finalizado',
-      'estadoPartido': 'finalizado',
-      'golesSanFernando': golesSanFernando,
-      'golesRival': golesRival,
-      'golesRecibidos': golesRecibidos,
-      'atajadas': atajadas,
-      'penales': penales,
-      'exclusiones2Min': exclusiones2Min,
-      'amarillas': amarillas,
-      'rojas': rojas,
-      'perdidas': perdidas,
-      'recuperaciones': recuperaciones,
-      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-      'penalesConvertidosRival': penalesConvertidosRival,
-      'eventos': eventos,
-    };
+    final PartidoModel partidoResumenV2 = partidoV2.copyWith(
+      estado: 'Finalizado',
+      estadoPartido: 'finalizado',
+      golesSanFernando: golesSanFernando,
+      golesRival: golesRival,
+      golesRecibidos: golesRecibidos,
+      atajadas: atajadas,
+      penales: penales,
+      exclusiones2Min: exclusiones2Min,
+      amarillas: amarillas,
+      rojas: rojas,
+      perdidas: perdidas,
+      recuperaciones: recuperaciones,
+      penalesConvertidosSanFernando: penalesConvertidosSanFernando,
+      penalesConvertidosRival: penalesConvertidosRival,
+      eventos: eventos.map((e) => EventoModel.fromMap(e)).toList(),
+    );
+
+    final Map<String, dynamic> partidoResumen = partidoResumenV2.toMap();
 
     Navigator.push(
       context,
@@ -4448,7 +4449,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       ),
     );
   }
-
+  
   @override
   void initState() {
     super.initState();
