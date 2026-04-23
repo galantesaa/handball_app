@@ -1540,7 +1540,32 @@ class ProximoPartidoScreen extends StatefulWidget {
   State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
 }
 
+/// ===============================
+/// ESTADO REAL V2
+/// Lectura paralela del sistema nuevo:
+/// - partido en vivo actual
+/// - partidos finalizados reales
+/// ===============================
+PartidoModel? _partidoEnVivoV2;
+List<PartidoModel> _finalizadosV2 = [];
+
 class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
+  /// ===============================
+  /// LOAD ESTADO REAL V2
+  /// Lee partido en vivo y finalizados desde el repository 2.0
+  /// ===============================
+  Future<void> _loadEstadoRealV2() async {
+    final live = await PartidoRepositoryV2.readLiveMatch();
+    final finished = await PartidoRepositoryV2.readFinishedMatches();
+
+    if (!mounted) return;
+
+    setState(() {
+      _partidoEnVivoV2 = live;
+      _finalizadosV2 = finished;
+    });
+  }
+
   bool hayPartido = true;
 
   Map<String, dynamic> _crearPartidoArgentinos() {
@@ -1591,10 +1616,68 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   static const String _finishedMatchesStorageKey =
       'finished_matches_history_v1';
 
+  /// ===============================
+  /// MATCH IDENTITY HELPERS V2
+  /// Permiten comparar Map actual con PartidoModel
+  /// ===============================
+  String _identityFromMap(Map<String, dynamic> partido) {
+    return PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
+  }
+
+  bool _estaFinalizadoV2(Map<String, dynamic> partido) {
+    final identidad = _identityFromMap(partido);
+
+    return _finalizadosV2.any(
+      (p) => PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
+    );
+  }
+
+  /// ===============================
+  /// RECALCULAR PRÓXIMO PARTIDO DESDE FIXTURE BASE
+  /// Si el próximo actual quedó inválido, toma el primer pendiente real
+  /// y recompone también los siguientes partidos.
+  /// ===============================
+  void _recalcularProximoYSiguientesDesdeBase() {
+    final todos = _buildFixtureCompleto(
+      categoria: widget.categoria,
+    ).where((p) => (p['torneo'] ?? '').toString() == widget.torneo).toList();
+
+    final pendientes = todos.where((p) => !_estaFinalizadoV2(p)).toList();
+
+    pendientes.sort((a, b) {
+      final fa = (a['fechaNumero'] ?? 0) as int;
+      final fb = (b['fechaNumero'] ?? 0) as int;
+      return fa.compareTo(fb);
+    });
+
+    if (pendientes.isEmpty) {
+      proximoPartido = {};
+      siguientesPartidos = [];
+      hayPartido = false;
+      return;
+    }
+
+    proximoPartido = Map<String, dynamic>.from(pendientes.first);
+    siguientesPartidos = pendientes.skip(1).take(3).map((p) {
+      return {
+        'rival': p['rival'],
+        'fechaNumero': p['fechaNumero'],
+        'fecha': p['fecha'],
+        'hora': p['hora'],
+        'condicion': p['condicion'],
+        'torneo': p['torneo'],
+        'categoria': p['categoria'],
+        'escudoRival': p['escudoRival'],
+      };
+    }).toList();
+
+    hayPartido = true;
+  }
+
   @override
   void initState() {
     super.initState();
-
+    _loadEstadoRealV2();
     proximoPartido = _defaultProximoPartido();
     siguientesPartidos = _defaultSiguientesPartidos();
 
@@ -1930,6 +2013,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     if (proximoRaw != null && proximoRaw.isNotEmpty) {
       proximoPartido = Map<String, dynamic>.from(jsonDecode(proximoRaw) as Map);
+    }
+    // ===============================
+    // VALIDACIÓN V2
+    // Si el próximo partido ya está finalizado según V2,
+    // lo invalidamos
+    // ===============================
+    if (_estaFinalizadoV2(proximoPartido)) {
+      _recalcularProximoYSiguientesDesdeBase();
     }
 
     if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
@@ -2635,6 +2726,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Widget _buildMatchCard() {
+    final estaFinalizadoV2 = _estaFinalizadoV2(proximoPartido);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -2656,6 +2749,17 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           _buildStatusChip(
             (proximoPartido['estado'] ?? 'Pendiente').toString(),
           ),
+          if (estaFinalizadoV2) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'FINALIZADO V2',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [

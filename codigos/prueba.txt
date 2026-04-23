@@ -1,21 +1,56 @@
-https://chatgpt.com/s/t_69e9142f041c819198dd6248c363a0e8
-
-
-
-
-No encuentro donde poner
-
-_siguientesPartidos.sort((a, b) {
-  final fa = a['fechaNumero'] ?? 0;
-  final fb = b['fechaNumero'] ?? 0;
-  return fa.compareTo(fb);
-});
-
-Te paso class _proximopartidoscreenstate, para que me indiques paso a paso como resolverlo
-
-Verifica el punto 7 ya deberia estar
-Verificar el punto 8 todo es estadopartido:finalizado y estado:finalizado
-Punto 7 extra no lo encuentro
-
-Sobre las card, no me digas busca algo como.... DECIME EXACTO QUE BUSCAR Y DONDE. Queres que 
-te pase todo el codigo otra vez????
+Widget _buildMatchCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatusChip(
+            (proximoPartido['estado'] ?? 'Pendiente').toString(),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _buildTeamBadge(
+                assetPath: proximoPartido['escudoRival'] as String?,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  (proximoPartido['rival'] ?? '').toString(),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _buildHeadToHeadButton(),
+          const SizedBox(height: 10),
+          _buildInfoRow(
+            'Fecha',
+            '${proximoPartido['fecha']} • ${proximoPartido['hora']}',
+          ),
+          _buildInfoRow(
+            'Condición',
+            (proximoPartido['condicion'] ?? '').toString(),
+          ),
+        ],
+      ),
+    );
+  }
