@@ -1684,23 +1684,20 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   @override
   void initState() {
-    super.initState();
-    _loadEstadoRealV2();
-    proximoPartido = _defaultProximoPartido();
-    siguientesPartidos = _defaultSiguientesPartidos();
+  super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadFixtureState();
-      if (!mounted) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await _loadEstadoRealV2();
+    await _loadFixtureState();
 
-      setState(() {
-        _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
-      });
+    if (!mounted) return;
 
-      await _persistFixtureState();
+    setState(() {
+      _recalcularProximoYSiguientesDesdeBase();
     });
-  }
-
+  });
+}
+  
   Map<String, dynamic> _defaultProximoPartido() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -2601,15 +2598,38 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             );
           },
         ),
-        const SizedBox(height: 12),
-        _buildOutlinedAction(
+        //const SizedBox(height: 12),
+        /*_buildOutlinedAction(
           text: 'Resetear partidos de prueba',
           onTap: _confirmarResetPartidosDePrueba,
-        ),
+        ),*/
         const SizedBox(height: 20),
         _buildPrimaryAction(
-          text: 'Iniciar partido',
-          onTap: _abrirCentroDeControl,
+          text: _estaFinalizadoV2(proximoPartido)
+              ? 'Ver resumen'
+              : 'Iniciar partido',
+          onTap: () {
+            if (_estaFinalizadoV2(proximoPartido)) {
+              final identidad = _identityFromMap(proximoPartido);
+
+              final finalizado = _finalizadosV2.firstWhere(
+                (p) =>
+                    PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
+              );
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ResumenPartidoFinalizadoScreen(
+                    partido: finalizado.toMap(),
+                  ),
+                ),
+              );
+              return;
+            }
+
+            _abrirCentroDeControl();
+          },
         ),
         const SizedBox(height: 10),
         _buildOutlinedAction(
@@ -2618,8 +2638,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             debugPrint('Editar partido');
           },
         ),
-        const SizedBox(height: 10),
-        _buildOutlinedAction(
+        //const SizedBox(height: 10),
+        /*_buildOutlinedAction(
           text: 'Marcar como jugado',
           onTap: () {
             final partidoManual = Map<String, dynamic>.from(proximoPartido)
@@ -2631,7 +2651,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             });
             _persistFixtureState();
           },
-        ),
+        ),*/
       ],
     );
   }
@@ -2735,75 +2755,65 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Widget _buildMatchCard() {
-    final estaFinalizadoV2 = _estaFinalizadoV2(proximoPartido);
+  final estaFinalizadoV2 = _estaFinalizadoV2(proximoPartido);
+  final estadoVisual = estaFinalizadoV2
+      ? 'Finalizado'
+      : (proximoPartido['estado'] ?? 'Pendiente').toString();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.90),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.22),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStatusChip(
-            (proximoPartido['estado'] ?? 'Pendiente').toString(),
-          ),
-          if (estaFinalizadoV2) ...[
-            const SizedBox(height: 6),
-            const Text(
-              'FINALIZADO V2',
-              style: TextStyle(
-                color: Colors.green,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.90),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: Colors.white.withOpacity(0.04)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.22),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatusChip(estadoVisual),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            _buildTeamBadge(
+              assetPath: proximoPartido['escudoRival'] as String?,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                (proximoPartido['rival'] ?? '').toString(),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _buildTeamBadge(
-                assetPath: proximoPartido['escudoRival'] as String?,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  (proximoPartido['rival'] ?? '').toString(),
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          _buildHeadToHeadButton(),
-          const SizedBox(height: 10),
-          _buildInfoRow(
-            'Fecha',
-            '${proximoPartido['fecha']} • ${proximoPartido['hora']}',
-          ),
-          _buildInfoRow(
-            'Condición',
-            (proximoPartido['condicion'] ?? '').toString(),
-          ),
-        ],
-      ),
-    );
-  }
-
+        ),
+        const SizedBox(height: 6),
+        _buildHeadToHeadButton(),
+        const SizedBox(height: 10),
+        _buildInfoRow(
+          'Fecha',
+          '${proximoPartido['fecha']} • ${proximoPartido['hora']}',
+        ),
+        _buildInfoRow(
+          'Condición',
+          (proximoPartido['condicion'] ?? '').toString(),
+        ),
+      ],
+    ),
+  );
+}
+  
   Widget _buildFinishedMatchesSection() {
     final visibles = partidosFinalizados.take(3).toList();
 
