@@ -9677,19 +9677,20 @@ class _PlantelScreenState extends State<PlantelScreen> {
                   _buildCategoriaSelector(),
                   const SizedBox(height: 18),
                   _buildPlantelCard(
-                    icon: Icons.sports_handball_rounded,
-                    title: 'Jugadores',
-                    subtitle: 'Jugadores de campo de $categoriaSeleccionada',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Jugadores de $categoriaSeleccionada se integrará acá',
+                      icon: Icons.sports_handball_rounded,
+                      title: 'Jugadores',
+                      subtitle: 'Jugadores de campo de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JugadoresCampoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
                   const SizedBox(height: 12),
                   _buildPlantelCard(
                     icon: Icons.shield_rounded,
@@ -10060,6 +10061,208 @@ class ArquerosScreen extends StatelessWidget {
         },
         icon: const Icon(Icons.add_rounded),
         label: const Text('Agregar arquero'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class JugadoresCampoScreen extends StatelessWidget {
+  final String categoria;
+
+  const JugadoresCampoScreen({
+    super.key,
+    required this.categoria,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final jugadores = RosterRepository.rosterForCategory(
+      categoria: categoria,
+      temporada: '2026',
+    ).where((j) => !j.esArquero && !j.esCuerpoTecnico).toList();
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Jugadores'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Plantel de jugadores · $categoria',
+                    style: const TextStyle(
+                      color: Color(0xFFD4DCE7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  if (jugadores.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F1722).withOpacity(0.88),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.03)),
+                      ),
+                      child: const Text(
+                        'No hay jugadores cargados para esta categoría.',
+                        style: TextStyle(
+                          color: Color(0xFFAAB4C3),
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  else
+                    ...jugadores.map(
+                      (jugador) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildJugadorCard(
+                          dorsal: _dorsalJugador(jugador),
+                          nombre: _nombreJugador(jugador),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  _buildAddJugadorButton(context),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _dorsalJugador(PlayerProfile jugador) {
+  final dorsal = jugador.numeroPreferido;
+  if (dorsal == null || dorsal.trim().isEmpty) return '-';
+  return dorsal;
+}
+
+  String _nombreJugador(PlayerProfile jugador) {
+  final apellido = jugador.apellido.trim();
+  final nombre = jugador.nombre.trim();
+
+  if (apellido.isEmpty && nombre.isEmpty) return 'Jugador';
+  if (apellido.isEmpty) return nombre;
+  if (nombre.isEmpty) return apellido;
+
+  return '$apellido, $nombre';
+}
+  Widget _buildJugadorCard({
+    required String dorsal,
+    required String nombre,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF182338).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                dorsal,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nombre,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Jugador de campo · $categoria',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: Color(0xFFDCE4EF),
+            size: 26,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddJugadorButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Alta de jugadores se integrará acá'),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Agregar jugador'),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF4F8CFF),
           foregroundColor: Colors.white,
