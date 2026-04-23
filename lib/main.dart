@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models_v2.dart';
 import 'partido_repository_v2.dart';
 
+
 /// ===============================
 /// PUNTO DE ENTRADA
 /// ===============================
@@ -1009,8 +1010,6 @@ class _HomeScreenState extends State<HomeScreen> {
               return const EstadisticasScreen();
             case 'Equipo':
               return const EquiposScreen();
-            case 'Jugadores':
-              return const JugadoresScreen();
             default:
               return Scaffold(
                 appBar: AppBar(title: Text(title)),
@@ -1021,7 +1020,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
+  
   void _abrirFixtureActual() {
     Navigator.push(
       context,
@@ -1064,11 +1063,11 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 10),
         const Expanded(
           child: Text(
-            'Seguimiento y estadísticas',
+            'Seguimiento y análisis',
             style: TextStyle(
               fontSize: 15,
               color: Color(0xFFD5DCE5),
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -1079,7 +1078,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
+  
   Widget _buildEstadoSinInstitucion(BuildContext context) {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.68,
@@ -1131,72 +1130,63 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEstadoConInstitucion() {
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.only(top: 18),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(top: 18),
-            padding: const EdgeInsets.fromLTRB(14, 42, 14, 14),
+            margin: const EdgeInsets.only(top: 28),
+            padding: const EdgeInsets.fromLTRB(16, 52, 16, 18),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D1520).withOpacity(0.18),
-              borderRadius: BorderRadius.circular(24),
+              color: const Color(0xFF0D1520).withOpacity(0.22),
+              borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: const Color(0xFF3FA2FF).withOpacity(0.95),
-                width: 1.4,
+                color: const Color(0xFF3FA2FF).withOpacity(0.65),
+                width: 1.2,
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildContextSection(),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _buildSwitcherRow(),
-                const SizedBox(height: 8),
-                _buildSecondaryButton(
+                const SizedBox(height: 12),
+                _buildPrimaryOutlineAction(
                   text: 'Ver fixture actual',
+                  icon: Icons.calendar_month_rounded,
                   onTap: _abrirFixtureActual,
                 ),
-                const SizedBox(height: 8),
-                _buildActionTile(
-                  imagePath: 'assets/icons/icon_proximo_partido.png',
+                const SizedBox(height: 18),
+                _buildHomeActionCard(
+                  icon: Icons.sports_handball_rounded,
                   title: 'Próximo partido',
                   subtitle: 'Fixture y agenda',
                 ),
-                const SizedBox(height: 3),
-                _buildActionTile(
-                  imagePath: 'assets/icons/icon_partidos_jugados.png',
+                const SizedBox(height: 12),
+                _buildHomeActionCard(
+                  icon: Icons.history_rounded,
                   title: 'Partidos jugados',
                   subtitle: 'Historial cargado',
                 ),
-                const SizedBox(height: 8),
-                Container(height: 1, color: Colors.white.withOpacity(0.06)),
-                const SizedBox(height: 6),
-                _buildActionTile(
-                  imagePath: 'assets/icons/icon_estadisticas.png',
+                const SizedBox(height: 12),
+                _buildHomeActionCard(
+                  icon: Icons.bar_chart_rounded,
                   title: 'Estadísticas',
                   subtitle: 'Rendimiento y análisis',
                 ),
-                const SizedBox(height: 8),
-                Container(height: 1, color: Colors.white.withOpacity(0.06)),
-                const SizedBox(height: 6),
-                _buildActionTile(
-                  imagePath: 'assets/icons/icon_equipos.png',
+                const SizedBox(height: 12),
+                _buildHomeActionCard(
+                  icon: Icons.groups_rounded,
                   title: 'Equipo',
-                  subtitle: 'Categorías y estructura',
-                ),
-                const SizedBox(height: 5),
-                _buildActionTile(
-                  imagePath: 'assets/icons/icon_jugador_campo.png',
-                  title: 'Jugadores',
-                  subtitle: 'Plantel y perfiles',
+                  subtitle: 'Plantel y estructura',
                 ),
               ],
             ),
           ),
           Positioned(
-            top: -10,
+            top: 0,
             left: 18,
             right: 18,
             child: _buildInstitutionHeaderMounted(),
@@ -1205,7 +1195,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
+  
   Widget _buildInstitutionHeaderMounted() {
     return Center(
       child: Container(
@@ -1360,6 +1350,110 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPrimaryOutlineAction({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF182338).withOpacity(0.78),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return _PressableTile(
+      onTap: () {
+        _openSection(context, title);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.88),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFF182338).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFAAB4C3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDCE4EF),
+              size: 26,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1554,6 +1648,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// LOAD ESTADO REAL V2
   /// Lee partido en vivo y finalizados desde el repository 2.0
   /// ===============================
+  
   Future<void> _loadEstadoRealV2() async {
     final live = await PartidoRepositoryV2.readLiveMatch();
     final finished = await PartidoRepositoryV2.readFinishedMatches();
@@ -1568,8 +1663,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   bool hayPartido = true;
 
-  late Map<String, dynamic> proximoPartido;
-  late List<Map<String, dynamic>> siguientesPartidos;
+  Map<String, dynamic> proximoPartido = {};
+  List<Map<String, dynamic>> siguientesPartidos = [];
   List<Map<String, dynamic>> partidosFinalizados = [];
 
   String get _proximoPartidoStorageKey =>
@@ -3577,7 +3672,12 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Arquero $arquero',
+                                      arquero == 'Sin arquero'
+                                          ? 'Sin arquero'
+                                          : nombreArqueroDesdeDorsal(
+                                              categoria: partidoV2.categoria,
+                                              dorsal: arquero,
+                                            ),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
@@ -9361,15 +9461,644 @@ class EstadisticasScreen extends StatelessWidget {
   }
 }
 
+
+///===============================
+/// EQUIPOS
+/// gestion de jugadores, arqueros, cuerpo técnico, categorías, convocados por partido, etc.
+///===============================
+///===============================
+
+
 class EquiposScreen extends StatelessWidget {
   const EquiposScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Equipos')),
-      body: const Center(child: Text('Pantalla Equipos')),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Equipo'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gestión de estructura deportiva',
+                    style: TextStyle(
+                      color: Color(0xFFD4DCE7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildEquipoActionCard(
+                    context: context,
+                    icon: Icons.groups_rounded,
+                    title: 'Plantel',
+                    subtitle: 'Jugadores, arqueros y cuerpo técnico',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PlantelScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildEquipoActionCard(
+                    context: context,
+                    icon: Icons.fact_check_rounded,
+                    title: 'Convocados',
+                    subtitle: 'Gestión por partido y categoría',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Convocados se va a integrar acá'),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildEquipoActionCard(
+                    context: context,
+                    icon: Icons.upload_file_rounded,
+                    title: 'Importación',
+                    subtitle: 'CSV, TXT, escudos y fixture',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Importación masiva llegará más adelante'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildEquipoActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.88),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFF182338).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFAAB4C3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDCE4EF),
+              size: 26,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PlantelScreen extends StatefulWidget {
+  const PlantelScreen({super.key});
+
+  @override
+  State<PlantelScreen> createState() => _PlantelScreenState();
+}
+
+class _PlantelScreenState extends State<PlantelScreen> {
+  String categoriaSeleccionada = 'Cadetes';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Plantel'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Estructura del plantel por categoría',
+                    style: TextStyle(
+                      color: Color(0xFFD4DCE7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildCategoriaSelector(),
+                  const SizedBox(height: 18),
+                  _buildPlantelCard(
+                    icon: Icons.sports_handball_rounded,
+                    title: 'Jugadores',
+                    subtitle: 'Jugadores de campo de $categoriaSeleccionada',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Jugadores de $categoriaSeleccionada se integrará acá',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlantelCard(
+                    icon: Icons.shield_rounded,
+                    title: 'Arqueros',
+                    subtitle: 'Arqueros de $categoriaSeleccionada',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArquerosScreen(
+                            categoria: categoriaSeleccionada,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlantelCard(
+                    icon: Icons.badge_rounded,
+                    title: 'Cuerpo técnico',
+                    subtitle: 'Estructura técnica de $categoriaSeleccionada',
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Cuerpo técnico de $categoriaSeleccionada se integrará acá',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoriaSelector() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.category_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'Categoría',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          _buildCategoriaChip('Cadetes'),
+          const SizedBox(width: 8),
+          _buildCategoriaChip('Juveniles'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoriaChip(String categoria) {
+    final bool activa = categoriaSeleccionada == categoria;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          categoriaSeleccionada = categoria;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: activa
+              ? const Color(0xFF4F8CFF)
+              : const Color(0xFF182338).withOpacity(0.95),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: activa
+                ? const Color(0xFF4F8CFF)
+                : Colors.white.withOpacity(0.04),
+          ),
+        ),
+        child: Text(
+          categoria,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlantelCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.88),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFF182338).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFAAB4C3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDCE4EF),
+              size: 26,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+}
+
+class ArquerosScreen extends StatelessWidget {
+  final String categoria;
+
+  const ArquerosScreen({
+    super.key,
+    required this.categoria,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final arqueros = RosterRepository.goalkeepersForCategory(
+      categoria: categoria,
+      temporada: '2026',
+    );
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Arqueros'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Plantel de arqueros · $categoria',
+                    style: const TextStyle(
+                      color: Color(0xFFD4DCE7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  if (arqueros.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F1722).withOpacity(0.88),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.03)),
+                      ),
+                      child: const Text(
+                        'No hay arqueros cargados para esta categoría.',
+                        style: TextStyle(
+                          color: Color(0xFFAAB4C3),
+                          fontSize: 14,
+                        ),
+                      ),
+                    )
+                  else
+                    ...arqueros.map(
+                      (arquero) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildArqueroCard(
+                          context: context,
+                          dorsal: _dorsalArquero(arquero),
+                          nombre: _nombreArquero(arquero),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  _buildAddArqueroButton(context),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _dorsalArquero(PlayerProfile arquero) {
+  final dorsal = arquero.numeroPreferido;
+  if (dorsal == null || dorsal.trim().isEmpty) return '-';
+  return dorsal;
+}
+
+  String _nombreArquero(PlayerProfile arquero) {
+  final apellido = arquero.apellido.trim();
+  final nombre = arquero.nombre.trim();
+
+  if (apellido.isEmpty && nombre.isEmpty) return 'Arquero';
+  if (apellido.isEmpty) return nombre;
+  if (nombre.isEmpty) return apellido;
+
+  return '$apellido, $nombre';
+}
+  
+  Widget _buildArqueroCard({
+    required BuildContext context,
+    required String dorsal,
+    required String nombre,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF182338).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                dorsal,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nombre,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Arquero · $categoria',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: Color(0xFFDCE4EF),
+            size: 26,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddArqueroButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Alta de arqueros se integrará acá'),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Agregar arquero'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+  String nombreArqueroDesdeDorsal({
+  required String categoria,
+  required String dorsal,
+}) {
+  final arqueros = RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  try {
+    final arquero = arqueros.firstWhere(
+      (a) => a.numeroPreferido == dorsal,
+    );
+
+    final apellido = arquero.apellido.trim();
+    final nombre = arquero.nombre.trim();
+    final nombreCompleto = [apellido, nombre]
+        .where((p) => p.isNotEmpty)
+        .join(', ');
+
+    if (nombreCompleto.isEmpty) return 'Arquero $dorsal';
+
+    return '$dorsal · $nombreCompleto';
+  } catch (_) {
+    return 'Arquero $dorsal';
   }
 }
 
@@ -9379,8 +10108,114 @@ class JugadoresScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Jugadores')),
-      body: const Center(child: Text('Pantalla Jugadores')),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Plantel'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Estructura general del plantel',
+                    style: TextStyle(
+                      color: Color(0xFFD4DCE7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildPlantelSection(
+                    icon: Icons.sports_handball_rounded,
+                    title: 'Jugadores',
+                    subtitle: 'Jugadores de campo por categoría',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlantelSection(
+                    icon: Icons.shield_rounded,
+                    title: 'Arqueros',
+                    subtitle: 'Arqueros y sus perfiles',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlantelSection(
+                    icon: Icons.badge_rounded,
+                    title: 'Cuerpo técnico',
+                    subtitle: 'Estructura técnica y roles',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlantelSection({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFF182338).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
