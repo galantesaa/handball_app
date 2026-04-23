@@ -74,6 +74,7 @@ class EventoModel {
   final String? zonaArco;
   final String? detalle;
   final String? subtipo;
+  final String? arquero;
   final bool mantieneContexto;
   final Map<String, dynamic>? prevState;
 
@@ -92,9 +93,10 @@ class EventoModel {
     this.zonaArco,
     this.detalle,
     this.subtipo,
+    this.arquero,
     this.prevState,
   });
-
+  
   factory EventoModel.fromMap(Map<String, dynamic> map) {
     return EventoModel(
       id: (map['id'] as int?) ?? 0,
@@ -110,6 +112,7 @@ class EventoModel {
       zonaArco: map['zonaArco']?.toString(),
       detalle: map['detalle']?.toString(),
       subtipo: map['subtipo']?.toString(),
+      arquero: map['arquero']?.toString(),
       mantieneContexto: (map['mantieneContexto'] as bool?) ?? false,
       prevState: map['prevState'] is Map
           ? Map<String, dynamic>.from(map['prevState'] as Map)
@@ -117,7 +120,7 @@ class EventoModel {
     );
   }
 
-  Map<String, dynamic> toMap() {
+    Map<String, dynamic> toMap() {
     return {
       'id': id,
       'timestamp': timestamp,
@@ -132,6 +135,7 @@ class EventoModel {
       'zonaArco': zonaArco,
       'detalle': detalle,
       'subtipo': subtipo,
+      'arquero': arquero,
       'mantieneContexto': mantieneContexto,
       'prevState': prevState,
     };

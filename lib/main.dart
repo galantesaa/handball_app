@@ -3206,10 +3206,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
   /// ===============================
   /// STATS POR ARQUERO
-  /// Agrupa los eventos por arquero y calcula:
-  /// - atajadas
-  /// - goles recibidos
-  /// - eficacia
+  /// Solo toma tiros defensivos del rival:
+  /// - atajado
+  /// - gol
+  /// Ignora tiros en modo ataque, porque no pertenecen
+  /// al arquero propio.
   /// ===============================
   List<Map<String, dynamic>> _estadisticasPorArquero() {
     final Map<String, Map<String, dynamic>> acumulado = {};
@@ -3219,10 +3220,20 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
       final resultado = (map['resultado'] ?? '').toString();
-      final arquero = (map['arquero'] ?? 'Sin arquero').toString();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString();
 
-      final bool esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
-      if (!esTiro) continue;
+      final bool esTiro =
+          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      final bool esDefensivo = modo == 'defensa';
+
+      if (!esTiro || !esDefensivo) continue;
+      if (resultado != 'atajado' && resultado != 'gol') continue;
+
+      String arquero = (map['arquero'] ?? '').toString().trim();
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
 
       acumulado.putIfAbsent(arquero, () {
         return {
@@ -3264,6 +3275,28 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     });
 
     return lista;
+  }
+  
+  int get _atajadasDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['atajadas'] ?? 0) as int),
+    );
+  }
+
+  int get _golesRecibidosDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['golesRecibidos'] ?? 0) as int),
+    );
+  }
+
+  double get _eficaciaDesdeArqueros {
+    final atajadas = _atajadasDesdeArqueros;
+    final goles = _golesRecibidosDesdeArqueros;
+    final total = atajadas + goles;
+    if (total == 0) return 0;
+    return (atajadas / total) * 100;
   }
 
   const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
@@ -3502,19 +3535,19 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   _buildSectionCard(
-                    title: 'Arquero',
-                    child: Column(
-                      children: [
-                        _buildInfoRow(
-                          'Eficacia',
-                          '${_eficaciaArqueroV2.toStringAsFixed(1)}%',
-                        ),
-                        _buildInfoRow('Atajadas', '$_atajadasV2'),
-                        _buildInfoRow('Goles recibidos', '$_golesRecibidosV2'),
-                        _buildInfoRow('Penales en contra', '$_penalesV2'),
-                      ],
+                      title: 'Arquero',
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                            'Eficacia',
+                            '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
+                          ),
+                          _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
+                          _buildInfoRow('Goles recibidos', '$_golesRecibidosDesdeArqueros'),
+                          _buildInfoRow('Penales en contra', '$_penalesV2'),
+                        ],
+                      ),
                     ),
-                  ),
                   _buildSectionCard(
                     title: 'Estadísticas por arquero',
                     child: estadisticasPorArquero.isEmpty
