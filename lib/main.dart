@@ -3204,6 +3204,68 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
   int get _golesRivalV2 => partidoV2.golesRival;
 
+  /// ===============================
+  /// STATS POR ARQUERO
+  /// Agrupa los eventos por arquero y calcula:
+  /// - atajadas
+  /// - goles recibidos
+  /// - eficacia
+  /// ===============================
+  List<Map<String, dynamic>> _estadisticasPorArquero() {
+    final Map<String, Map<String, dynamic>> acumulado = {};
+
+    for (final e in _eventos) {
+      final map = Map<String, dynamic>.from(e as Map);
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      final resultado = (map['resultado'] ?? '').toString();
+      final arquero = (map['arquero'] ?? 'Sin arquero').toString();
+
+      final bool esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+      if (!esTiro) continue;
+
+      acumulado.putIfAbsent(arquero, () {
+        return {
+          'arquero': arquero,
+          'atajadas': 0,
+          'golesRecibidos': 0,
+        };
+      });
+
+      if (resultado == 'atajado') {
+        acumulado[arquero]!['atajadas'] =
+            (acumulado[arquero]!['atajadas'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        acumulado[arquero]!['golesRecibidos'] =
+            (acumulado[arquero]!['golesRecibidos'] as int) + 1;
+      }
+    }
+
+    final lista = acumulado.values.map((item) {
+      final atajadas = item['atajadas'] as int;
+      final golesRecibidos = item['golesRecibidos'] as int;
+      final total = atajadas + golesRecibidos;
+      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+      return {
+        'arquero': item['arquero'],
+        'atajadas': atajadas,
+        'golesRecibidos': golesRecibidos,
+        'eficacia': eficacia,
+      };
+    }).toList();
+
+    lista.sort((a, b) {
+      final nombreA = (a['arquero'] ?? '').toString();
+      final nombreB = (b['arquero'] ?? '').toString();
+      return nombreA.compareTo(nombreB);
+    });
+
+    return lista;
+  }
+
   const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
 
   bool get _somosLocales => (partido['condicion'] ?? 'Local') == 'Local';
@@ -3389,7 +3451,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eventosImportantes = _eventosImportantes();
-
+    final estadisticasPorArquero = _estadisticasPorArquero();
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -3453,8 +3515,57 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
                   _buildSectionCard(
+                    title: 'Estadísticas por arquero',
+                    child: estadisticasPorArquero.isEmpty
+                        ? const Text(
+                            'No hay eventos suficientes para separar estadísticas por arquero.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 13,
+                            ),
+                          )
+                        : Column(
+                            children: estadisticasPorArquero.map((item) {
+                              final arquero = (item['arquero'] ?? 'Sin arquero').toString();
+                              final atajadas = item['atajadas'] as int;
+                              final golesRecibidos = item['golesRecibidos'] as int;
+                              final eficacia = item['eficacia'] as double;
+
+                              return Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF182338).withOpacity(0.75),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Arquero $arquero',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildInfoRow('Atajadas', '$atajadas'),
+                                    _buildInfoRow('Goles recibidos', '$golesRecibidos'),
+                                    _buildInfoRow(
+                                      'Eficacia',
+                                      '${eficacia.toStringAsFixed(1)}%',
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                 _buildSectionCard(
                     title: 'Ataque y juego',
                     child: Column(
                       children: [
