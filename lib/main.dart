@@ -1568,38 +1568,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   bool hayPartido = true;
 
-  Map<String, dynamic> _crearPartidoArgentinos() {
-    return {
-      'rival': 'Argentinos Juniors',
-      'fechaNumero': 4,
-      'fecha': '18/04',
-      'hora': '13:00',
-      'condicion': 'Local',
-      'torneo': 'Apertura',
-      'categoria': 'Cadetes',
-      'estado': 'Finalizado',
-      'estadoPartido': 'finalizado',
-      'golesSanFernando': 30,
-      'golesRival': 26,
-      'golesRecibidos': 26,
-      'atajadas': 14,
-      'penales': 6,
-      'exclusiones2Min': 5,
-      'amarillas': 0,
-      'rojas': 0,
-      'perdidas': 11,
-      'recuperaciones': 18,
-      'penalesConvertidosSanFernando': 0,
-      'penalesConvertidosRival': 0,
-      'eventos': <Map<String, dynamic>>[],
-      'modoActual': null,
-      'modoInicioPrimerTiempo': null,
-      'modoInicioPrimerTiempoAlargue': null,
-      'currentGoalkeeperNumber': null,
-      'escudoRival': 'assets/images/argentinos.png',
-    };
-  }
-
   late Map<String, dynamic> proximoPartido;
   late List<Map<String, dynamic>> siguientesPartidos;
   List<Map<String, dynamic>> partidosFinalizados = [];
@@ -2168,91 +2136,76 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
-  Future<void> _cargarArgentinosManual() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _eliminarPartidosDePrueba() async {
+  final prefs = await SharedPreferences.getInstance();
 
-    final partidoBase = _crearPartidoArgentinos();
+  final rawFinished = prefs.getString('finished_matches_history_v1');
 
-    final matchIdentity = _partidoIdentity(partidoBase);
+  if (rawFinished != null && rawFinished.isNotEmpty) {
+    final decoded = jsonDecode(rawFinished) as List<dynamic>;
 
-    final entry = {
-      'version': 1,
-      'matchIdentity': matchIdentity,
-      'partido': partidoBase,
-      'estadoPartido': 'finalizado',
-      'golesSanFernando': 30,
-      'golesRival': 26,
-      'golesRecibidos': 26,
-      'atajadas': 14,
-      'penales': 6,
-      'exclusiones2Min': 5,
-      'amarillas': 0,
-      'rojas': 0,
-      'perdidas': 11,
-      'recuperaciones': 18,
-      'penalesConvertidosSanFernando': 0,
-      'penalesConvertidosRival': 0,
-      'penalesIntentadosSanFernando': 0,
-      'penalesIntentadosRival': 0,
-      'modo': null,
-      'zonaTiro': null,
-      'zonaArco': null,
-      'penalEnCurso': false,
-      'actorPenalActual': null,
-      'mostrarContra': false,
-      'contraDebeCambiarModo': true,
-      'origenJugadaActual': 'normal',
-      'modoInicioPrimerTiempo': null,
-      'modoInicioPrimerTiempoAlargue': null,
-      'currentGoalkeeperNumber': null,
-      'eventos': <Map<String, dynamic>>[],
-      'archivedAt': DateTime.now().toIso8601String(),
-      'finalizado': true,
-    };
-
-    final raw = prefs.getString(_finishedMatchesStorageKey);
-
-    List<dynamic> history = [];
-    if (raw != null && raw.isNotEmpty) {
-      history = jsonDecode(raw) as List<dynamic>;
-    }
-
-    history.removeWhere((item) {
+    final soloReales = decoded.where((item) {
       if (item is! Map) return false;
-      return (item['matchIdentity'] ?? '') == matchIdentity;
-    });
+      return item['isReal'] == true;
+    }).toList();
 
-    history.add(entry);
-
-    await prefs.setString(_finishedMatchesStorageKey, jsonEncode(history));
-  }
-
-  void _confirmarResetPartidosDePrueba() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_proximoPartidoStorageKey);
-    await prefs.remove(_siguientesPartidosStorageKey);
-    await prefs.remove(_partidosFinalizadosStorageKey);
-
-    if (widget.categoria == 'Cadetes' && widget.torneo == 'Apertura') {
-      await _cargarArgentinosManual();
-    }
-
-    if (!mounted) return;
-
-    final mensaje = widget.categoria == 'Cadetes' && widget.torneo == 'Apertura'
-        ? 'Datos reiniciados + Argentinos cargado'
-        : 'Datos reiniciados';
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensaje)));
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-      (route) => false,
+    await prefs.setString(
+      'finished_matches_history_v1',
+      jsonEncode(soloReales),
     );
   }
+
+  if (!mounted) return;
+
+  await _loadEstadoRealV2();
+  await _loadFixtureState();
+
+  if (!mounted) return;
+
+  setState(() {
+    _recalcularProximoYSiguientesDesdeBase();
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Se eliminaron los partidos de prueba'),
+    ),
+  );
+}
+  
+  Future<void> _confirmarEliminarPartidosDePrueba() async {
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF0F1722),
+      title: const Text(
+        'Eliminar partidos de prueba',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: const Text(
+        'Se van a borrar solo los partidos que no estén marcados como reales. Los partidos finalizados reales se conservarán.',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text(
+            'Eliminar',
+            style: TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmar == true) {
+    await _eliminarPartidosDePrueba();
+  }
+}
 
   String _partidoIdentity(Map<String, dynamic> partido) {
     return [
@@ -2405,7 +2358,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   Future<void> _abrirCentroDeControl() async {
     if (!hayPartido) return;
-
+    proximoPartido['esPartidoReal'] ??= false;
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -2598,11 +2551,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             );
           },
         ),
-        //const SizedBox(height: 12),
-        /*_buildOutlinedAction(
-          text: 'Resetear partidos de prueba',
-          onTap: _confirmarResetPartidosDePrueba,
-        ),*/
         const SizedBox(height: 20),
         _buildPrimaryAction(
           text: _estaFinalizadoV2(proximoPartido)
@@ -2637,6 +2585,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           onTap: () {
             debugPrint('Editar partido');
           },
+        ),
+        const SizedBox(height: 12),
+        _buildOutlinedAction(
+          text: 'Eliminar partidos de prueba',
+          onTap: _confirmarEliminarPartidosDePrueba,
         ),
         //const SizedBox(height: 10),
         /*_buildOutlinedAction(
@@ -2688,8 +2641,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               ],
               const SizedBox(height: 12),
               _buildOutlinedAction(
-                text: 'Resetear partidos de prueba',
-                onTap: _confirmarResetPartidosDePrueba,
+                text: 'Eliminar partidos de prueba',
+                onTap: _confirmarEliminarPartidosDePrueba,
               ),
               const SizedBox(height: 18),
               _buildPrimaryAction(
@@ -4859,6 +4812,29 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                     const SizedBox(height: 14),
                   ],
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Partido real',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Switch(
+                        value: widget.partido['esPartidoReal'] == true,
+                        onChanged: (value) {
+                          setState(() {
+                            widget.partido['esPartidoReal'] = value;
+                          });
+                        },
+                        activeColor: const Color(0xFF1E7D4F),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
                     children: [
                       Expanded(
                         child: _buildMiniAction(
@@ -5535,7 +5511,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     final finishedData = _toPersistedMatchMap()
       ..['archivedAt'] = DateTime.now().toIso8601String()
       ..['finalizado'] = true
-      ..['estadoPartido'] = 'finalizado';
+      ..['estadoPartido'] = 'finalizado'
+      //..['isReal'] = true;
+      ..['isReal'] = widget.partido['esPartidoReal'] == true;
 
     history.removeWhere((item) {
       if (item is! Map) return false;
@@ -6706,6 +6684,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         snapshot['modoInicioPrimerTiempoAlargue'] as String?;
   }
 
+  
   void _registrarEvento({
     required String tipo,
     String? resultado,
@@ -6741,6 +6720,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'prevState': prevState == null
           ? null
           : Map<String, dynamic>.from(prevState),
+      'arquero': currentGoalkeeperNumber,
     };
     debugPrint(
       'EVENTO -> tipo:$tipo resultado:$resultado modo:${modoEvento ?? modo} actor:$actorPrincipal zonaTiro:$zonaTiroValor zonaArco:$zonaArcoValor',
@@ -8151,6 +8131,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       mostrarContra = false;
       origenJugadaActual = 'normal';
       contraDebeCambiarModo = true;
+      
     });
 
     await _persistLiveMatch();
