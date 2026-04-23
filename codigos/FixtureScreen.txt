@@ -1,9 +1,3 @@
-/// ===============================
-/// ===============================
-/// FIXTURE
-/// ===============================
-/// ===============================
-
 class FixtureScreen extends StatelessWidget {
   final String categoria;
   final String torneo;
@@ -171,25 +165,25 @@ class FixtureScreen extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
-  final apertura = _buildAperturaBase(categoria: categoria);
-  final sabados = _generarSabadosDesde(
-    inicio: DateTime(2026, 8, 8),
-    cantidad: apertura.length,
-  );
+    final apertura = _buildAperturaBase(categoria: categoria);
+    final sabados = _generarSabadosDesde(
+      inicio: DateTime(2026, 8, 8),
+      cantidad: apertura.length,
+    );
 
-  return List.generate(apertura.length, (i) {
-    final p = Map<String, dynamic>.from(apertura[i]);
+    return List.generate(apertura.length, (i) {
+      final p = Map<String, dynamic>.from(apertura[i]);
 
-    final tmpLocal = p['local'];
-    p['local'] = p['visitante'];
-    p['visitante'] = tmpLocal;
+      final tmpLocal = p['local'];
+      p['local'] = p['visitante'];
+      p['visitante'] = tmpLocal;
 
-    p['torneo'] = 'Clausura';
-    p['fecha'] = _formatFecha(sabados[i]);
-    return p;
-  });
-}
-  
+      p['torneo'] = 'Clausura';
+      p['fecha'] = _formatFecha(sabados[i]);
+      return p;
+    });
+  }
+
   String _normalizeValue(dynamic value) {
     return (value ?? '')
         .toString()
@@ -428,6 +422,14 @@ class FixtureScreen extends StatelessWidget {
   }
 
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
+    final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
+
+    final estaFinalizadoV2 = _finalizadosV2.any(
+      (p) =>
+          PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
+    );
+    
+    
     final bool somosLocales = (partido['condicion'] ?? 'Local') == 'Local';
     final String rival = (partido['rival'] ?? 'Rival').toString();
     final String fecha = (partido['fecha'] ?? '-').toString();
