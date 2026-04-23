@@ -1637,6 +1637,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Si el próximo actual quedó inválido, toma el primer pendiente real
   /// y recompone también los siguientes partidos.
   /// ===============================
+  /// ===============================
+  /// RECALCULAR PRÓXIMO Y SIGUIENTES DESDE FIXTURE BASE
+  /// Usa solo el fixture base del torneo/categoría actual
+  /// y filtra por partidos no finalizados según V2.
+  /// ===============================
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
@@ -1657,8 +1662,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       return;
     }
 
-    proximoPartido = Map<String, dynamic>.from(pendientes.first);
-    siguientesPartidos = pendientes.skip(1).take(3).map((p) {
+    final proximo = Map<String, dynamic>.from(pendientes.first);
+
+    final siguientes = pendientes.skip(1).map((p) {
       return {
         'rival': p['rival'],
         'fechaNumero': p['fechaNumero'],
@@ -1671,6 +1677,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       };
     }).toList();
 
+    proximoPartido = proximo;
+    siguientesPartidos = siguientes;
     hayPartido = true;
   }
 
@@ -2021,6 +2029,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     // ===============================
     if (_estaFinalizadoV2(proximoPartido)) {
       _recalcularProximoYSiguientesDesdeBase();
+      return;
     }
 
     if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
