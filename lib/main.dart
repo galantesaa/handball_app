@@ -889,11 +889,12 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
                         ),
                       ),
                       Checkbox(
-                        value: convocado,
-                        onChanged: (v) => _toggleConvocado(p, v),
+                        value: convocadosIds.contains(p.playerId),
+                        onChanged: (value) => _toggleConvocado(p, value),
                       ),
                     ],
                   ),
+
                   Row(
                     children: [
                       Expanded(
@@ -903,16 +904,17 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
                               : 'Jugador de campo',
                           style: const TextStyle(
                             color: Color(0xFFAAB4C3),
-                            fontSize: 12,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      Switch(
-                        value: arquero,
-                        onChanged: p.esArquero
-                            ? (v) => _toggleArquero(p, v)
-                            : null,
-                      ),
+                      if (p.esArquero)
+                        Switch(
+                          value: arquerosIds.contains(p.playerId),
+                          onChanged: (value) => _toggleArquero(p, value),
+                          activeColor: const Color(0xFFBDA7FF),
+                        ),
                     ],
                   ),
                 ],
@@ -3554,7 +3556,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   String _subtituloEvento(Map<String, dynamic> e) {
-    final actor = (e['actorPrincipal'] ?? '-').toString();
+    final actorRaw = (e['actorPrincipal'] ?? '-').toString();
+
+    final actor = _normalizarActorEvento(actorRaw);
     final zonaTiro = (e['zonaTiro'] ?? '').toString();
     final zonaArco = (e['zonaArco'] ?? '').toString();
 
@@ -3568,6 +3572,27 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     }
 
     return partes.join(' · ');
+  }
+
+  String _normalizarActorEvento(String actorRaw) {
+    final actor = actorRaw.trim();
+
+    if (actor.isEmpty || actor == '-' || actor == 'null') {
+      return '-';
+    }
+
+    final dorsalMatch = RegExp(r'^(\d+)').firstMatch(actor);
+
+    if (dorsalMatch == null) {
+      return actor;
+    }
+
+    final dorsal = dorsalMatch.group(1)!;
+
+    return nombreJugadorDesdeDorsal(
+      categoria: partidoV2.categoria,
+      dorsal: dorsal,
+    );
   }
 
   @override
@@ -5511,6 +5536,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   late int penalesIntentadosSanFernando;
   late int penalesIntentadosRival;
 
+  /// Jugador actualmente seleccionado para cargar eventos.
+  /// Si está vacío, el evento queda como jugador genérico.
+  String? jugadorSeleccionado;
   String? modo; // ataque / defensa
 
   String? zonaTiro;
@@ -7085,9 +7113,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
     final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Jugador genérico defensa';
+    final String actor = _actorPrincipalActual(
+      fallbackAtaque: 'Jugador genérico ataque',
+      fallbackDefensa: 'Jugador genérico defensa',
+    );
 
     final String? zonaActual = zonaTiro;
     final bool estabaEnAtaque = modo == 'ataque';
@@ -7117,6 +7146,19 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
 
     _clearSelection(keepContra: true);
+  }
+
+  String _actorPrincipalActual({
+    required String fallbackAtaque,
+    required String fallbackDefensa,
+  }) {
+    final seleccionado = jugadorSeleccionado;
+
+    if (seleccionado != null && seleccionado.toString().trim().isNotEmpty) {
+      return seleccionado.toString();
+    }
+
+    return modo == 'ataque' ? fallbackAtaque : fallbackDefensa;
   }
 
   void _showLateralSheet(String lado) {
@@ -7163,9 +7205,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
     final Map<String, dynamic> prevState = _captureStateSnapshot();
 
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Jugador genérico defensa';
+    final String actor = _actorPrincipalActual(
+      fallbackAtaque: 'Jugador genérico ataque',
+      fallbackDefensa: 'Jugador genérico defensa',
+    );
 
     bool activaContra = false;
     bool mantiene = true;
@@ -7294,9 +7337,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _iniciarFlujoPenalNormal() {
-    final String actor = modo == 'ataque'
-        ? 'Jugador genérico ataque'
-        : 'Arquero genérico';
+    final String actor = _actorPrincipalActual(
+      fallbackAtaque: 'Jugador genérico ataque',
+      fallbackDefensa: 'Arquero genérico',
+    );
 
     setState(() {
       penalEnCurso = true;
@@ -10176,5 +10220,33 @@ String nombreArqueroDesdeDorsal({
     return '$dorsal · $nombreCompleto';
   } catch (_) {
     return 'Arquero $dorsal';
+  }
+}
+
+String nombreJugadorDesdeDorsal({
+  required String categoria,
+  required String dorsal,
+}) {
+  final jugadores = RosterRepository.rosterForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  try {
+    final jugador = jugadores.firstWhere((j) => j.numeroPreferido == dorsal);
+
+    final apellido = jugador.apellido.trim();
+    final nombre = jugador.nombre.trim();
+
+    final nombreCompleto = [
+      apellido,
+      nombre,
+    ].where((p) => p.isNotEmpty).join(', ');
+
+    if (nombreCompleto.isEmpty) return 'Jugador $dorsal';
+
+    return '$dorsal · $nombreCompleto';
+  } catch (_) {
+    return 'Jugador $dorsal';
   }
 }
