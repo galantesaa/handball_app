@@ -1,84 +1,129 @@
-@override
-  Widget build(BuildContext context) {
-    final jugadores = RosterRepository.rosterForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    ).where((j) => !j.esArquero && !j.esCuerpoTecnico).toList();
+void _showZoneActionSheet() {
+    if (zonaArco == null || modo == null) return;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Jugadores'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+    final String currentMode = modo!;
+    final String actor = _resolvePrimaryActorForShot(
+      eventMode: currentMode,
+      allowGoalkeeperInAttack: true,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset('assets/images/fondohd.jpeg', fit: BoxFit.cover),
-          ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: jugadores.length,
-              itemBuilder: (context, index) {
-                final j = jugadores[index];
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Resultado → $zonaArco',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-                final dorsal = j.numeroPreferido?.isNotEmpty == true
-                    ? j.numeroPreferido!
-                    : '-';
+              _floatingOption('Gol', () {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentMode;
 
-                final nombre = [
-                  j.apellido.trim(),
-                  j.nombre.trim(),
-                ].where((e) => e.isNotEmpty).join(', ');
+                setState(() {
+                  if (modoAntesDelEvento == 'ataque') {
+                    golesSanFernando++;
+                    modo = 'defensa';
+                  } else {
+                    golesRival++;
+                    golesRecibidos++;
+                    modo = 'ataque';
+                  }
+                  mostrarContra = false;
+                  contraDebeCambiarModo = true;
+                });
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F1722).withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF182338),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          dorsal,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          nombre.isNotEmpty ? nombre : 'Jugador',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                _registrarEvento(
+                  tipo: 'tiro',
+                  resultado: 'gol',
+                  actorPrincipal: actor,
+                  zonaTiroValor: zonaTiro,
+                  zonaArcoValor: zonaArco,
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
                 );
-              },
-            ),
+
+                _clearSelection();
+                Navigator.pop(context);
+              }),
+
+              _floatingOption('Atajado', () {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentMode;
+
+                setState(() {
+                  if (modoAntesDelEvento == 'defensa') {
+                    atajadas++;
+                  }
+
+                  // 🔥 NUEVA LÓGICA:
+                  // no cambia modo automáticamente
+                  // solo habilita contra
+                  mostrarContra = true;
+                  contraDebeCambiarModo = true;
+                });
+
+                _registrarEvento(
+                  tipo: 'tiro',
+                  resultado: 'atajado',
+                  actorPrincipal: actor,
+                  zonaTiroValor: zonaTiro,
+                  zonaArcoValor: zonaArco,
+                  mantieneContexto: true,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _clearSelection(keepContra: true);
+                Navigator.pop(context);
+              }),
+
+              _floatingOption('Fuera', () {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentMode;
+
+                setState(() {
+                  if (modoAntesDelEvento == 'ataque') {
+                    modo = 'defensa';
+                    mostrarContra = false;
+                  } else {
+                    modo = 'ataque';
+                    mostrarContra = true;
+                    contraDebeCambiarModo = false;
+                  }
+                });
+
+                _registrarEvento(
+                  tipo: 'tiro',
+                  resultado: 'fuera',
+                  actorPrincipal: actor,
+                  zonaTiroValor: zonaTiro,
+                  zonaArcoValor: zonaArco,
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+                Navigator.pop(context);
+              }),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
-}

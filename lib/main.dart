@@ -698,8 +698,10 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
         temporada: temporada,
       );
 
+      // Por defecto solo quedan convocados los arqueros.
+      // Los jugadores de campo se seleccionan manualmente.
       convocadosIds = base
-          .where((p) => !p.esCuerpoTecnico)
+          .where((p) => p.esArquero)
           .map((p) => p.playerId)
           .toSet();
 
@@ -7421,9 +7423,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               ),
               const SizedBox(height: 16),
 
-              _floatingOption('Gol', () {
+              _floatingOption('Gol', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 setState(() {
                   penales++;
@@ -7456,9 +7459,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 Navigator.pop(context);
               }),
 
-              _floatingOption('Atajado', () {
+              _floatingOption('Atajado', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 setState(() {
                   penales++;
@@ -7489,9 +7493,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 Navigator.pop(context);
               }),
 
-              _floatingOption('Fuera', () {
+              _floatingOption('Fuera', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 setState(() {
                   penales++;
@@ -7562,9 +7567,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               ),
               const SizedBox(height: 16),
 
-              _floatingOption('Gol', () {
+              _floatingOption('Gol', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
+                 final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 _registrarEvento(
                   tipo: 'penal_tanda',
@@ -7581,9 +7587,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 Navigator.pop(context);
               }),
 
-              _floatingOption('Atajado', () {
+              _floatingOption('Atajado', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
+                 final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 _registrarEvento(
                   tipo: 'penal_tanda',
@@ -7600,9 +7607,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 Navigator.pop(context);
               }),
 
-              _floatingOption('Fuera', () {
+              _floatingOption('Fuera', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
+                 final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 _registrarEvento(
                   tipo: 'penal_tanda',
@@ -7739,51 +7747,76 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Future<void> _showFieldPlayerSelector() async {
-    final jugadores = _jugadoresConvocados
-        .where((p) => !p.esArquero && !p.esCuerpoTecnico)
-        .toList();
+  final jugadores = _jugadoresConvocados
+      .where((p) => !p.esArquero && !p.esCuerpoTecnico)
+      .toList();
 
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Seleccionar jugador',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  final seleccionado = await showModalBottomSheet<PlayerProfile>(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Seleccionar jugador',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
-              if (jugadores.isEmpty)
-                const Text(
-                  'No hay jugadores de campo convocados para este partido',
-                  style: TextStyle(color: Colors.white70),
-                )
-              else
-                ...jugadores.map((p) {
-                  return _floatingOption(p.displayName, () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _currentFieldPlayer = p;
-                    });
-                  });
-                }),
-            ],
-          ),
-        );
-      },
-    );
-  }
+            ),
+            const SizedBox(height: 16),
+            if (jugadores.isEmpty)
+              const Text(
+                'No hay jugadores de campo convocados',
+                style: TextStyle(color: Colors.white70),
+              )
+            else
+              ...jugadores.map((p) {
+                final dorsal = p.numeroPreferido;
+                final nombre = '${p.apellido}, ${p.nombre}'.trim();
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFF182338),
+                    child: Text(
+                      dorsal == null || dorsal.isEmpty ? '-' : dorsal,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  title: Text(
+                    nombre,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    'Jugador de campo',
+                    style: TextStyle(color: Color(0xFFAAB4C3)),
+                  ),
+                  onTap: () => Navigator.pop(context, p),
+                );
+              }),
+          ],
+        ),
+      );
+    },
+  );
+
+  if (seleccionado == null) return;
+
+  setState(() {
+    final dorsal = seleccionado.numeroPreferido;
+    final nombre = '${seleccionado.apellido}, ${seleccionado.nombre}'.trim();
+
+    jugadorSeleccionado =
+        dorsal == null || dorsal.isEmpty ? nombre : '$dorsal · $nombre';
+  });
+}
 
   Future<void> _showGoalkeeperSelectorSheet({
     String title = 'Seleccionar arquero',
@@ -7938,10 +7971,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     if (zonaArco == null || modo == null) return;
 
     final String currentMode = modo!;
-    final String actor = _resolvePrimaryActorForShot(
-      eventMode: currentMode,
-      allowGoalkeeperInAttack: true,
-    );
+    
 
     showModalBottomSheet(
       context: context,
@@ -7965,9 +7995,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               ),
               const SizedBox(height: 16),
 
-              _floatingOption('Gol', () {
+              _floatingOption('Gol', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentMode;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 setState(() {
                   if (modoAntesDelEvento == 'ataque') {
@@ -7997,9 +8028,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 Navigator.pop(context);
               }),
 
-              _floatingOption('Atajado', () {
+              _floatingOption('Atajado', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentMode;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
                 setState(() {
                   if (modoAntesDelEvento == 'defensa') {
@@ -8028,9 +8060,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 Navigator.pop(context);
               }),
 
-              _floatingOption('Fuera', () {
+              _floatingOption('Fuera', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentMode;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
+                
 
                 setState(() {
                   if (modoAntesDelEvento == 'ataque') {
@@ -8064,6 +8098,29 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
+  Future<String> _actorParaTiro(String modoEvento) async {
+  final jugadoresCampoConvocados = _jugadoresConvocados
+      .where((p) => !p.esArquero && !p.esCuerpoTecnico)
+      .toList();
+
+  if (modoEvento == 'ataque' &&
+      jugadorSeleccionado == null &&
+      jugadoresCampoConvocados.isNotEmpty) {
+    await _showFieldPlayerSelector();
+  }
+
+  if (modoEvento == 'ataque' &&
+      jugadorSeleccionado != null &&
+      jugadorSeleccionado!.trim().isNotEmpty) {
+    return jugadorSeleccionado!;
+  }
+
+  return _resolvePrimaryActorForShot(
+    eventMode: modoEvento,
+    allowGoalkeeperInAttack: true,
+  );
+}
+  
   Widget _floatingOption(String text, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
