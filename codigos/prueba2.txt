@@ -1,129 +1,17 @@
-void _showZoneActionSheet() {
-    if (zonaArco == null || modo == null) return;
+List<PlayerProfile> get _jugadoresConvocados {
+    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
 
-    final String currentMode = modo!;
-    final String actor = _resolvePrimaryActorForShot(
-      eventMode: currentMode,
-      allowGoalkeeperInAttack: true,
-    );
+    if (squadMap == null) {
+      return RosterRepository.rosterForCategory(
+        categoria: widget.partido['categoria'],
+        temporada: '2026',
+      ).where((p) => !p.esCuerpoTecnico).toList();
+    }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Resultado → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
+    final squad = MatchSquadConfig.fromMap(squadMap);
 
-              _floatingOption('Gol', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-
-                setState(() {
-                  if (modoAntesDelEvento == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-                  mostrarContra = false;
-                  contraDebeCambiarModo = true;
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection();
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Atajado', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-
-                setState(() {
-                  if (modoAntesDelEvento == 'defensa') {
-                    atajadas++;
-                  }
-
-                  // 🔥 NUEVA LÓGICA:
-                  // no cambia modo automáticamente
-                  // solo habilita contra
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: true,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Fuera', () {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-
-                setState(() {
-                  if (modoAntesDelEvento == 'ataque') {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  } else {
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
+    return RosterRepository.players
+        .where((p) => squad.convocadosIds.contains(p.playerId))
+        .where((p) => !p.esCuerpoTecnico)
+        .toList();
   }

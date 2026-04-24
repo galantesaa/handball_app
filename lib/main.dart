@@ -4845,7 +4845,26 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     return 'assets/images/san_fernando.png';
   }
 
+void _asegurarConvocatoriaDefaultSoloArqueros() {
+  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+  if (squadMap != null) return;
+
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+  final arqueros = RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  widget.partido['matchSquad'] = MatchSquadConfig(
+    convocadosIds: arqueros.map((p) => p.playerId).toSet(),
+    arquerosIds: arqueros.map((p) => p.playerId).toSet(),
+  ).toMap();
+}
+
   Future<void> _irAPartidoEnVivo() async {
+    _asegurarConvocatoriaDefaultSoloArqueros();
     final resultado = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -5541,6 +5560,15 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   /// Jugador actualmente seleccionado para cargar eventos.
   /// Si está vacío, el evento queda como jugador genérico.
   String? jugadorSeleccionado;
+  bool mostrarSelectorLateralJugador = false;
+
+  String? _tiroPendienteResultado;
+  String? _tiroPendienteModo;
+  String? _tiroPendienteZonaTiro;
+  String? _tiroPendienteZonaArco;
+  bool _tiroPendienteMantieneContexto = false;
+  Map<String, dynamic>? _tiroPendientePrevState;
+  
   String? modo; // ataque / defensa
 
   String? zonaTiro;
@@ -5634,7 +5662,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       return RosterRepository.rosterForCategory(
         categoria: widget.partido['categoria'],
         temporada: '2026',
-      ).where((p) => !p.esCuerpoTecnico).toList();
+      ).where((p) => p.esArquero).toList();
     }
 
     final squad = MatchSquadConfig.fromMap(squadMap);
@@ -5643,6 +5671,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         .where((p) => squad.convocadosIds.contains(p.playerId))
         .where((p) => !p.esCuerpoTecnico)
         .toList();
+  }
+
+  List<PlayerProfile> get _jugadoresCampoConvocados {
+  return _jugadoresConvocados
+      .where((p) => !p.esArquero && !p.esCuerpoTecnico)
+      .toList();
+}
+
+  bool _debeMostrarSelectorJugadorParaAtaque() {
+    return modo == 'ataque' &&
+        jugadorSeleccionado == null &&
+        _jugadoresCampoConvocados.isNotEmpty;
   }
 
   List<PlayerProfile> _availableGoalkeepersForMatch() {
@@ -6206,6 +6246,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               _buildCenteredOverlay('Entretiempo'),
             if (estadoPartido == 'entretiempo_alargue')
               _buildCenteredOverlay('Entretiempo alargue'),
+            if (mostrarSelectorLateralJugador)
+             _buildSelectorLateralJugador(),
           ],
         ),
       ),
@@ -6376,6 +6418,56 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
+  Widget _buildSelectorLateralJugador() {
+  final jugadores = _jugadoresCampoConvocados;
+
+  return Positioned(
+    left: 0,
+    top: 120,
+    bottom: 120,
+    child: Container(
+      width: 72,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.96),
+        borderRadius: const BorderRadius.horizontal(
+          right: Radius.circular(18),
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: ListView(
+        children: jugadores.map((p) {
+          final dorsal = p.numeroPreferido ?? '-';
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _seleccionarJugadorParaTiroPendiente(p),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4F8CFF),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  dorsal,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  );
+}
+  
   Widget _buildTouchLane({
     required bool enabled,
     required VoidCallback onTap,
@@ -6861,7 +6953,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               });
 
               if (zonaArco != null) {
-                _showZoneActionSheet();
+              _showZoneActionSheet();
               }
             },
       child: AnimatedContainer(
@@ -7323,6 +7415,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       mostrarContra = false;
       zonaTiro = null;
       zonaArco = null;
+      jugadorSeleccionado = null;
       origenJugadaActual = 'contra';
       contraDebeCambiarModo = true;
     });
@@ -7968,147 +8061,81 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showZoneActionSheet() {
-    if (zonaArco == null || modo == null) return;
+  if (zonaArco == null || modo == null) return;
 
-    final String currentMode = modo!;
-    
+  final String currentMode = modo!;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Resultado → $zonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Resultado → $zonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
 
-              _floatingOption('Gol', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
+            _floatingOption('Gol', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentMode;
 
-                setState(() {
-                  if (modoAntesDelEvento == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-                  mostrarContra = false;
-                  contraDebeCambiarModo = true;
-                });
+              Navigator.pop(context);
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
+              _prepararORegistrarTiroNormal(
+                resultado: 'gol',
+                modoAntesDelEvento: modoAntesDelEvento,
+                mantieneContexto: false,
+                prevState: prevState,
+              );
+            }),
 
-                _clearSelection();
-                Navigator.pop(context);
-              }),
+            _floatingOption('Atajado', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentMode;
 
-              _floatingOption('Atajado', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
+              Navigator.pop(context);
 
-                setState(() {
-                  if (modoAntesDelEvento == 'defensa') {
-                    atajadas++;
-                  }
+              _prepararORegistrarTiroNormal(
+                resultado: 'atajado',
+                modoAntesDelEvento: modoAntesDelEvento,
+                mantieneContexto: true,
+                prevState: prevState,
+              );
+            }),
 
-                  // 🔥 NUEVA LÓGICA:
-                  // no cambia modo automáticamente
-                  // solo habilita contra
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
+            _floatingOption('Fuera', () {
+              final Map<String, dynamic> prevState = _captureStateSnapshot();
+              final String modoAntesDelEvento = currentMode;
 
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: true,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
+              Navigator.pop(context);
 
-                _clearSelection(keepContra: true);
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Fuera', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentMode;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-                
-
-                setState(() {
-                  if (modoAntesDelEvento == 'ataque') {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  } else {
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'tiro',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  zonaTiroValor: zonaTiro,
-                  zonaArcoValor: zonaArco,
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+              _prepararORegistrarTiroNormal(
+                resultado: 'fuera',
+                modoAntesDelEvento: modoAntesDelEvento,
+                mantieneContexto: false,
+                prevState: prevState,
+              );
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
   Future<String> _actorParaTiro(String modoEvento) async {
-  final jugadoresCampoConvocados = _jugadoresConvocados
-      .where((p) => !p.esArquero && !p.esCuerpoTecnico)
-      .toList();
-
-  if (modoEvento == 'ataque' &&
-      jugadorSeleccionado == null &&
-      jugadoresCampoConvocados.isNotEmpty) {
-    await _showFieldPlayerSelector();
-  }
-
   if (modoEvento == 'ataque' &&
       jugadorSeleccionado != null &&
       jugadorSeleccionado!.trim().isNotEmpty) {
@@ -8121,6 +8148,131 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   );
 }
   
+  void _prepararORegistrarTiroNormal({
+  required String resultado,
+  required String modoAntesDelEvento,
+  required bool mantieneContexto,
+  required Map<String, dynamic> prevState,
+}) async {
+  final bool necesitaJugador =
+      modoAntesDelEvento == 'ataque' && _jugadoresCampoConvocados.isNotEmpty;
+
+  if (necesitaJugador) {
+    setState(() {
+      _tiroPendienteResultado = resultado;
+      _tiroPendienteModo = modoAntesDelEvento;
+      _tiroPendienteZonaTiro = zonaTiro;
+      _tiroPendienteZonaArco = zonaArco;
+      _tiroPendienteMantieneContexto = mantieneContexto;
+      _tiroPendientePrevState = prevState;
+      mostrarSelectorLateralJugador = true;
+    });
+    return;
+  }
+
+  final actor = await _actorParaTiro(modoAntesDelEvento);
+
+  _registrarTiroNormalResuelto(
+    resultado: resultado,
+    modoAntesDelEvento: modoAntesDelEvento,
+    actor: actor,
+    zonaTiroEvento: zonaTiro,
+    zonaArcoEvento: zonaArco,
+    mantieneContexto: mantieneContexto,
+    prevState: prevState,
+  );
+}
+  
+  void _registrarTiroNormalResuelto({
+  required String resultado,
+  required String modoAntesDelEvento,
+  required String actor,
+  required String? zonaTiroEvento,
+  required String? zonaArcoEvento,
+  required bool mantieneContexto,
+  required Map<String, dynamic> prevState,
+}) {
+  setState(() {
+    if (resultado == 'gol') {
+      if (modoAntesDelEvento == 'ataque') {
+        golesSanFernando++;
+        modo = 'defensa';
+      } else {
+        golesRival++;
+        golesRecibidos++;
+        modo = 'ataque';
+      }
+      mostrarContra = false;
+      contraDebeCambiarModo = true;
+    }
+
+    if (resultado == 'atajado') {
+      if (modoAntesDelEvento == 'defensa') {
+        atajadas++;
+      }
+
+      mostrarContra = true;
+      contraDebeCambiarModo = true;
+    }
+
+    if (resultado == 'fuera') {
+      if (modoAntesDelEvento == 'ataque') {
+        modo = 'defensa';
+        mostrarContra = false;
+      } else {
+        modo = 'ataque';
+        mostrarContra = true;
+        contraDebeCambiarModo = false;
+      }
+    }
+
+    mostrarSelectorLateralJugador = false;
+  });
+
+  _registrarEvento(
+    tipo: 'tiro',
+    resultado: resultado,
+    actorPrincipal: actor,
+    zonaTiroValor: zonaTiroEvento,
+    zonaArcoValor: zonaArcoEvento,
+    mantieneContexto: mantieneContexto,
+    prevState: prevState,
+    modoEvento: modoAntesDelEvento,
+  );
+
+  _clearSelection(keepContra: resultado == 'atajado' || modoAntesDelEvento == 'defensa');
+}
+
+  void _seleccionarJugadorParaTiroPendiente(PlayerProfile jugador) {
+  final dorsal = jugador.numeroPreferido ?? '-';
+  final nombre = '${jugador.apellido}, ${jugador.nombre}'.trim();
+  final actor = '$dorsal · $nombre';
+
+  final resultado = _tiroPendienteResultado;
+  final modoPendiente = _tiroPendienteModo;
+  final prevState = _tiroPendientePrevState;
+
+  if (resultado == null || modoPendiente == null || prevState == null) return;
+
+  jugadorSeleccionado = actor;
+
+  _registrarTiroNormalResuelto(
+    resultado: resultado,
+    modoAntesDelEvento: modoPendiente,
+    actor: actor,
+    zonaTiroEvento: _tiroPendienteZonaTiro,
+    zonaArcoEvento: _tiroPendienteZonaArco,
+    mantieneContexto: _tiroPendienteMantieneContexto,
+    prevState: prevState,
+  );
+
+  _tiroPendienteResultado = null;
+  _tiroPendienteModo = null;
+  _tiroPendienteZonaTiro = null;
+  _tiroPendienteZonaArco = null;
+  _tiroPendientePrevState = null;
+}
+
   Widget _floatingOption(String text, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -10257,27 +10409,40 @@ String nombreArqueroDesdeDorsal({
   required String categoria,
   required String dorsal,
 }) {
-  final arqueros = RosterRepository.goalkeepersForCategory(
+  final arquerosCategoria = RosterRepository.goalkeepersForCategory(
     categoria: categoria,
     temporada: '2026',
   );
 
-  try {
-    final arquero = arqueros.firstWhere((a) => a.numeroPreferido == dorsal);
+  PlayerProfile? encontrado;
 
-    final apellido = arquero.apellido.trim();
-    final nombre = arquero.nombre.trim();
-    final nombreCompleto = [
-      apellido,
-      nombre,
-    ].where((p) => p.isNotEmpty).join(', ');
+  for (final arquero in arquerosCategoria) {
+    if (arquero.numeroPreferido == dorsal) {
+      encontrado = arquero;
+      break;
+    }
+  }
 
-    if (nombreCompleto.isEmpty) return 'Arquero $dorsal';
+  encontrado ??= RosterRepository.players
+      .where((p) => p.esArquero)
+      .where((p) => p.numeroPreferido == dorsal)
+      .cast<PlayerProfile?>()
+      .firstOrNull;
 
-    return '$dorsal · $nombreCompleto';
-  } catch (_) {
+  if (encontrado == null) {
     return 'Arquero $dorsal';
   }
+
+  final apellido = encontrado.apellido.trim();
+  final nombre = encontrado.nombre.trim();
+
+  final nombreCompleto = [apellido, nombre]
+      .where((p) => p.isNotEmpty)
+      .join(', ');
+
+  if (nombreCompleto.isEmpty) return 'Arquero $dorsal';
+
+  return '$dorsal · $nombreCompleto';
 }
 
 String nombreJugadorDesdeDorsal({
