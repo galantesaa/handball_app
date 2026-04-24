@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models_v2.dart';
 import 'partido_repository_v2.dart';
 
+
 /// ===============================
 /// PUNTO DE ENTRADA
 /// ===============================
@@ -84,6 +85,31 @@ class PlayerProfile {
     }
     return '$numero · $apellido, $nombre'.trim();
   }
+  Map<String, dynamic> toMap() {
+  return {
+    'playerId': playerId,
+    'clubId': clubId,
+    'nombre': nombre,
+    'apellido': apellido,
+    'posicion': posicion,
+    'numeroPreferido': numeroPreferido,
+    'esArquero': esArquero,
+    'esCuerpoTecnico': esCuerpoTecnico,
+  };
+}
+
+factory PlayerProfile.fromMap(Map<String, dynamic> map) {
+  return PlayerProfile(
+    playerId: (map['playerId'] ?? '').toString(),
+    clubId: (map['clubId'] ?? 'san_fernando').toString(),
+    nombre: (map['nombre'] ?? '').toString(),
+    apellido: (map['apellido'] ?? '').toString(),
+    posicion: map['posicion']?.toString(),
+    numeroPreferido: map['numeroPreferido']?.toString(),
+    esArquero: map['esArquero'] == true,
+    esCuerpoTecnico: map['esCuerpoTecnico'] == true,
+  );
+}
 }
 
 class RosterAssignment {
@@ -628,6 +654,99 @@ class RosterRepository {
       if (p.numeroPreferido == number) return p;
     }
     return null;
+  }
+}
+
+/// ===============================
+/// ROSTER STORAGE 2.1
+/// Guarda y lee el plantel base por categoría/temporada.
+/// Si no hay datos guardados, usa RosterRepository hardcodeado.
+/// ===============================
+class RosterStorage {
+  static String _key({
+    required String categoria,
+    required String temporada,
+  }) {
+    return 'roster_${temporada}_$categoria';
+  }
+
+  static Future<List<PlayerProfile>> readRosterForCategory({
+    required String categoria,
+    required String temporada,
+    bool includeStaff = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key(
+      categoria: categoria,
+      temporada: temporada,
+    ));
+
+    if (raw == null || raw.isEmpty) {
+      return RosterRepository.rosterForCategory(
+        categoria: categoria,
+        temporada: temporada,
+        includeStaff: includeStaff,
+      );
+    }
+
+    final decoded = jsonDecode(raw) as List<dynamic>;
+
+    final players = decoded
+        .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)))
+        .where((p) => includeStaff || !p.esCuerpoTecnico)
+        .toList();
+
+    players.sort((a, b) {
+      final aNum = int.tryParse(a.numeroPreferido ?? '');
+      final bNum = int.tryParse(b.numeroPreferido ?? '');
+
+      if (aNum == null && bNum == null) {
+        return a.apellido.compareTo(b.apellido);
+      }
+      if (aNum == null) return 1;
+      if (bNum == null) return -1;
+
+      return aNum.compareTo(bNum);
+    });
+
+    return players;
+  }
+
+  static Future<void> saveRosterForCategory({
+    required String categoria,
+    required String temporada,
+    required List<PlayerProfile> players,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final data = players.map((p) => p.toMap()).toList();
+
+    await prefs.setString(
+      _key(categoria: categoria, temporada: temporada),
+      jsonEncode(data),
+    );
+  }
+
+  static Future<void> seedCategoryIfEmpty({
+    required String categoria,
+    required String temporada,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _key(categoria: categoria, temporada: temporada);
+
+    if (prefs.containsKey(key)) return;
+
+    final base = RosterRepository.rosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+      includeStaff: true,
+    );
+
+    await saveRosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+      players: base,
+    );
   }
 }
 
@@ -10227,17 +10346,50 @@ class _PlantelScreenState extends State<PlantelScreen> {
   }
 }
 
-class ArquerosScreen extends StatelessWidget {
+/// ===============================
+/// ARQUEROS 2.1
+/// Lee arqueros desde el plantel persistente.
+/// Si todavía no hay storage, se inicializa desde el hardcode actual.
+/// ===============================
+class ArquerosScreen extends StatefulWidget {
   final String categoria;
 
-  const ArquerosScreen({super.key, required this.categoria});
+  const ArquerosScreen({
+    super.key,
+    required this.categoria,
+  });
+
+  @override
+  State<ArquerosScreen> createState() => _ArquerosScreenState();
+}
+
+class _ArquerosScreenState extends State<ArquerosScreen> {
+  late Future<List<PlayerProfile>> _arquerosFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _arquerosFuture = _loadArqueros();
+  }
+
+  /// Carga el plantel persistente y filtra solo arqueros.
+  Future<List<PlayerProfile>> _loadArqueros() async {
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: widget.categoria,
+      temporada: '2026',
+    );
+
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: false,
+    );
+
+    return roster.where((p) => p.esArquero).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final arqueros = RosterRepository.goalkeepersForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    );
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -10265,43 +10417,62 @@ class ArquerosScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Plantel de arqueros · $categoria',
+                    'Plantel de arqueros · ${widget.categoria}',
                     style: const TextStyle(
                       color: Color(0xFFD4DCE7),
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 18),
-                  if (arqueros.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F1722).withOpacity(0.88),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.03),
-                        ),
-                      ),
-                      child: const Text(
-                        'No hay arqueros cargados para esta categoría.',
-                        style: TextStyle(
-                          color: Color(0xFFAAB4C3),
-                          fontSize: 14,
-                        ),
-                      ),
-                    )
-                  else
-                    ...arqueros.map(
-                      (arquero) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildArqueroCard(
-                          context: context,
-                          dorsal: _dorsalArquero(arquero),
-                          nombre: _nombreArquero(arquero),
-                        ),
-                      ),
-                    ),
+                  FutureBuilder<List<PlayerProfile>>(
+                    future: _arquerosFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
+                      final arqueros = snapshot.data ?? [];
+
+                      if (arqueros.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F1722).withOpacity(0.88),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.03),
+                            ),
+                          ),
+                          child: const Text(
+                            'No hay arqueros cargados para esta categoría.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children: arqueros.map(
+                          (arquero) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildArqueroCard(
+                              context: context,
+                              dorsal: _dorsalArquero(arquero),
+                              nombre: _nombreArquero(arquero),
+                            ),
+                          ),
+                        ).toList(),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 12),
                   _buildAddArqueroButton(context),
                 ],
@@ -10385,7 +10556,7 @@ class ArquerosScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Arquero · $categoria',
+                  'Arquero · ${widget.categoria}',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFFAAB4C3),
