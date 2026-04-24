@@ -14,6 +14,26 @@ class PartidoEnJuegoScreen extends StatefulWidget {
 }
 
 class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
+  
+  /// ===============================
+  /// MODELO 2.0
+  /// ===============================
+  PartidoModel get partidoV2 => PartidoModel.fromMap(widget.partido);
+
+  /// ===============================
+  /// ESTADÍSTICAS DESDE MODELO 2.0
+  /// ===============================
+  double get _eficaciaArqueroV2 => partidoV2.eficaciaArquero;
+  int get _atajadasV2 => partidoV2.atajadas;
+  int get _golesRecibidosV2 => partidoV2.golesRecibidos;
+  int get _perdidasV2 => partidoV2.perdidas;
+  int get _recuperacionesV2 => partidoV2.recuperaciones;
+  int get _penalesV2 => partidoV2.penales;
+  int get _exclusiones2MinV2 => partidoV2.exclusiones2Min;
+  int get _amarillasV2 => partidoV2.amarillas;
+  int get _rojasV2 => partidoV2.rojas;
+  int get _cantidadEventosV2 => partidoV2.eventos.length;
+
   String estadoPartido = 'no_iniciado';
 
   int golesSanFernando = 0;
@@ -37,33 +57,54 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   String? modoInicioPrimerTiempo;
   String? modoInicioPrimerTiempoAlargue;
 
+  /// ===============================
+  /// ESTADO SIMPLE DE PARTIDO
+  /// Estos getters siguen manejando la UI actual,
+  /// pero algunos datos ya se leen desde PartidoModel.
+  /// ===============================
   bool get _partidoFinalizado => estadoPartido == 'finalizado';
-  bool get _somosLocales => widget.partido['condicion'] == 'Local';
+  bool get _somosLocales => partidoV2.condicion == 'Local';
 
-  String get _nombreLocal =>
-      _somosLocales ? 'San Fernando' : (widget.partido['rival'] ?? 'Rival');
+  String get _nombreLocal => _somosLocales ? 'San Fernando' : partidoV2.rival;
 
   String get _nombreVisitante =>
-      _somosLocales ? (widget.partido['rival'] ?? 'Rival') : 'San Fernando';
+      _somosLocales ? partidoV2.rival : 'San Fernando';
 
   int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
   int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
 
   String get _escudoLocalPath {
     if (_somosLocales) return 'assets/images/san_fernando.png';
-    return (widget.partido['escudoRival'] as String?) ??
-        'assets/images/san_fernando.png';
+    return partidoV2.escudoRival ?? 'assets/images/san_fernando.png';
   }
 
   String get _escudoVisitantePath {
     if (_somosLocales) {
-      return (widget.partido['escudoRival'] as String?) ??
-          'assets/images/san_fernando.png';
+      return partidoV2.escudoRival ?? 'assets/images/san_fernando.png';
     }
     return 'assets/images/san_fernando.png';
   }
 
+void _asegurarConvocatoriaDefaultSoloArqueros() {
+  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+  if (squadMap != null) return;
+
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+
+  final arqueros = RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  widget.partido['matchSquad'] = MatchSquadConfig(
+    convocadosIds: arqueros.map((p) => p.playerId).toSet(),
+    arquerosIds: arqueros.map((p) => p.playerId).toSet(),
+  ).toMap();
+}
+
   Future<void> _irAPartidoEnVivo() async {
+    _asegurarConvocatoriaDefaultSoloArqueros();
     final resultado = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -150,6 +191,11 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     }
   }
 
+  /// ===============================
+  /// ABRIR RESUMEN
+  /// Construye primero el partido con la base 2.0 (PartidoModel)
+  /// y luego lo convierte a Map para no romper la pantalla actual.
+  /// ===============================
   void _abrirResumen() {
     if (!_partidoFinalizado) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -162,29 +208,25 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       return;
     }
 
-    final Map<String, dynamic> partidoResumen = {
-      'rival': widget.partido['rival'],
-      'fecha': widget.partido['fecha'],
-      'hora': widget.partido['hora'],
-      'condicion': widget.partido['condicion'],
-      'torneo': widget.partido['torneo'],
-      'categoria': widget.partido['categoria'],
-      'estado': 'Finalizado',
-      'estadoPartido': 'finalizado',
-      'golesSanFernando': golesSanFernando,
-      'golesRival': golesRival,
-      'golesRecibidos': golesRecibidos,
-      'atajadas': atajadas,
-      'penales': penales,
-      'exclusiones2Min': exclusiones2Min,
-      'amarillas': amarillas,
-      'rojas': rojas,
-      'perdidas': perdidas,
-      'recuperaciones': recuperaciones,
-      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-      'penalesConvertidosRival': penalesConvertidosRival,
-      'eventos': eventos,
-    };
+    final PartidoModel partidoResumenV2 = partidoV2.copyWith(
+      estado: 'Finalizado',
+      estadoPartido: 'finalizado',
+      golesSanFernando: golesSanFernando,
+      golesRival: golesRival,
+      golesRecibidos: golesRecibidos,
+      atajadas: atajadas,
+      penales: penales,
+      exclusiones2Min: exclusiones2Min,
+      amarillas: amarillas,
+      rojas: rojas,
+      perdidas: perdidas,
+      recuperaciones: recuperaciones,
+      penalesConvertidosSanFernando: penalesConvertidosSanFernando,
+      penalesConvertidosRival: penalesConvertidosRival,
+      eventos: eventos.map((e) => EventoModel.fromMap(e)).toList(),
+    );
+
+    final Map<String, dynamic> partidoResumen = partidoResumenV2.toMap();
 
     Navigator.push(
       context,
@@ -231,26 +273,38 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     }
   }
 
+  /// ===============================
+  /// SYNC STATE TO PARTIDO
+  /// Sincroniza el estado actual del centro de control con widget.partido,
+  /// pero usando PartidoModel como base intermedia.
+  /// ===============================
   void _syncStateToPartido() {
-    widget.partido['estadoPartido'] = estadoPartido;
-    widget.partido['golesSanFernando'] = golesSanFernando;
-    widget.partido['golesRival'] = golesRival;
-    widget.partido['golesRecibidos'] = golesRecibidos;
-    widget.partido['atajadas'] = atajadas;
-    widget.partido['penales'] = penales;
-    widget.partido['exclusiones2Min'] = exclusiones2Min;
-    widget.partido['amarillas'] = amarillas;
-    widget.partido['rojas'] = rojas;
-    widget.partido['perdidas'] = perdidas;
-    widget.partido['recuperaciones'] = recuperaciones;
-    widget.partido['penalesConvertidosSanFernando'] =
-        penalesConvertidosSanFernando;
-    widget.partido['penalesConvertidosRival'] = penalesConvertidosRival;
-    widget.partido['modoActual'] = modoActual;
-    widget.partido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
-    widget.partido['modoInicioPrimerTiempoAlargue'] =
-        modoInicioPrimerTiempoAlargue;
-    widget.partido['eventos'] = eventos;
+    final PartidoModel partidoActualizado = partidoV2.copyWith(
+      estado: estadoPartido == 'finalizado' ? 'Finalizado' : partidoV2.estado,
+      estadoPartido: estadoPartido,
+      golesSanFernando: golesSanFernando,
+      golesRival: golesRival,
+      golesRecibidos: golesRecibidos,
+      atajadas: atajadas,
+      penales: penales,
+      exclusiones2Min: exclusiones2Min,
+      amarillas: amarillas,
+      rojas: rojas,
+      perdidas: perdidas,
+      recuperaciones: recuperaciones,
+      penalesConvertidosSanFernando: penalesConvertidosSanFernando,
+      penalesConvertidosRival: penalesConvertidosRival,
+      modoActual: modoActual,
+      modoInicioPrimerTiempo: modoInicioPrimerTiempo,
+      modoInicioPrimerTiempoAlargue: modoInicioPrimerTiempoAlargue,
+      eventos: eventos.map((e) => EventoModel.fromMap(e)).toList(),
+    );
+
+    final Map<String, dynamic> actualizadoMap = partidoActualizado.toMap();
+
+    widget.partido
+      ..clear()
+      ..addAll(actualizadoMap);
   }
 
   @override
@@ -292,6 +346,29 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                     const SizedBox(height: 14),
                   ],
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Partido real',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Switch(
+                        value: widget.partido['esPartidoReal'] == true,
+                        onChanged: (value) {
+                          setState(() {
+                            widget.partido['esPartidoReal'] = value;
+                          });
+                        },
+                        activeColor: const Color(0xFF1E7D4F),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
                     children: [
                       Expanded(
                         child: _buildMiniAction(
@@ -323,9 +400,15 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     );
   }
 
+  /// ===============================
+  ///   /// HEADER DEL CENTRO DE CONTROL
+  /// Muestra categoría y torneo del partido.
+  /// Ya lee esos datos desde PartidoModel (base 2.0),
+  /// pero sin alterar la lógica actual de la pantalla.
+  /// ===============================
   Widget _buildControlHeader() {
     return Text(
-      '${widget.partido['categoria']} · ${widget.partido['torneo']}',
+      '${partidoV2.categoria} · ${partidoV2.torneo}',
       style: const TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
     );
   }
@@ -526,6 +609,11 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     );
   }
 
+  /// ===============================
+  /// RESUMEN PARCIAL
+  /// Muestra métricas rápidas del partido.
+  /// Empieza a leer estadísticas desde PartidoModel (base 2.0).
+  /// ===============================
   Widget _buildPartialSummaryCard() {
     final double eficaciaArquero = (atajadas + golesRecibidos) == 0
         ? 0
@@ -553,15 +641,15 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           const SizedBox(height: 12),
           _buildSummaryRow(
             'Eficacia arquero',
-            '${eficaciaArquero.toStringAsFixed(1)}%',
+            '${_eficaciaArqueroV2.toStringAsFixed(1)}%',
           ),
-          _buildSummaryRow('Pérdidas', '$perdidas'),
-          _buildSummaryRow('Recuperaciones', '$recuperaciones'),
-          _buildSummaryRow('Penales', '$penales'),
-          _buildSummaryRow('Exclusiones 2 min', '$exclusiones2Min'),
-          _buildSummaryRow('Tarjetas amarillas', '$amarillas'),
-          _buildSummaryRow('Tarjetas rojas', '$rojas'),
-          _buildSummaryRow('Eventos cargados', '${eventos.length}'),
+          _buildSummaryRow('Pérdidas', '$_perdidasV2'),
+          _buildSummaryRow('Recuperaciones', '$_recuperacionesV2'),
+          _buildSummaryRow('Penales', '$_penalesV2'),
+          _buildSummaryRow('Exclusiones 2 min', '$_exclusiones2MinV2'),
+          _buildSummaryRow('Tarjetas amarillas', '$_amarillasV2'),
+          _buildSummaryRow('Tarjetas rojas', '$_rojasV2'),
+          _buildSummaryRow('Eventos cargados', '$_cantidadEventosV2'),
           _buildSummaryRow('Modo actual', modoActual ?? '-'),
         ],
       ),

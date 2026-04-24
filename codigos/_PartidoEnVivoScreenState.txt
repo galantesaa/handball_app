@@ -1,4 +1,4 @@
-/// ===============================
+// ===============================
 /// ===============================
 /// PARTIDO EN VIVO
 /// ===============================
@@ -175,7 +175,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       return RosterRepository.rosterForCategory(
         categoria: widget.partido['categoria'],
         temporada: '2026',
-      ).where((p) => !p.esCuerpoTecnico).toList();
+      ).where((p) => p.esArquero).toList();
     }
 
     final squad = MatchSquadConfig.fromMap(squadMap);
@@ -1466,14 +1466,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               });
 
               if (zonaArco != null) {
-                if (_debeMostrarSelectorJugadorParaAtaque()) {
-                  setState(() {
-                    mostrarSelectorLateralJugador = true;
-                  });
-                  return;
-                }
-
-                _showZoneActionSheet();
+              _showZoneActionSheet();
               }
             },
       child: AnimatedContainer(

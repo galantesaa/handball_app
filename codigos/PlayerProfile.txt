@@ -1,3 +1,4 @@
+
 /// ===============================
 /// ===============================
 /// PLANTEL
@@ -648,8 +649,10 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
         temporada: temporada,
       );
 
+      // Por defecto solo quedan convocados los arqueros.
+      // Los jugadores de campo se seleccionan manualmente.
       convocadosIds = base
-          .where((p) => !p.esCuerpoTecnico)
+          .where((p) => p.esArquero)
           .map((p) => p.playerId)
           .toSet();
 
@@ -839,11 +842,12 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
                         ),
                       ),
                       Checkbox(
-                        value: convocado,
-                        onChanged: (v) => _toggleConvocado(p, v),
+                        value: convocadosIds.contains(p.playerId),
+                        onChanged: (value) => _toggleConvocado(p, value),
                       ),
                     ],
                   ),
+
                   Row(
                     children: [
                       Expanded(
@@ -853,16 +857,17 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
                               : 'Jugador de campo',
                           style: const TextStyle(
                             color: Color(0xFFAAB4C3),
-                            fontSize: 12,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      Switch(
-                        value: arquero,
-                        onChanged: p.esArquero
-                            ? (v) => _toggleArquero(p, v)
-                            : null,
-                      ),
+                      if (p.esArquero)
+                        Switch(
+                          value: arquerosIds.contains(p.playerId),
+                          onChanged: (value) => _toggleArquero(p, value),
+                          activeColor: const Color(0xFFBDA7FF),
+                        ),
                     ],
                   ),
                 ],

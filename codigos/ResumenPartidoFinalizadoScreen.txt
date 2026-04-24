@@ -7,6 +7,130 @@
 class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   final Map<String, dynamic> partido;
 
+  /// ===============================
+  /// PARTIDO V2
+  /// Lectura paralela del resumen usando la base 2.0.
+  /// Por ahora solo se usa para leer datos sin cambiar la pantalla.
+  /// ===============================
+  PartidoModel get partidoV2 => PartidoModel.fromMap(partido);
+
+  /// ===============================
+  /// ESTADÍSTICAS DESDE MODELO 2.0
+  /// Lectura paralela del resumen usando PartidoModel.
+  /// ===============================
+  double get _eficaciaArqueroV2 => partidoV2.eficaciaArquero;
+
+  int get _atajadasV2 => partidoV2.atajadas;
+
+  int get _golesRecibidosV2 => partidoV2.golesRecibidos;
+
+  int get _penalesV2 => partidoV2.penales;
+
+  int get _perdidasV2 => partidoV2.perdidas;
+
+  int get _recuperacionesV2 => partidoV2.recuperaciones;
+
+  int get _exclusiones2MinV2 => partidoV2.exclusiones2Min;
+
+  int get _amarillasV2 => partidoV2.amarillas;
+
+  int get _rojasV2 => partidoV2.rojas;
+
+  int get _golesSanFernandoV2 => partidoV2.golesSanFernando;
+
+  int get _golesRivalV2 => partidoV2.golesRival;
+
+  /// ===============================
+  /// STATS POR ARQUERO
+  /// Solo toma tiros defensivos del rival:
+  /// - atajado
+  /// - gol
+  /// Ignora tiros en modo ataque, porque no pertenecen
+  /// al arquero propio.
+  /// ===============================
+  List<Map<String, dynamic>> _estadisticasPorArquero() {
+    final Map<String, Map<String, dynamic>> acumulado = {};
+
+    for (final e in _eventos) {
+      final map = Map<String, dynamic>.from(e as Map);
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      final resultado = (map['resultado'] ?? '').toString();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString();
+
+      final bool esTiro =
+          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      final bool esDefensivo = modo == 'defensa';
+
+      if (!esTiro || !esDefensivo) continue;
+      if (resultado != 'atajado' && resultado != 'gol') continue;
+
+      String arquero = (map['arquero'] ?? '').toString().trim();
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
+
+      acumulado.putIfAbsent(arquero, () {
+        return {'arquero': arquero, 'atajadas': 0, 'golesRecibidos': 0};
+      });
+
+      if (resultado == 'atajado') {
+        acumulado[arquero]!['atajadas'] =
+            (acumulado[arquero]!['atajadas'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        acumulado[arquero]!['golesRecibidos'] =
+            (acumulado[arquero]!['golesRecibidos'] as int) + 1;
+      }
+    }
+
+    final lista = acumulado.values.map((item) {
+      final atajadas = item['atajadas'] as int;
+      final golesRecibidos = item['golesRecibidos'] as int;
+      final total = atajadas + golesRecibidos;
+      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+      return {
+        'arquero': item['arquero'],
+        'atajadas': atajadas,
+        'golesRecibidos': golesRecibidos,
+        'eficacia': eficacia,
+      };
+    }).toList();
+
+    lista.sort((a, b) {
+      final nombreA = (a['arquero'] ?? '').toString();
+      final nombreB = (b['arquero'] ?? '').toString();
+      return nombreA.compareTo(nombreB);
+    });
+
+    return lista;
+  }
+
+  int get _atajadasDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['atajadas'] ?? 0) as int),
+    );
+  }
+
+  int get _golesRecibidosDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['golesRecibidos'] ?? 0) as int),
+    );
+  }
+
+  double get _eficaciaDesdeArqueros {
+    final atajadas = _atajadasDesdeArqueros;
+    final goles = _golesRecibidosDesdeArqueros;
+    final total = atajadas + goles;
+    if (total == 0) return 0;
+    return (atajadas / total) * 100;
+  }
+
   const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
 
   bool get _somosLocales => (partido['condicion'] ?? 'Local') == 'Local';
@@ -173,7 +297,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   String _subtituloEvento(Map<String, dynamic> e) {
-    final actor = (e['actorPrincipal'] ?? '-').toString();
+    final actorRaw = (e['actorPrincipal'] ?? '-').toString();
+
+    final actor = _normalizarActorEvento(actorRaw);
     final zonaTiro = (e['zonaTiro'] ?? '').toString();
     final zonaArco = (e['zonaArco'] ?? '').toString();
 
@@ -189,10 +315,31 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     return partes.join(' · ');
   }
 
+  String _normalizarActorEvento(String actorRaw) {
+    final actor = actorRaw.trim();
+
+    if (actor.isEmpty || actor == '-' || actor == 'null') {
+      return '-';
+    }
+
+    final dorsalMatch = RegExp(r'^(\d+)').firstMatch(actor);
+
+    if (dorsalMatch == null) {
+      return actor;
+    }
+
+    final dorsal = dorsalMatch.group(1)!;
+
+    return nombreJugadorDesdeDorsal(
+      categoria: partidoV2.categoria,
+      dorsal: dorsal,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final eventosImportantes = _eventosImportantes();
-
+    final estadisticasPorArquero = _estadisticasPorArquero();
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -219,7 +366,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${_categoriaTexto()} · ${_torneoTexto()}',
+                    '${partidoV2.categoria} · ${partidoV2.torneo}',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFFD4DCE7),
@@ -234,9 +381,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                     title: 'Datos del partido',
                     child: Column(
                       children: [
-                        _buildInfoRow('Rival', _rivalTexto()),
-                        _buildInfoRow('Fecha', _fechaTexto()),
-                        _buildInfoRow('Hora', _horaTexto()),
+                        _buildInfoRow('Rival', partidoV2.rival),
+                        _buildInfoRow('Fecha', partidoV2.fecha),
+                        _buildInfoRow('Hora', partidoV2.hora),
                         _buildInfoRow('Condición', _condicionTexto()),
                       ],
                     ),
@@ -248,27 +395,91 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                       children: [
                         _buildInfoRow(
                           'Eficacia',
-                          '${_eficaciaArquero.toStringAsFixed(1)}%',
+                          '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
                         ),
-                        _buildInfoRow('Atajadas', '$_atajadas'),
-                        _buildInfoRow('Goles recibidos', '$_golesRecibidos'),
-                        _buildInfoRow('Penales en contra', '$_penales'),
+                        _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
+                        _buildInfoRow(
+                          'Goles recibidos',
+                          '$_golesRecibidosDesdeArqueros',
+                        ),
+                        _buildInfoRow('Penales en contra', '$_penalesV2'),
                       ],
                     ),
+                  ),
+                  _buildSectionCard(
+                    title: 'Estadísticas por arquero',
+                    child: estadisticasPorArquero.isEmpty
+                        ? const Text(
+                            'No hay eventos suficientes para separar estadísticas por arquero.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 13,
+                            ),
+                          )
+                        : Column(
+                            children: estadisticasPorArquero.map((item) {
+                              final arquero = (item['arquero'] ?? 'Sin arquero')
+                                  .toString();
+                              final atajadas = item['atajadas'] as int;
+                              final golesRecibidos =
+                                  item['golesRecibidos'] as int;
+                              final eficacia = item['eficacia'] as double;
+
+                              return Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF182338,
+                                  ).withOpacity(0.75),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      arquero == 'Sin arquero'
+                                          ? 'Sin arquero'
+                                          : nombreArqueroDesdeDorsal(
+                                              categoria: partidoV2.categoria,
+                                              dorsal: arquero,
+                                            ),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildInfoRow('Atajadas', '$atajadas'),
+                                    _buildInfoRow(
+                                      'Goles recibidos',
+                                      '$golesRecibidos',
+                                    ),
+                                    _buildInfoRow(
+                                      'Eficacia',
+                                      '${eficacia.toStringAsFixed(1)}%',
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
                   ),
                   const SizedBox(height: 16),
                   _buildSectionCard(
                     title: 'Ataque y juego',
                     child: Column(
                       children: [
-                        _buildInfoRow('Goles a favor', '$_golesAFavor'),
-                        _buildInfoRow('Goles en contra', '$_golesEnContra'),
+                        _buildInfoRow('Goles a favor', '$_golesSanFernandoV2'),
+                        _buildInfoRow('Goles en contra', '$_golesRivalV2'),
                         _buildInfoRow('Tiros registrados', '$_tirosTotales'),
                         _buildInfoRow('Tiros con gol', '$_tirosGol'),
                         _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
                         _buildInfoRow('Tiros fuera', '$_tirosFuera'),
-                        _buildInfoRow('Pérdidas', '$_perdidas'),
-                        _buildInfoRow('Recuperaciones', '$_recuperaciones'),
+                        _buildInfoRow('Pérdidas', '$_perdidasV2'),
+                        _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
                       ],
                     ),
                   ),
@@ -277,9 +488,12 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                     title: 'Disciplina',
                     child: Column(
                       children: [
-                        _buildInfoRow('Exclusiones 2 min', '$_exclusiones2Min'),
-                        _buildInfoRow('Tarjetas amarillas', '$_amarillas'),
-                        _buildInfoRow('Tarjetas rojas', '$_rojas'),
+                        _buildInfoRow(
+                          'Exclusiones 2 min',
+                          '$_exclusiones2MinV2',
+                        ),
+                        _buildInfoRow('Tarjetas amarillas', '$_amarillasV2'),
+                        _buildInfoRow('Tarjetas rojas', '$_rojasV2'),
                       ],
                     ),
                   ),

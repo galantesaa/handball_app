@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'models_v2.dart';
+import 'partido_repository_v2.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA

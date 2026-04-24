@@ -1,15 +1,52 @@
-class FixtureScreen extends StatelessWidget {
+/// ===============================
+/// ===============================
+/// FIXTURE
+/// ===============================
+/// 
+class FixtureScreen extends StatefulWidget {
   final String categoria;
   final String torneo;
-  static const String _liveMatchStorageKey = 'live_match_current_v1';
-  static const String _finishedMatchesStorageKey =
-      'finished_matches_history_v1';
 
   const FixtureScreen({
     super.key,
     required this.categoria,
     required this.torneo,
   });
+
+  @override
+  State<FixtureScreen> createState() => _FixtureScreenState();
+}
+
+class _FixtureScreenState extends State<FixtureScreen> {
+  static const String _liveMatchStorageKey = 'live_match_current_v1';
+  static const String _finishedMatchesStorageKey =
+      'finished_matches_history_v1';
+
+  /// ===============================
+  /// PARTIDOS FINALIZADOS V2
+  /// Cache local usando el nuevo repository
+  /// ===============================
+  List<PartidoModel> _finalizadosV2 = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFinalizadosV2();
+  }
+
+  /// ===============================
+  /// LOAD FINALIZADOS V2
+  /// Lee partidos finalizados desde repository 2.0
+  /// ===============================
+  Future<void> _loadFinalizadosV2() async {
+    final data = await PartidoRepositoryV2.readFinishedMatches();
+
+    if (!mounted) return;
+
+    setState(() {
+      _finalizadosV2 = data;
+    });
+  }
 
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
@@ -348,14 +385,14 @@ class FixtureScreen extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    if (torneo == 'Apertura') {
+    if (widget.torneo == 'Apertura') {
       return _buildAperturaBase(
-        categoria: categoria,
+        categoria: widget.categoria,
       ).map(_convertirAFixturePartido).toList();
     }
 
     return _buildClausuraBase(
-      categoria: categoria,
+      categoria: widget.categoria,
     ).map(_convertirAFixturePartido).toList();
   }
 
@@ -405,7 +442,7 @@ class FixtureScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               children: [
                 Text(
-                  '$categoria · $torneo',
+                  '${widget.categoria} · ${widget.torneo}',
                   style: const TextStyle(
                     color: Color(0xFFD4DCE7),
                     fontSize: 14,
@@ -425,11 +462,9 @@ class FixtureScreen extends StatelessWidget {
     final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 
     final estaFinalizadoV2 = _finalizadosV2.any(
-      (p) =>
-          PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
+      (p) => PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
     );
-    
-    
+
     final bool somosLocales = (partido['condicion'] ?? 'Local') == 'Local';
     final String rival = (partido['rival'] ?? 'Rival').toString();
     final String fecha = (partido['fecha'] ?? '-').toString();
@@ -438,7 +473,24 @@ class FixtureScreen extends StatelessWidget {
     final String? escudoRival = partido['escudoRival'] as String?;
 
     return GestureDetector(
-      onTap: () => _abrirPartido(context, partido),
+      onTap: () async {
+        if (estaFinalizadoV2) {
+          final finalizado = _finalizadosV2.firstWhere(
+            (p) =>
+                PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  ResumenPartidoFinalizadoScreen(partido: finalizado.toMap()),
+            ),
+          );
+        } else {
+          _abrirPartido(context, partido);
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
@@ -450,7 +502,13 @@ class FixtureScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatusChip('Fecha $fechaNumero'),
+            Row(
+              children: [
+                _buildStatusChip('Fecha $fechaNumero'),
+                const SizedBox(width: 8),
+                _buildStatusChip(estaFinalizadoV2 ? 'Finalizado' : 'Pendiente'),
+              ],
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -485,14 +543,77 @@ class FixtureScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            _buildInfoRow('Fecha', fecha),
-            _buildInfoRow('Hora', hora),
-            _buildInfoRow('Condición', somosLocales ? 'Local' : 'Visitante'),
+            const SizedBox(height: 8),
+            //const Text('•', style: TextStyle(color: Color(0xFF7C8BA0))),
+            Row(
+              children: [
+                const SizedBox(width: 2), // pequeño ajuste fino
+
+                Text(
+                  fecha,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                const Text(
+                  '•',
+                  style: TextStyle(color: Color(0xFF7C8BA0), fontSize: 12),
+                ),
+                const SizedBox(width: 6),
+
+                Text(
+                  hora,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                const Text(
+                  '•',
+                  style: TextStyle(color: Color(0xFF7C8BA0), fontSize: 12),
+                ),
+                const SizedBox(width: 6),
+
+                Text(
+                  somosLocales ? 'Local' : 'Visitante',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFAAB4C3),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             _buildOpenButton(
-              text: 'Abrir partido',
-              onTap: () => _abrirPartido(context, partido),
+              text: estaFinalizadoV2 ? 'Ver resumen' : 'Abrir partido',
+              onTap: () async {
+                if (estaFinalizadoV2) {
+                  final finalizado = _finalizadosV2.firstWhere(
+                    (p) =>
+                        PartidoRepositoryV2.buildMatchIdentityFromModel(p) ==
+                        identidad,
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ResumenPartidoFinalizadoScreen(
+                        partido: finalizado.toMap(),
+                      ),
+                    ),
+                  );
+                } else {
+                  _abrirPartido(context, partido);
+                }
+              },
             ),
           ],
         ),
@@ -501,17 +622,21 @@ class FixtureScreen extends StatelessWidget {
   }
 
   Widget _buildStatusChip(String status) {
+    final bool esFinalizado = status.toLowerCase() == 'finalizado';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF182338).withOpacity(0.95),
+        color: esFinalizado
+            ? const Color(0xFF1E7D4F)
+            : const Color(0xFF182338).withOpacity(0.95),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         status,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Color(0xFFDCE4EF),
+          color: esFinalizado ? Colors.white : const Color(0xFFDCE4EF),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -550,12 +675,16 @@ class FixtureScreen extends StatelessWidget {
   }
 
   Widget _buildOpenButton({required String text, required VoidCallback onTap}) {
+    final bool esResumen = text == 'Ver resumen';
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4F8CFF),
+          backgroundColor: esResumen
+              ? const Color(0xFF2EA86B) // verde
+              : const Color(0xFF4F8CFF), // azul
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14),

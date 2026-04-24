@@ -996,6 +996,106 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+/// ===============================
+/// GESTIÓN ADMINISTRATIVA
+/// Menú futuro para importaciones, exportaciones y configuración general.
+/// No pertenece a Equipo porque no es gestión deportiva directa.
+/// ===============================
+  void _showGestionAdministrativaMenu() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Gestión administrativa',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildAdminMenuOption(
+              icon: Icons.upload_file_rounded,
+              text: 'Importar jugadores',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            _buildAdminMenuOption(
+              icon: Icons.calendar_month_rounded,
+              text: 'Importar fixture',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            _buildAdminMenuOption(
+              icon: Icons.shield_rounded,
+              text: 'Importar escudos',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            _buildAdminMenuOption(
+              icon: Icons.download_rounded,
+              text: 'Exportar datos',
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+///===============================
+/// Opción visual del menú administrativo.
+///================================
+  Widget _buildAdminMenuOption({
+  required IconData icon,
+  required String text,
+  required VoidCallback onTap,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        decoration: BoxDecoration(
+          color: const Color(0xFF182338),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
   void _openSection(BuildContext context, String title) {
     Navigator.push(
       context,
@@ -1012,7 +1112,10 @@ class _HomeScreenState extends State<HomeScreen> {
             case 'Estadísticas':
               return const EstadisticasScreen();
             case 'Equipo':
-              return const EquiposScreen();
+              return EquiposScreen(
+                categoriaInicial: categoriaSeleccionada,
+                temporada: temporadaSeleccionada,
+              );
             default:
               return Scaffold(
                 appBar: AppBar(title: Text(title)),
@@ -1075,7 +1178,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: _showGestionAdministrativaMenu,
           icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
         ),
       ],
@@ -4061,6 +4164,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 /// ===============================
 /// FIXTURE
 /// ===============================
+/// 
 class FixtureScreen extends StatefulWidget {
   final String categoria;
   final String torneo;
@@ -4775,6 +4879,7 @@ class PartidoEnJuegoScreen extends StatefulWidget {
 }
 
 class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
+  
   /// ===============================
   /// MODELO 2.0
   /// ===============================
@@ -9700,7 +9805,7 @@ class _ExtremeZonePainter extends CustomPainter {
 }
 
 ///===============================
-/// PLACEHOLDERS
+/// ESTADISTICAS
 /// ==============================
 ///===============================
 
@@ -9722,8 +9827,21 @@ class EstadisticasScreen extends StatelessWidget {
 ///===============================
 ///===============================
 
+/// ===============================
+/// EQUIPO 2.1
+/// Gestión deportiva del equipo.
+/// Acá NO va importación/exportación.
+/// La convocatoria por partido queda en Centro de control.
+/// ===============================
 class EquiposScreen extends StatelessWidget {
-  const EquiposScreen({super.key});
+  final String categoriaInicial;
+  final String temporada;
+
+  const EquiposScreen({
+    super.key,
+    required this.categoriaInicial,
+    required this.temporada,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -9766,36 +9884,9 @@ class EquiposScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const PlantelScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildEquipoActionCard(
-                    context: context,
-                    icon: Icons.fact_check_rounded,
-                    title: 'Convocados',
-                    subtitle: 'Gestión por partido y categoría',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Convocados se va a integrar acá'),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildEquipoActionCard(
-                    context: context,
-                    icon: Icons.upload_file_rounded,
-                    title: 'Importación',
-                    subtitle: 'CSV, TXT, escudos y fixture',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Importación masiva llegará más adelante',
+                          builder: (_) => PlantelScreen(
+                            categoriaInicial: categoriaInicial,
+                            temporada: temporada,
                           ),
                         ),
                       );
@@ -9881,15 +9972,38 @@ class EquiposScreen extends StatelessWidget {
   }
 }
 
+/// ===============================
+/// PLANTEL 2.1
+/// Gestiona el plantel base de la categoría activa.
+/// Recibe categoría y temporada desde Home.
+/// ===============================
 class PlantelScreen extends StatefulWidget {
-  const PlantelScreen({super.key});
+  final String categoriaInicial;
+  final String temporada;
+
+  const PlantelScreen({
+    super.key,
+    required this.categoriaInicial,
+    required this.temporada,
+  });
 
   @override
   State<PlantelScreen> createState() => _PlantelScreenState();
 }
+  
+  @override
+  State<PlantelScreen> createState() => _PlantelScreenState();
 
 class _PlantelScreenState extends State<PlantelScreen> {
-  String categoriaSeleccionada = 'Cadetes';
+  late String categoriaSeleccionada;
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// La categoría inicial viene desde el contexto activo del Home.
+    categoriaSeleccionada = widget.categoriaInicial;
+  }
 
   @override
   Widget build(BuildContext context) {

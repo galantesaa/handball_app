@@ -1,4 +1,3 @@
-
 ///=======================
 ///=======================
 ///heatmap de eventos, estadísticas detalladas por jugador, exportación de datos, etc.
