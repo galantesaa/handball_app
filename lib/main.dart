@@ -10392,10 +10392,11 @@ class _PlantelScreenState extends State<PlantelScreen> {
                     title: 'Cuerpo técnico',
                     subtitle: 'Estructura técnica de $categoriaSeleccionada',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Cuerpo técnico de $categoriaSeleccionada se integrará acá',
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CuerpoTecnicoScreen(
+                            categoria: categoriaSeleccionada,
                           ),
                         ),
                       );
@@ -10834,9 +10835,301 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
     return roster.where((p) => !p.esArquero && !p.esCuerpoTecnico).toList();
   }
 
+  /// ===============================
+  /// ALTA JUGADOR DE CAMPO
+  /// Crea un jugador nuevo en la categoría actual
+  /// y lo guarda en el plantel persistente.
+  /// ===============================
+  Future<void> _abrirAltaJugador() async {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final dorsalController = TextEditingController();
+    final posicionController = TextEditingController();
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Agregar jugador',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputAltaJugador('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Dorsal', dorsalController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Posición', posicionController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmado != true) return;
+
+    final nombre = nombreController.text.trim();
+    final apellido = apellidoController.text.trim();
+    final dorsal = dorsalController.text.trim();
+    final posicion = posicionController.text.trim();
+
+    if (nombre.isEmpty && apellido.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
+      );
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final nuevoJugador = PlayerProfile(
+      playerId: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      clubId: RosterRepository.currentClub.clubId,
+      nombre: nombre,
+      apellido: apellido,
+      posicion: posicion.isEmpty ? null : posicion,
+      numeroPreferido: dorsal.isEmpty ? null : dorsal,
+      esArquero: false,
+      esCuerpoTecnico: false,
+    );
+
+    final actualizado = [...rosterActual, nuevoJugador];
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _jugadoresFuture = _loadJugadores();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Jugador agregado al plantel')),
+    );
+  }
+
+  /// Campo visual reutilizable para alta de jugador.
+  Widget _inputAltaJugador(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        filled: true,
+        fillColor: const Color(0xFF182338),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  /// ===============================
+  /// EDITAR JUGADOR
+  /// Permite modificar nombre, apellido, dorsal y posición.
+  /// También permite eliminarlo del plantel persistente.
+  /// ===============================
+  Future<void> _abrirEditarJugador(PlayerProfile jugador) async {
+    final nombreController = TextEditingController(text: jugador.nombre);
+    final apellidoController = TextEditingController(text: jugador.apellido);
+    final dorsalController = TextEditingController(
+      text: jugador.numeroPreferido ?? '',
+    );
+    final posicionController = TextEditingController(
+      text: jugador.posicion ?? '',
+    );
+
+    final accion = await showDialog<String>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Editar jugador',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputAltaJugador('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Dorsal', dorsalController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Posición', posicionController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'delete'),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'save'),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (accion == null || accion == 'cancel') return;
+
+    if (accion == 'delete') {
+      await _confirmarEliminarJugador(jugador);
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual.map((p) {
+      if (p.playerId != jugador.playerId) return p;
+
+      return PlayerProfile(
+        playerId: p.playerId,
+        clubId: p.clubId,
+        nombre: nombreController.text.trim(),
+        apellido: apellidoController.text.trim(),
+        posicion: posicionController.text.trim().isEmpty
+            ? null
+            : posicionController.text.trim(),
+        numeroPreferido: dorsalController.text.trim().isEmpty
+            ? null
+            : dorsalController.text.trim(),
+        esArquero: p.esArquero,
+        esCuerpoTecnico: p.esCuerpoTecnico,
+      );
+    }).toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _jugadoresFuture = _loadJugadores();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Jugador actualizado')));
+  }
+
+  /// ===============================
+  /// ELIMINAR JUGADOR
+  /// Elimina al jugador del plantel persistente de esta categoría.
+  /// No borra eventos históricos ya cargados.
+  /// ===============================
+  Future<void> _confirmarEliminarJugador(PlayerProfile jugador) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar jugador',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Seguro que querés eliminar a ${jugador.displayName} de ${widget.categoria}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual
+        .where((p) => p.playerId != jugador.playerId)
+        .toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _jugadoresFuture = _loadJugadores();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Jugador eliminado')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F8CFF),
+        onPressed: _abrirAltaJugador,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Jugadores'),
@@ -10885,6 +11178,160 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
                       j.nombre.trim(),
                     ].where((e) => e.isNotEmpty).join(', ');
 
+                    return GestureDetector(
+                      onTap: () => _abrirEditarJugador(j),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F1722).withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF182338),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                dorsal,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    nombre.isNotEmpty ? nombre : 'Jugador',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  if ((j.posicion ?? '').trim().isNotEmpty)
+                                    Text(
+                                      j.posicion!,
+                                      style: const TextStyle(
+                                        color: Color(0xFFAAB4C3),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.edit_rounded,
+                              color: Colors.white54,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ===============================
+/// CUERPO TÉCNICO 2.1
+/// Lee cuerpo técnico desde plantel persistente.
+/// ===============================
+class CuerpoTecnicoScreen extends StatefulWidget {
+  final String categoria;
+
+  const CuerpoTecnicoScreen({super.key, required this.categoria});
+
+  @override
+  State<CuerpoTecnicoScreen> createState() => _CuerpoTecnicoScreenState();
+}
+
+class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
+  late Future<List<PlayerProfile>> _staffFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _staffFuture = _loadStaff();
+  }
+
+  Future<List<PlayerProfile>> _loadStaff() async {
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: widget.categoria,
+      temporada: '2026',
+    );
+
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    return roster.where((p) => p.esCuerpoTecnico).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Cuerpo técnico'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset('assets/images/fondohd.jpeg', fit: BoxFit.cover),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: FutureBuilder<List<PlayerProfile>>(
+              future: _staffFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final staff = snapshot.data ?? [];
+
+                if (staff.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No hay cuerpo técnico cargado',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: staff.length,
+                  itemBuilder: (context, index) {
+                    final s = staff[index];
+
+                    final nombre = [
+                      s.apellido.trim(),
+                      s.nombre.trim(),
+                    ].where((e) => e.isNotEmpty).join(', ');
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
@@ -10894,26 +11341,11 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF182338),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              dorsal,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                          const Icon(Icons.person, color: Colors.white),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              nombre.isNotEmpty ? nombre : 'Jugador',
+                              nombre.isNotEmpty ? nombre : 'Staff',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
