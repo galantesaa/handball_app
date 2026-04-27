@@ -10545,12 +10545,6 @@ class _PlantelScreenState extends State<PlantelScreen> {
   }
 }
 
-/// ===============================
-/// ARQUEROS 2.1
-/// Lee arqueros desde el plantel persistente.
-/// Si todavía no hay storage, se inicializa desde el hardcode actual.
-/// ===============================
-
 class ArquerosScreen extends StatefulWidget {
   final String categoria;
 
@@ -10588,6 +10582,11 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F8CFF),
+        onPressed: _abrirAltaArquero,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Arqueros'),
@@ -10658,10 +10657,13 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
                             .map(
                               (arquero) => Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
-                                child: _buildArqueroCard(
-                                  context: context,
-                                  dorsal: _dorsalArquero(arquero),
-                                  nombre: _nombreArquero(arquero),
+                                child: GestureDetector(
+                                  onTap: () => _abrirEditarArquero(arquero),
+                                  child: _buildArqueroCard(
+                                    context: context,
+                                    dorsal: _dorsalArquero(arquero),
+                                    nombre: _nombreArquero(arquero),
+                                  ),
                                 ),
                               ),
                             )
@@ -10679,6 +10681,286 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
       ),
     );
   }
+
+  /// ===============================
+  /// ALTA ARQUERO
+  /// Crea un arquero nuevo en la categoría actual
+  /// y lo guarda en el plantel persistente.
+  /// ===============================
+  Future<void> _abrirAltaArquero() async {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final dorsalController = TextEditingController();
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Agregar arquero',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputArquero('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputArquero('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputArquero('Dorsal', dorsalController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmado != true) return;
+
+    final nombre = nombreController.text.trim();
+    final apellido = apellidoController.text.trim();
+    final dorsal = dorsalController.text.trim();
+
+    if (nombre.isEmpty && apellido.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
+      );
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final nuevoArquero = PlayerProfile(
+      playerId: 'local_gk_${DateTime.now().millisecondsSinceEpoch}',
+      clubId: RosterRepository.currentClub.clubId,
+      nombre: nombre,
+      apellido: apellido,
+      posicion: 'Arquero',
+      numeroPreferido: dorsal.isEmpty ? null : dorsal,
+      esArquero: true,
+      esCuerpoTecnico: false,
+    );
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: [...rosterActual, nuevoArquero],
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _arquerosFuture = _loadArqueros();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Arquero agregado al plantel')),
+    );
+  }
+
+  /// ===============================
+  /// EDITAR ARQUERO
+  /// Permite modificar nombre, apellido y dorsal.
+  /// También permite eliminarlo del plantel persistente.
+  /// ===============================
+  Future<void> _abrirEditarArquero(PlayerProfile arquero) async {
+    final nombreController = TextEditingController(text: arquero.nombre);
+    final apellidoController = TextEditingController(text: arquero.apellido);
+    final dorsalController = TextEditingController(
+      text: arquero.numeroPreferido ?? '',
+    );
+
+    final accion = await showDialog<String>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Editar arquero',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputArquero('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputArquero('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputArquero('Dorsal', dorsalController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'delete'),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'save'),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (accion == null || accion == 'cancel') return;
+
+    if (accion == 'delete') {
+      await _confirmarEliminarArquero(arquero);
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual.map((p) {
+      if (p.playerId != arquero.playerId) return p;
+
+      return PlayerProfile(
+        playerId: p.playerId,
+        clubId: p.clubId,
+        nombre: nombreController.text.trim(),
+        apellido: apellidoController.text.trim(),
+        posicion: 'Arquero',
+        numeroPreferido: dorsalController.text.trim().isEmpty
+            ? null
+            : dorsalController.text.trim(),
+        esArquero: true,
+        esCuerpoTecnico: false,
+      );
+    }).toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _arquerosFuture = _loadArqueros();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Arquero actualizado')));
+  }
+
+  /// ===============================
+  /// ELIMINAR ARQUERO
+  /// Elimina al arquero del plantel persistente de esta categoría.
+  /// No borra eventos históricos ya cargados.
+  /// ===============================
+  Future<void> _confirmarEliminarArquero(PlayerProfile arquero) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar arquero',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Seguro que querés eliminar a ${arquero.displayName} de ${widget.categoria}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual
+        .where((p) => p.playerId != arquero.playerId)
+        .toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _arquerosFuture = _loadArqueros();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Arquero eliminado')));
+  }
+
+  /// Campo visual reutilizable para alta/edición de arquero.
+  Widget _inputArquero(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        filled: true,
+        fillColor: const Color(0xFF182338),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  /// ===============================
+  /// ARQUEROS 2.1
+  /// Lee arqueros desde el plantel persistente.
+  /// Si todavía no hay storage, se inicializa desde el hardcode actual.
+  /// ===============================
 
   String _dorsalArquero(PlayerProfile arquero) {
     final dorsal = arquero.numeroPreferido;
