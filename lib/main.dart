@@ -6128,13 +6128,33 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         _jugadoresCampoConvocados.isNotEmpty;
   }
 
+  /// ===============================
+  /// ARQUEROS DISPONIBLES DEL PARTIDO
+  /// Lee desde matchRosterSnapshot si existe.
+  /// Esto permite usar arqueros creados/editados en Plantel 2.1.
+  /// ===============================
   List<PlayerProfile> _availableGoalkeepersForMatch() {
     final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
+
+    final rosterBase = snapshotRaw == null
+        ? RosterRepository.rosterForCategory(
+            categoria: widget.partido['categoria'],
+            temporada: '2026',
+            includeStaff: false,
+          )
+        : snapshotRaw
+              .map(
+                (e) =>
+                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
+              )
+              .toList();
 
     if (matchSquad != null) {
       final config = MatchSquadConfig.fromMap(matchSquad);
 
-      final arquerosConvocados = RosterRepository.players.where((p) {
+      final arquerosConvocados = rosterBase.where((p) {
         return p.esArquero && config.arquerosIds.contains(p.playerId);
       }).toList();
 
@@ -6143,12 +6163,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       }
     }
 
-    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
-
-    return RosterRepository.goalkeepersForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    );
+    return rosterBase.where((p) => p.esArquero).toList();
   }
 
   PlayerProfile? _getCurrentGoalkeeperProfile() {
