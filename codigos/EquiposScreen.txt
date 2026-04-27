@@ -4,8 +4,21 @@
 ///===============================
 ///===============================
 
+/// ===============================
+/// EQUIPO 2.1
+/// Gestión deportiva del equipo.
+/// Acá NO va importación/exportación.
+/// La convocatoria por partido queda en Centro de control.
+/// ===============================
 class EquiposScreen extends StatelessWidget {
-  const EquiposScreen({super.key});
+  final String categoriaInicial;
+  final String temporada;
+
+  const EquiposScreen({
+    super.key,
+    required this.categoriaInicial,
+    required this.temporada,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -48,36 +61,9 @@ class EquiposScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const PlantelScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildEquipoActionCard(
-                    context: context,
-                    icon: Icons.fact_check_rounded,
-                    title: 'Convocados',
-                    subtitle: 'Gestión por partido y categoría',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Convocados se va a integrar acá'),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildEquipoActionCard(
-                    context: context,
-                    icon: Icons.upload_file_rounded,
-                    title: 'Importación',
-                    subtitle: 'CSV, TXT, escudos y fixture',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Importación masiva llegará más adelante',
+                          builder: (_) => PlantelScreen(
+                            categoriaInicial: categoriaInicial,
+                            temporada: temporada,
                           ),
                         ),
                       );
@@ -163,15 +149,38 @@ class EquiposScreen extends StatelessWidget {
   }
 }
 
+/// ===============================
+/// PLANTEL 2.1
+/// Gestiona el plantel base de la categoría activa.
+/// Recibe categoría y temporada desde Home.
+/// ===============================
 class PlantelScreen extends StatefulWidget {
-  const PlantelScreen({super.key});
+  final String categoriaInicial;
+  final String temporada;
+
+  const PlantelScreen({
+    super.key,
+    required this.categoriaInicial,
+    required this.temporada,
+  });
 
   @override
   State<PlantelScreen> createState() => _PlantelScreenState();
 }
 
+@override
+State<PlantelScreen> createState() => _PlantelScreenState();
+
 class _PlantelScreenState extends State<PlantelScreen> {
-  String categoriaSeleccionada = 'Cadetes';
+  late String categoriaSeleccionada;
+
+  @override
+  void initState() {
+    super.initState();
+
+    /// La categoría inicial viene desde el contexto activo del Home.
+    categoriaSeleccionada = widget.categoriaInicial;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -243,10 +252,11 @@ class _PlantelScreenState extends State<PlantelScreen> {
                     title: 'Cuerpo técnico',
                     subtitle: 'Estructura técnica de $categoriaSeleccionada',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Cuerpo técnico de $categoriaSeleccionada se integrará acá',
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CuerpoTecnicoScreen(
+                            categoria: categoriaSeleccionada,
                           ),
                         ),
                       );
@@ -395,19 +405,48 @@ class _PlantelScreenState extends State<PlantelScreen> {
   }
 }
 
-class ArquerosScreen extends StatelessWidget {
+class ArquerosScreen extends StatefulWidget {
   final String categoria;
 
   const ArquerosScreen({super.key, required this.categoria});
 
   @override
-  Widget build(BuildContext context) {
-    final arqueros = RosterRepository.goalkeepersForCategory(
-      categoria: categoria,
+  State<ArquerosScreen> createState() => _ArquerosScreenState();
+}
+
+class _ArquerosScreenState extends State<ArquerosScreen> {
+  late Future<List<PlayerProfile>> _arquerosFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _arquerosFuture = _loadArqueros();
+  }
+
+  /// Carga el plantel persistente y filtra solo arqueros.
+  Future<List<PlayerProfile>> _loadArqueros() async {
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: widget.categoria,
       temporada: '2026',
     );
 
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: false,
+    );
+
+    return roster.where((p) => p.esArquero).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F8CFF),
+        onPressed: _abrirAltaArquero,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Arqueros'),
@@ -433,45 +472,65 @@ class ArquerosScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Plantel de arqueros · $categoria',
+                    'Plantel de arqueros · ${widget.categoria}',
                     style: const TextStyle(
                       color: Color(0xFFD4DCE7),
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 18),
-                  if (arqueros.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F1722).withOpacity(0.88),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.03),
-                        ),
-                      ),
-                      child: const Text(
-                        'No hay arqueros cargados para esta categoría.',
-                        style: TextStyle(
-                          color: Color(0xFFAAB4C3),
-                          fontSize: 14,
-                        ),
-                      ),
-                    )
-                  else
-                    ...arqueros.map(
-                      (arquero) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildArqueroCard(
-                          context: context,
-                          dorsal: _dorsalArquero(arquero),
-                          nombre: _nombreArquero(arquero),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  _buildAddArqueroButton(context),
+                  FutureBuilder<List<PlayerProfile>>(
+                    future: _arquerosFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      final arqueros = snapshot.data ?? [];
+
+                      if (arqueros.isEmpty) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F1722).withOpacity(0.88),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.03),
+                            ),
+                          ),
+                          child: const Text(
+                            'No hay arqueros cargados para esta categoría.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 14,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children: arqueros
+                            .map(
+                              (arquero) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: GestureDetector(
+                                  onTap: () => _abrirEditarArquero(arquero),
+                                  child: _buildArqueroCard(
+                                    context: context,
+                                    dorsal: _dorsalArquero(arquero),
+                                    nombre: _nombreArquero(arquero),
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -480,6 +539,286 @@ class ArquerosScreen extends StatelessWidget {
       ),
     );
   }
+
+  /// ===============================
+  /// ALTA ARQUERO
+  /// Crea un arquero nuevo en la categoría actual
+  /// y lo guarda en el plantel persistente.
+  /// ===============================
+  Future<void> _abrirAltaArquero() async {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final dorsalController = TextEditingController();
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Agregar arquero',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputArquero('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputArquero('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputArquero('Dorsal', dorsalController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmado != true) return;
+
+    final nombre = nombreController.text.trim();
+    final apellido = apellidoController.text.trim();
+    final dorsal = dorsalController.text.trim();
+
+    if (nombre.isEmpty && apellido.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
+      );
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final nuevoArquero = PlayerProfile(
+      playerId: 'local_gk_${DateTime.now().millisecondsSinceEpoch}',
+      clubId: RosterRepository.currentClub.clubId,
+      nombre: nombre,
+      apellido: apellido,
+      posicion: 'Arquero',
+      numeroPreferido: dorsal.isEmpty ? null : dorsal,
+      esArquero: true,
+      esCuerpoTecnico: false,
+    );
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: [...rosterActual, nuevoArquero],
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _arquerosFuture = _loadArqueros();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Arquero agregado al plantel')),
+    );
+  }
+
+  /// ===============================
+  /// EDITAR ARQUERO
+  /// Permite modificar nombre, apellido y dorsal.
+  /// También permite eliminarlo del plantel persistente.
+  /// ===============================
+  Future<void> _abrirEditarArquero(PlayerProfile arquero) async {
+    final nombreController = TextEditingController(text: arquero.nombre);
+    final apellidoController = TextEditingController(text: arquero.apellido);
+    final dorsalController = TextEditingController(
+      text: arquero.numeroPreferido ?? '',
+    );
+
+    final accion = await showDialog<String>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Editar arquero',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputArquero('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputArquero('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputArquero('Dorsal', dorsalController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'delete'),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'save'),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (accion == null || accion == 'cancel') return;
+
+    if (accion == 'delete') {
+      await _confirmarEliminarArquero(arquero);
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual.map((p) {
+      if (p.playerId != arquero.playerId) return p;
+
+      return PlayerProfile(
+        playerId: p.playerId,
+        clubId: p.clubId,
+        nombre: nombreController.text.trim(),
+        apellido: apellidoController.text.trim(),
+        posicion: 'Arquero',
+        numeroPreferido: dorsalController.text.trim().isEmpty
+            ? null
+            : dorsalController.text.trim(),
+        esArquero: true,
+        esCuerpoTecnico: false,
+      );
+    }).toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _arquerosFuture = _loadArqueros();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Arquero actualizado')));
+  }
+
+  /// ===============================
+  /// ELIMINAR ARQUERO
+  /// Elimina al arquero del plantel persistente de esta categoría.
+  /// No borra eventos históricos ya cargados.
+  /// ===============================
+  Future<void> _confirmarEliminarArquero(PlayerProfile arquero) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar arquero',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Seguro que querés eliminar a ${arquero.displayName} de ${widget.categoria}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual
+        .where((p) => p.playerId != arquero.playerId)
+        .toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _arquerosFuture = _loadArqueros();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Arquero eliminado')));
+  }
+
+  /// Campo visual reutilizable para alta/edición de arquero.
+  Widget _inputArquero(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        filled: true,
+        fillColor: const Color(0xFF182338),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  /// ===============================
+  /// ARQUEROS 2.1
+  /// Lee arqueros desde el plantel persistente.
+  /// Si todavía no hay storage, se inicializa desde el hardcode actual.
+  /// ===============================
 
   String _dorsalArquero(PlayerProfile arquero) {
     final dorsal = arquero.numeroPreferido;
@@ -553,7 +892,7 @@ class ArquerosScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Arquero · $categoria',
+                  'Arquero · ${widget.categoria}',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFFAAB4C3),
@@ -571,45 +910,342 @@ class ArquerosScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildAddArqueroButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Alta de arqueros se integrará acá')),
-          );
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Agregar arquero'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4F8CFF),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-class JugadoresCampoScreen extends StatelessWidget {
+/// ===============================
+/// JUGADORES CAMPO 2.1
+/// Lee jugadores de campo desde el plantel persistente.
+/// Si no hay datos guardados, inicializa desde el hardcode actual.
+/// ===============================
+class JugadoresCampoScreen extends StatefulWidget {
   final String categoria;
 
   const JugadoresCampoScreen({super.key, required this.categoria});
 
   @override
-  Widget build(BuildContext context) {
-    final jugadores = RosterRepository.rosterForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    ).where((j) => !j.esArquero && !j.esCuerpoTecnico).toList();
+  State<JugadoresCampoScreen> createState() => _JugadoresCampoScreenState();
+}
 
+class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
+  late Future<List<PlayerProfile>> _jugadoresFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _jugadoresFuture = _loadJugadores();
+  }
+
+  /// Carga el plantel persistente y filtra solo jugadores de campo.
+  Future<List<PlayerProfile>> _loadJugadores() async {
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: widget.categoria,
+      temporada: '2026',
+    );
+
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: false,
+    );
+
+    return roster.where((p) => !p.esArquero && !p.esCuerpoTecnico).toList();
+  }
+
+  /// ===============================
+  /// ALTA JUGADOR DE CAMPO
+  /// Crea un jugador nuevo en la categoría actual
+  /// y lo guarda en el plantel persistente.
+  /// ===============================
+  Future<void> _abrirAltaJugador() async {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final dorsalController = TextEditingController();
+    final posicionController = TextEditingController();
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Agregar jugador',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputAltaJugador('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Dorsal', dorsalController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Posición', posicionController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmado != true) return;
+
+    final nombre = nombreController.text.trim();
+    final apellido = apellidoController.text.trim();
+    final dorsal = dorsalController.text.trim();
+    final posicion = posicionController.text.trim();
+
+    if (nombre.isEmpty && apellido.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
+      );
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final nuevoJugador = PlayerProfile(
+      playerId: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      clubId: RosterRepository.currentClub.clubId,
+      nombre: nombre,
+      apellido: apellido,
+      posicion: posicion.isEmpty ? null : posicion,
+      numeroPreferido: dorsal.isEmpty ? null : dorsal,
+      esArquero: false,
+      esCuerpoTecnico: false,
+    );
+
+    final actualizado = [...rosterActual, nuevoJugador];
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _jugadoresFuture = _loadJugadores();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Jugador agregado al plantel')),
+    );
+  }
+
+  /// Campo visual reutilizable para alta de jugador.
+  Widget _inputAltaJugador(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        filled: true,
+        fillColor: const Color(0xFF182338),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  /// ===============================
+  /// EDITAR JUGADOR
+  /// Permite modificar nombre, apellido, dorsal y posición.
+  /// También permite eliminarlo del plantel persistente.
+  /// ===============================
+  Future<void> _abrirEditarJugador(PlayerProfile jugador) async {
+    final nombreController = TextEditingController(text: jugador.nombre);
+    final apellidoController = TextEditingController(text: jugador.apellido);
+    final dorsalController = TextEditingController(
+      text: jugador.numeroPreferido ?? '',
+    );
+    final posicionController = TextEditingController(
+      text: jugador.posicion ?? '',
+    );
+
+    final accion = await showDialog<String>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0F1722),
+          title: const Text(
+            'Editar jugador',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _inputAltaJugador('Nombre', nombreController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Apellido', apellidoController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Dorsal', dorsalController),
+                const SizedBox(height: 10),
+                _inputAltaJugador('Posición', posicionController),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'delete'),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'save'),
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (accion == null || accion == 'cancel') return;
+
+    if (accion == 'delete') {
+      await _confirmarEliminarJugador(jugador);
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual.map((p) {
+      if (p.playerId != jugador.playerId) return p;
+
+      return PlayerProfile(
+        playerId: p.playerId,
+        clubId: p.clubId,
+        nombre: nombreController.text.trim(),
+        apellido: apellidoController.text.trim(),
+        posicion: posicionController.text.trim().isEmpty
+            ? null
+            : posicionController.text.trim(),
+        numeroPreferido: dorsalController.text.trim().isEmpty
+            ? null
+            : dorsalController.text.trim(),
+        esArquero: p.esArquero,
+        esCuerpoTecnico: p.esCuerpoTecnico,
+      );
+    }).toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _jugadoresFuture = _loadJugadores();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Jugador actualizado')));
+  }
+
+  /// ===============================
+  /// ELIMINAR JUGADOR
+  /// Elimina al jugador del plantel persistente de esta categoría.
+  /// No borra eventos históricos ya cargados.
+  /// ===============================
+  Future<void> _confirmarEliminarJugador(PlayerProfile jugador) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar jugador',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Seguro que querés eliminar a ${jugador.displayName} de ${widget.categoria}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual
+        .where((p) => p.playerId != jugador.playerId)
+        .toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _jugadoresFuture = _loadJugadores();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Jugador eliminado')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F8CFF),
+        onPressed: _abrirAltaJugador,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Jugadores'),
@@ -625,58 +1261,99 @@ class JugadoresCampoScreen extends StatelessWidget {
             child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
           ),
           SafeArea(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: jugadores.length,
-              itemBuilder: (context, index) {
-                final j = jugadores[index];
+            child: FutureBuilder<List<PlayerProfile>>(
+              future: _jugadoresFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                final dorsal = j.numeroPreferido?.isNotEmpty == true
-                    ? j.numeroPreferido!
-                    : '-';
+                final jugadores = snapshot.data ?? [];
 
-                final nombre = [
-                  j.apellido.trim(),
-                  j.nombre.trim(),
-                ].where((e) => e.isNotEmpty).join(', ');
+                if (jugadores.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No hay jugadores cargados',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  );
+                }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F1722).withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        alignment: Alignment.center,
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: jugadores.length,
+                  itemBuilder: (context, index) {
+                    final j = jugadores[index];
+
+                    final dorsal = j.numeroPreferido?.isNotEmpty == true
+                        ? j.numeroPreferido!
+                        : '-';
+
+                    final nombre = [
+                      j.apellido.trim(),
+                      j.nombre.trim(),
+                    ].where((e) => e.isNotEmpty).join(', ');
+
+                    return GestureDetector(
+                      onTap: () => _abrirEditarJugador(j),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF182338),
-                          borderRadius: BorderRadius.circular(10),
+                          color: const Color(0xFF0F1722).withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Text(
-                          dorsal,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF182338),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                dorsal,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    nombre.isNotEmpty ? nombre : 'Jugador',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  if ((j.posicion ?? '').trim().isNotEmpty)
+                                    Text(
+                                      j.posicion!,
+                                      style: const TextStyle(
+                                        color: Color(0xFFAAB4C3),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.edit_rounded,
+                              color: Colors.white54,
+                              size: 20,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          nombre.isNotEmpty ? nombre : 'Jugador',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -684,6 +1361,453 @@ class JugadoresCampoScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// ===============================
+/// CUERPO TÉCNICO 2.1
+/// Lee cuerpo técnico desde plantel persistente.
+/// ===============================
+class CuerpoTecnicoScreen extends StatefulWidget {
+  final String categoria;
+
+  const CuerpoTecnicoScreen({super.key, required this.categoria});
+
+  @override
+  State<CuerpoTecnicoScreen> createState() => _CuerpoTecnicoScreenState();
+}
+
+class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
+  late Future<List<PlayerProfile>> _staffFuture;
+
+  /// ===============================
+  /// ALTA CUERPO TÉCNICO
+  /// Crea un integrante del cuerpo técnico
+  /// y lo guarda en el plantel persistente.
+  /// ===============================
+  Future<void> _abrirAltaStaff() async {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final rolController = TextEditingController(text: 'DT');
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Agregar cuerpo técnico',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputStaff('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputStaff('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputStaff('Rol', rolController),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    final nombre = nombreController.text.trim();
+    final apellido = apellidoController.text.trim();
+    final rol = rolController.text.trim();
+
+    if (nombre.isEmpty && apellido.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
+      );
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final nuevoStaff = PlayerProfile(
+      playerId: 'local_staff_${DateTime.now().millisecondsSinceEpoch}',
+      clubId: RosterRepository.currentClub.clubId,
+      nombre: nombre,
+      apellido: apellido,
+      posicion: rol.isEmpty ? 'DT' : rol,
+      numeroPreferido: 'DT',
+      esArquero: false,
+      esCuerpoTecnico: true,
+    );
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: [...rosterActual, nuevoStaff],
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _staffFuture = _loadStaff();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico agregado')));
+  }
+
+  /// ===============================
+  /// EDITAR CUERPO TÉCNICO
+  /// Edita nombre, apellido y rol.
+  /// También permite eliminar.
+  /// ===============================
+  Future<void> _abrirEditarStaff(PlayerProfile staff) async {
+    final nombreController = TextEditingController(text: staff.nombre);
+    final apellidoController = TextEditingController(text: staff.apellido);
+    final rolController = TextEditingController(text: staff.posicion ?? 'DT');
+
+    final accion = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Editar cuerpo técnico',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputStaff('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputStaff('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputStaff('Rol', rolController),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'delete'),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (accion == null || accion == 'cancel') return;
+
+    if (accion == 'delete') {
+      await _confirmarEliminarStaff(staff);
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual.map((p) {
+      if (p.playerId != staff.playerId) return p;
+
+      return PlayerProfile(
+        playerId: p.playerId,
+        clubId: p.clubId,
+        nombre: nombreController.text.trim(),
+        apellido: apellidoController.text.trim(),
+        posicion: rolController.text.trim().isEmpty
+            ? 'DT'
+            : rolController.text.trim(),
+        numeroPreferido: 'DT',
+        esArquero: false,
+        esCuerpoTecnico: true,
+      );
+    }).toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _staffFuture = _loadStaff();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico actualizado')));
+  }
+
+  /// ===============================
+  /// ELIMINAR CUERPO TÉCNICO
+  /// Elimina el integrante técnico de esta categoría.
+  /// ===============================
+  Future<void> _confirmarEliminarStaff(PlayerProfile staff) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar cuerpo técnico',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Seguro que querés eliminar a ${staff.displayName} de ${widget.categoria}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual
+        .where((p) => p.playerId != staff.playerId)
+        .toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _staffFuture = _loadStaff();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico eliminado')));
+  }
+
+  /// Campo visual reutilizable para alta/edición de cuerpo técnico.
+  Widget _inputStaff(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        filled: true,
+        fillColor: const Color(0xFF182338),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _staffFuture = _loadStaff();
+  }
+
+  Future<List<PlayerProfile>> _loadStaff() async {
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: widget.categoria,
+      temporada: '2026',
+    );
+
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    return roster.where((p) => p.esCuerpoTecnico).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F8CFF),
+        onPressed: _abrirAltaStaff,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Cuerpo técnico'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset('assets/images/fondohd.jpeg', fit: BoxFit.cover),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: FutureBuilder<List<PlayerProfile>>(
+              future: _staffFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final staff = snapshot.data ?? [];
+
+                if (staff.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No hay cuerpo técnico cargado',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: staff.length,
+                  itemBuilder: (context, index) {
+                    final s = staff[index];
+
+                    final nombre = [
+                      s.apellido.trim(),
+                      s.nombre.trim(),
+                    ].where((e) => e.isNotEmpty).join(', ');
+
+                    return GestureDetector(
+                      onTap: () => _abrirEditarStaff(s),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F1722).withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person, color: Colors.white),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                nombre.isNotEmpty ? nombre : 'Staff',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ===============================
+/// BACKUP TOTAL APP
+/// Exporta historial + plantel
+/// ===============================
+Future<String> generarBackupCompleto() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final backup = <String, dynamic>{};
+
+  /// Historial de partidos
+  backup['historial'] =
+      prefs.getString('finished_matches_history_v1');
+
+  /// Planteles por categoría (podés agregar más)
+  backup['roster_2026_Cadetes'] =
+      prefs.getString('roster_2026_Cadetes');
+
+  backup['roster_2026_Juveniles'] =
+      prefs.getString('roster_2026_Juveniles');
+
+  backup['roster_2026_Juniors'] =
+      prefs.getString('roster_2026_Juniors');
+
+  return jsonEncode(backup);
+}
+
+/// ===============================
+/// RESTAURAR BACKUP APP
+/// Lee JSON y lo guarda en SharedPreferences
+/// ===============================
+Future<void> restaurarBackupCompleto(String backupJson) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final Map<String, dynamic> data = jsonDecode(backupJson);
+
+  /// Historial
+  if (data['historial'] != null) {
+    await prefs.setString(
+      'finished_matches_history_v1',
+      data['historial'],
+    );
+  }
+
+  /// Planteles (solo si existen en backup)
+  for (final key in data.keys) {
+    if (key.startsWith('roster_')) {
+      final value = data[key];
+      if (value != null) {
+        await prefs.setString(key, value);
+      }
+    }
   }
 }
 
@@ -718,9 +1842,10 @@ String nombreArqueroDesdeDorsal({
   final apellido = encontrado.apellido.trim();
   final nombre = encontrado.nombre.trim();
 
-  final nombreCompleto = [apellido, nombre]
-      .where((p) => p.isNotEmpty)
-      .join(', ');
+  final nombreCompleto = [
+    apellido,
+    nombre,
+  ].where((p) => p.isNotEmpty).join(', ');
 
   if (nombreCompleto.isEmpty) return 'Arquero $dorsal';
 
@@ -753,4 +1878,8 @@ String nombreJugadorDesdeDorsal({
   } catch (_) {
     return 'Jugador $dorsal';
   }
+
+
+
+  
 }

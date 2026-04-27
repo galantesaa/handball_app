@@ -1,3 +1,4 @@
+
 /// ===============================
 /// HOME PRINCIPAL
 /// ===============================
@@ -65,6 +66,231 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// ===============================
+  /// GESTIÓN ADMINISTRATIVA
+  /// Menú futuro para importaciones, exportaciones y configuración general.
+  /// No pertenece a Equipo porque no es gestión deportiva directa.
+  /// ===============================
+  void _showGestionAdministrativaMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Gestión administrativa',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAdminMenuOption(
+                icon: Icons.upload_file_rounded,
+                text: 'Importar jugadores',
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              _buildAdminMenuOption(
+                icon: Icons.calendar_month_rounded,
+                text: 'Importar fixture',
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              _buildAdminMenuOption(
+                icon: Icons.shield_rounded,
+                text: 'Importar escudos',
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.storage, color: Colors.white),
+                title: const Text('Exportar datos'),
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: const Color(0xFF0F1722),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (_) {
+                      return SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 12),
+
+                            /// EXPORTAR BACKUP
+                            ListTile(
+                              leading: const Icon(Icons.download, color: Colors.white),
+                              title: const Text('Exportar backup'),
+                              onTap: () async {
+                                Navigator.pop(context);
+
+                                final backup = await generarBackupCompleto();
+
+                                if (!context.mounted) return;
+
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    backgroundColor: const Color(0xFF0F1722),
+                                    title: const Text(
+                                      'Backup generado',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    content: SingleChildScrollView(
+                                      child: SelectableText(
+                                        backup,
+                                        style: const TextStyle(color: Colors.white70),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(text: backup),
+                                          );
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Copiado al portapapeles'),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Copiar'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+
+                            /// IMPORTAR BACKUP
+                            ListTile(
+                              leading: const Icon(Icons.upload, color: Colors.white),
+                              title: const Text('Importar backup'),
+                              onTap: () async {
+                                Navigator.pop(context);
+
+                                final controller = TextEditingController();
+
+                                final confirmado = await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    backgroundColor: const Color(0xFF0F1722),
+                                    title: const Text(
+                                      'Importar backup',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    content: TextField(
+                                      controller: controller,
+                                      maxLines: 10,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(
+                                        hintText: 'Pegá el JSON acá...',
+                                        hintStyle: TextStyle(color: Colors.white54),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Cancelar'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Importar'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirmado != true) return;
+
+                                try {
+                                  await restaurarBackupCompleto(controller.text);
+
+                                  if (!context.mounted) return;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Backup restaurado correctamente'),
+                                    ),
+                                  );
+                                } catch (_) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Error al importar backup'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  ///===============================
+  /// Opción visual del menú administrativo.
+  ///================================
+  Widget _buildAdminMenuOption({
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+          decoration: BoxDecoration(
+            color: const Color(0xFF182338),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openSection(BuildContext context, String title) {
     Navigator.push(
       context,
@@ -81,7 +307,10 @@ class _HomeScreenState extends State<HomeScreen> {
             case 'Estadísticas':
               return const EstadisticasScreen();
             case 'Equipo':
-              return const EquiposScreen();
+              return EquiposScreen(
+                categoriaInicial: categoriaSeleccionada,
+                temporada: temporadaSeleccionada,
+              );
             default:
               return Scaffold(
                 appBar: AppBar(title: Text(title)),
@@ -144,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: _showGestionAdministrativaMenu,
           icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
         ),
       ],

@@ -2,7 +2,7 @@
 /// ===============================
 /// FIXTURE
 /// ===============================
-/// 
+///
 class FixtureScreen extends StatefulWidget {
   final String categoria;
   final String torneo;

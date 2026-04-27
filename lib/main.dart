@@ -1170,11 +1170,136 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                 },
               ),
-              _buildAdminMenuOption(
-                icon: Icons.download_rounded,
-                text: 'Exportar datos',
+              ListTile(
+                leading: const Icon(Icons.storage, color: Colors.white),
+                title: const Text('Exportar datos'),
                 onTap: () {
-                  Navigator.pop(context);
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: const Color(0xFF0F1722),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (_) {
+                      return SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 12),
+
+                            /// EXPORTAR BACKUP
+                            ListTile(
+                              leading: const Icon(Icons.download, color: Colors.white),
+                              title: const Text('Exportar backup'),
+                              onTap: () async {
+                                Navigator.pop(context);
+
+                                final backup = await generarBackupCompleto();
+
+                                if (!context.mounted) return;
+
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    backgroundColor: const Color(0xFF0F1722),
+                                    title: const Text(
+                                      'Backup generado',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    content: SingleChildScrollView(
+                                      child: SelectableText(
+                                        backup,
+                                        style: const TextStyle(color: Colors.white70),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(text: backup),
+                                          );
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Copiado al portapapeles'),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Copiar'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+
+                            /// IMPORTAR BACKUP
+                            ListTile(
+                              leading: const Icon(Icons.upload, color: Colors.white),
+                              title: const Text('Importar backup'),
+                              onTap: () async {
+                                Navigator.pop(context);
+
+                                final controller = TextEditingController();
+
+                                final confirmado = await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    backgroundColor: const Color(0xFF0F1722),
+                                    title: const Text(
+                                      'Importar backup',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    content: TextField(
+                                      controller: controller,
+                                      maxLines: 10,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(
+                                        hintText: 'Pegá el JSON acá...',
+                                        hintStyle: TextStyle(color: Colors.white54),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Cancelar'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Importar'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirmado != true) return;
+
+                                try {
+                                  await restaurarBackupCompleto(controller.text);
+
+                                  if (!context.mounted) return;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Backup restaurado correctamente'),
+                                    ),
+                                  );
+                                } catch (_) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Error al importar backup'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
             ],
@@ -5991,6 +6116,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   /// Jugador actualmente seleccionado para cargar eventos.
   /// Si está vacío, el evento queda como jugador genérico.
   String? jugadorSeleccionado;
+  String? jugadorSeleccionadoId;
   bool mostrarSelectorLateralJugador = false;
 
   String? _tiroPendienteResultado;
@@ -7513,6 +7639,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   void _registrarEvento({
     required String tipo,
+    String? actorPrincipalId,
     String? resultado,
     String? actorPrincipal,
     String? actorSecundario,
@@ -7537,6 +7664,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'tipo': tipo,
       'resultado': resultado,
       'actorPrincipal': actorPrincipal,
+      'actorPrincipalId': actorPrincipalId,
       'actorSecundario': actorSecundario,
       'zonaTiro': zonaTiroValor,
       'zonaArco': zonaArcoValor,
@@ -7873,6 +8001,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       zonaTiro = null;
       zonaArco = null;
       jugadorSeleccionado = null;
+      jugadorSeleccionadoId = null;
       origenJugadaActual = 'contra';
       contraDebeCambiarModo = true;
     });
@@ -8691,6 +8820,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       tipo: 'tiro',
       resultado: resultado,
       actorPrincipal: actor,
+      actorPrincipalId: modoAntesDelEvento == 'ataque'
+        ? jugadorSeleccionadoId
+        : currentGoalkeeperNumber,
       zonaTiroValor: zonaTiroEvento,
       zonaArcoValor: zonaArcoEvento,
       mantieneContexto: mantieneContexto,
@@ -8715,6 +8847,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     if (resultado == null || modoPendiente == null || prevState == null) return;
 
     jugadorSeleccionado = actor;
+    jugadorSeleccionadoId = jugador.playerId;
 
     _registrarTiroNormalResuelto(
       resultado: resultado,
@@ -11935,6 +12068,60 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
   }
 }
 
+/// ===============================
+/// BACKUP TOTAL APP
+/// Exporta historial + plantel
+/// ===============================
+Future<String> generarBackupCompleto() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final backup = <String, dynamic>{};
+
+  /// Historial de partidos
+  backup['historial'] =
+      prefs.getString('finished_matches_history_v1');
+
+  /// Planteles por categoría (podés agregar más)
+  backup['roster_2026_Cadetes'] =
+      prefs.getString('roster_2026_Cadetes');
+
+  backup['roster_2026_Juveniles'] =
+      prefs.getString('roster_2026_Juveniles');
+
+  backup['roster_2026_Juniors'] =
+      prefs.getString('roster_2026_Juniors');
+
+  return jsonEncode(backup);
+}
+
+/// ===============================
+/// RESTAURAR BACKUP APP
+/// Lee JSON y lo guarda en SharedPreferences
+/// ===============================
+Future<void> restaurarBackupCompleto(String backupJson) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final Map<String, dynamic> data = jsonDecode(backupJson);
+
+  /// Historial
+  if (data['historial'] != null) {
+    await prefs.setString(
+      'finished_matches_history_v1',
+      data['historial'],
+    );
+  }
+
+  /// Planteles (solo si existen en backup)
+  for (final key in data.keys) {
+    if (key.startsWith('roster_')) {
+      final value = data[key];
+      if (value != null) {
+        await prefs.setString(key, value);
+      }
+    }
+  }
+}
+
 String nombreArqueroDesdeDorsal({
   required String categoria,
   required String dorsal,
@@ -12002,4 +12189,8 @@ String nombreJugadorDesdeDorsal({
   } catch (_) {
     return 'Jugador $dorsal';
   }
+
+
+
+  
 }

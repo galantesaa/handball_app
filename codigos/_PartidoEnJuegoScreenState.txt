@@ -14,7 +14,6 @@ class PartidoEnJuegoScreen extends StatefulWidget {
 }
 
 class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
-  
   /// ===============================
   /// MODELO 2.0
   /// ===============================
@@ -85,23 +84,23 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     return 'assets/images/san_fernando.png';
   }
 
-void _asegurarConvocatoriaDefaultSoloArqueros() {
-  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+  void _asegurarConvocatoriaDefaultSoloArqueros() {
+    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
 
-  if (squadMap != null) return;
+    if (squadMap != null) return;
 
-  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
 
-  final arqueros = RosterRepository.goalkeepersForCategory(
-    categoria: categoria,
-    temporada: '2026',
-  );
+    final arqueros = RosterRepository.goalkeepersForCategory(
+      categoria: categoria,
+      temporada: '2026',
+    );
 
-  widget.partido['matchSquad'] = MatchSquadConfig(
-    convocadosIds: arqueros.map((p) => p.playerId).toSet(),
-    arquerosIds: arqueros.map((p) => p.playerId).toSet(),
-  ).toMap();
-}
+    widget.partido['matchSquad'] = MatchSquadConfig(
+      convocadosIds: arqueros.map((p) => p.playerId).toSet(),
+      arquerosIds: arqueros.map((p) => p.playerId).toSet(),
+    ).toMap();
+  }
 
   Future<void> _irAPartidoEnVivo() async {
     _asegurarConvocatoriaDefaultSoloArqueros();
@@ -302,9 +301,17 @@ void _asegurarConvocatoriaDefaultSoloArqueros() {
 
     final Map<String, dynamic> actualizadoMap = partidoActualizado.toMap();
 
+    final bool esPartidoRealActual = widget.partido['esPartidoReal'] == true;
+    final dynamic matchSquadActual = widget.partido['matchSquad'];
+
     widget.partido
       ..clear()
-      ..addAll(actualizadoMap);
+      ..addAll(actualizadoMap)
+      ..['esPartidoReal'] = esPartidoRealActual;
+
+    if (matchSquadActual != null) {
+      widget.partido['matchSquad'] = matchSquadActual;
+    }
   }
 
   @override
@@ -367,6 +374,15 @@ void _asegurarConvocatoriaDefaultSoloArqueros() {
                       ),
                     ],
                   ),
+                  TextButton(
+                    onPressed: _debugPrintHistorial,
+                    child: const Text('DEBUG historial'),
+                  ),
+
+                  /*TextButton(
+                    onPressed: _marcarEsteFinalizadoComoReal,
+                    child: const Text('Marcar finalizado como real'),
+                  ),*/
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -401,11 +417,120 @@ void _asegurarConvocatoriaDefaultSoloArqueros() {
   }
 
   /// ===============================
+  /// DEBUG HISTORIAL
+  /// Imprime todos los partidos finalizados guardados.
+  /// Sirve como backup manual antes de limpiar o tocar datos.
+  /// ===============================
+  Future<void> _debugPrintHistorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('finished_matches_history_v1');
+
+    print('==============================');
+    print('HISTORIAL RESUMIDO');
+    print('==============================');
+
+    if (raw == null || raw.isEmpty) {
+      print('SIN HISTORIAL');
+      return;
+    }
+
+    final history = jsonDecode(raw) as List<dynamic>;
+
+    for (final item in history) {
+      if (item is! Map) continue;
+
+      final map = Map<String, dynamic>.from(item);
+
+      print('matchIdentity: ${map['matchIdentity']}');
+      print('estadoPartido externo: ${map['estadoPartido']}');
+      print('finalizado: ${map['finalizado']}');
+      print('isReal: ${map['isReal']}');
+      print('------------------------------');
+    }
+  }
+
+  /// ===============================
+  /// MARCAR FINALIZADO COMO REAL
+  /// Busca este partido en el historial finalizado
+  /// y le agrega isReal: true sin borrar datos.
+  /// ===============================
+  Future<void> _marcarEsteFinalizadoComoReal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('finished_matches_history_v1');
+
+    if (raw == null || raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay historial finalizado guardado')),
+      );
+      return;
+    }
+
+    final history = jsonDecode(raw) as List<dynamic>;
+
+    final identity = PartidoRepositoryV2.buildMatchIdentityFromMap(
+      widget.partido,
+    );
+
+    bool actualizado = false;
+
+    final nuevoHistory = history.map((item) {
+      if (item is! Map) return item;
+
+      final map = Map<String, dynamic>.from(item);
+
+      if ((map['matchIdentity'] ?? '').toString() == identity) {
+        map['isReal'] = true;
+        map['finalizado'] = true;
+        map['estadoPartido'] = 'finalizado';
+
+        final partidoInterno = Map<String, dynamic>.from(
+          (map['partido'] as Map?)?.cast<String, dynamic>() ??
+              <String, dynamic>{},
+        );
+
+        partidoInterno['estado'] = 'Finalizado';
+        partidoInterno['estadoPartido'] = 'finalizado';
+        partidoInterno['esPartidoReal'] = true;
+
+        map['partido'] = partidoInterno;
+        actualizado = true;
+      }
+
+      return map;
+    }).toList();
+
+    if (!actualizado) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No encontré este partido en el historial finalizado'),
+        ),
+      );
+      return;
+    }
+
+    await prefs.setString(
+      'finished_matches_history_v1',
+      jsonEncode(nuevoHistory),
+    );
+
+    setState(() {
+      widget.partido['esPartidoReal'] = true;
+      widget.partido['estado'] = 'Finalizado';
+      widget.partido['estadoPartido'] = 'finalizado';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('✅ Partido marcado como REAL')),
+    );
+  }
+
+  /// ===============================
   ///   /// HEADER DEL CENTRO DE CONTROL
   /// Muestra categoría y torneo del partido.
   /// Ya lee esos datos desde PartidoModel (base 2.0),
   /// pero sin alterar la lógica actual de la pantalla.
   /// ===============================
+
   Widget _buildControlHeader() {
     return Text(
       '${partidoV2.categoria} · ${partidoV2.torneo}',

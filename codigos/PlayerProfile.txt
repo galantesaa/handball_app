@@ -1,4 +1,3 @@
-
 /// ===============================
 /// ===============================
 /// PLANTEL
@@ -34,6 +33,32 @@ class PlayerProfile {
       return '$apellido, $nombre'.trim();
     }
     return '$numero · $apellido, $nombre'.trim();
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'playerId': playerId,
+      'clubId': clubId,
+      'nombre': nombre,
+      'apellido': apellido,
+      'posicion': posicion,
+      'numeroPreferido': numeroPreferido,
+      'esArquero': esArquero,
+      'esCuerpoTecnico': esCuerpoTecnico,
+    };
+  }
+
+  factory PlayerProfile.fromMap(Map<String, dynamic> map) {
+    return PlayerProfile(
+      playerId: (map['playerId'] ?? '').toString(),
+      clubId: (map['clubId'] ?? 'san_fernando').toString(),
+      nombre: (map['nombre'] ?? '').toString(),
+      apellido: (map['apellido'] ?? '').toString(),
+      posicion: map['posicion']?.toString(),
+      numeroPreferido: map['numeroPreferido']?.toString(),
+      esArquero: map['esArquero'] == true,
+      esCuerpoTecnico: map['esCuerpoTecnico'] == true,
+    );
   }
 }
 
@@ -582,6 +607,94 @@ class RosterRepository {
   }
 }
 
+/// ===============================
+/// ROSTER STORAGE 2.1
+/// Guarda y lee el plantel base por categoría/temporada.
+/// Si no hay datos guardados, usa RosterRepository hardcodeado.
+/// ===============================
+class RosterStorage {
+  static String _key({required String categoria, required String temporada}) {
+    return 'roster_${temporada}_$categoria';
+  }
+
+  static Future<List<PlayerProfile>> readRosterForCategory({
+    required String categoria,
+    required String temporada,
+    bool includeStaff = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(
+      _key(categoria: categoria, temporada: temporada),
+    );
+
+    if (raw == null || raw.isEmpty) {
+      return RosterRepository.rosterForCategory(
+        categoria: categoria,
+        temporada: temporada,
+        includeStaff: includeStaff,
+      );
+    }
+
+    final decoded = jsonDecode(raw) as List<dynamic>;
+
+    final players = decoded
+        .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)))
+        .where((p) => includeStaff || !p.esCuerpoTecnico)
+        .toList();
+
+    players.sort((a, b) {
+      final aNum = int.tryParse(a.numeroPreferido ?? '');
+      final bNum = int.tryParse(b.numeroPreferido ?? '');
+
+      if (aNum == null && bNum == null) {
+        return a.apellido.compareTo(b.apellido);
+      }
+      if (aNum == null) return 1;
+      if (bNum == null) return -1;
+
+      return aNum.compareTo(bNum);
+    });
+
+    return players;
+  }
+
+  static Future<void> saveRosterForCategory({
+    required String categoria,
+    required String temporada,
+    required List<PlayerProfile> players,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final data = players.map((p) => p.toMap()).toList();
+
+    await prefs.setString(
+      _key(categoria: categoria, temporada: temporada),
+      jsonEncode(data),
+    );
+  }
+
+  static Future<void> seedCategoryIfEmpty({
+    required String categoria,
+    required String temporada,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _key(categoria: categoria, temporada: temporada);
+
+    if (prefs.containsKey(key)) return;
+
+    final base = RosterRepository.rosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+      includeStaff: true,
+    );
+    await saveRosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+      players: base,
+    );
+  }
+}
+
 class MatchSquadConfig {
   final Set<String> convocadosIds;
   final Set<String> arquerosIds;
@@ -632,6 +745,35 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
   String get categoria => (widget.partido['categoria'] ?? 'Cadetes').toString();
   String get temporada => '2026';
 
+  late Future<List<PlayerProfile>> _rosterFuture;
+  List<PlayerProfile> _roster = [];
+
+  Future<List<PlayerProfile>> _loadRoster() async {
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: categoria,
+      temporada: temporada,
+    );
+
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+      includeStaff: false,
+    );
+
+    _roster = roster;
+
+    if (convocadosIds.isEmpty) {
+      convocadosIds = roster
+          .where((p) => p.esArquero)
+          .map((p) => p.playerId)
+          .toSet();
+
+      arquerosIds = {...convocadosIds};
+    }
+
+    return roster;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -643,45 +785,14 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     convocadosIds = {...saved.convocadosIds};
     arquerosIds = {...saved.arquerosIds};
 
-    if (convocadosIds.isEmpty) {
-      final base = RosterRepository.rosterForCategory(
-        categoria: categoria,
-        temporada: temporada,
-      );
-
-      // Por defecto solo quedan convocados los arqueros.
-      // Los jugadores de campo se seleccionan manualmente.
-      convocadosIds = base
-          .where((p) => p.esArquero)
-          .map((p) => p.playerId)
-          .toSet();
-
-      arquerosIds = base
-          .where((p) => p.esArquero)
-          .map((p) => p.playerId)
-          .toSet();
-    }
+    _rosterFuture = _loadRoster();
   }
 
   List<PlayerProfile> get _titularesCategoria {
-    return RosterRepository.rosterForCategory(
-      categoria: categoria,
-      temporada: temporada,
-    ).where((p) => !p.esCuerpoTecnico).toList();
+    return _roster.where((p) => !p.esCuerpoTecnico).toList();
   }
 
-  List<PlayerProfile> get _cadetesExtras {
-    if (categoria != 'Juveniles') return [];
-
-    final juvenilesIds = _titularesCategoria.map((e) => e.playerId).toSet();
-
-    return RosterRepository.rosterForCategory(
-          categoria: 'Cadetes',
-          temporada: temporada,
-        )
-        .where((p) => !juvenilesIds.contains(p.playerId) && !p.esCuerpoTecnico)
-        .toList();
-  }
+  List<PlayerProfile> get _cadetesExtras => [];
 
   void _toggleConvocado(PlayerProfile player, bool? selected) {
     setState(() {
@@ -715,6 +826,14 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
       arquerosIds: arquerosIds,
     ).toMap();
 
+    /// Snapshot del plantel real usado para este
+    /// partido.
+    /// Permite que PartidoEnVivo encuentre
+    /// jugadores creados en storage
+    widget.partido['matchRosterSnapshot'] = _roster
+        .map((p) => p.toMap())
+        .toList();
+
     Navigator.pop(context, widget.partido['matchSquad']);
   }
 
@@ -740,52 +859,58 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
             child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
           ),
           SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              children: [
-                Text(
-                  '${widget.partido['categoria']} · ${widget.partido['torneo']}',
-                  style: const TextStyle(
-                    color: Color(0xFFD4DCE7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _buildSectionCard(
-                  title: 'Convocados ${categoria}',
-                  players: _titularesCategoria,
-                ),
-                if (_cadetesExtras.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _buildSectionCard(
-                    title: 'Cadetes habilitados para subir',
-                    players: _cadetesExtras,
-                  ),
-                ],
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _guardar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F8CFF),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+            child: FutureBuilder<List<PlayerProfile>>(
+              future: _rosterFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  children: [
+                    Text(
+                      '${widget.partido['categoria']} · ${widget.partido['torneo']}',
+                      style: const TextStyle(
+                        color: Color(0xFFD4DCE7),
+                        fontSize: 14,
                       ),
                     ),
-                    child: const Text(
-                      'Guardar convocatoria',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+
+                    const SizedBox(height: 18),
+
+                    _buildSectionCard(
+                      title: 'Convocados $categoria',
+                      players: _titularesCategoria,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _guardar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F8CFF),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text(
+                          'Guardar convocatoria',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],
