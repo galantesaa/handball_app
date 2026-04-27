@@ -1,4 +1,3 @@
-
 /// ===============================
 /// ===============================
 /// RESUMEN DEL PARTIDO FINALIZADO
@@ -196,7 +195,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     return _eventos.where((e) {
       final map = Map<String, dynamic>.from(e as Map);
       final r = (map['resultado'] ?? '').toString();
-      return r == 'fuera' || r == 'desvio';
+      return r == 'fuera' || r == 'desvio' || r == 'palo';
     }).length;
   }
 

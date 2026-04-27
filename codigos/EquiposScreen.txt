@@ -1759,57 +1759,124 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
 /// ===============================
 /// BACKUP TOTAL APP
-/// Exporta historial + plantel
+/// Exporta historial + planteles.
 /// ===============================
 Future<String> generarBackupCompleto() async {
   final prefs = await SharedPreferences.getInstance();
 
-  final backup = <String, dynamic>{};
+  final backup = <String, dynamic>{
+    'createdAt': DateTime.now().toIso8601String(),
+    'app': 'Handball SGS',
+    'historial': prefs.getString('finished_matches_history_v1'),
+    'liveMatch': prefs.getString('live_match_current_v1'),
+  };
 
-  /// Historial de partidos
-  backup['historial'] =
-      prefs.getString('finished_matches_history_v1');
-
-  /// Planteles por categoría (podés agregar más)
-  backup['roster_2026_Cadetes'] =
-      prefs.getString('roster_2026_Cadetes');
-
-  backup['roster_2026_Juveniles'] =
-      prefs.getString('roster_2026_Juveniles');
-
-  backup['roster_2026_Juniors'] =
-      prefs.getString('roster_2026_Juniors');
+  for (final key in prefs.getKeys()) {
+    if (key.startsWith('roster_')) {
+      backup[key] = prefs.getString(key);
+    }
+  }
 
   return jsonEncode(backup);
 }
 
 /// ===============================
 /// RESTAURAR BACKUP APP
-/// Lee JSON y lo guarda en SharedPreferences
+/// Restaura historial + planteles desde JSON pegado.
 /// ===============================
 Future<void> restaurarBackupCompleto(String backupJson) async {
   final prefs = await SharedPreferences.getInstance();
+  final data = Map<String, dynamic>.from(jsonDecode(backupJson) as Map);
 
-  final Map<String, dynamic> data = jsonDecode(backupJson);
-
-  /// Historial
   if (data['historial'] != null) {
     await prefs.setString(
       'finished_matches_history_v1',
-      data['historial'],
+      data['historial'].toString(),
     );
   }
 
-  /// Planteles (solo si existen en backup)
-  for (final key in data.keys) {
-    if (key.startsWith('roster_')) {
-      final value = data[key];
-      if (value != null) {
-        await prefs.setString(key, value);
-      }
+  if (data['liveMatch'] != null) {
+    await prefs.setString(
+      'live_match_current_v1',
+      data['liveMatch'].toString(),
+    );
+  }
+
+  for (final entry in data.entries) {
+    if (entry.key.startsWith('roster_') && entry.value != null) {
+      await prefs.setString(entry.key, entry.value.toString());
     }
   }
 }
+
+/// ===============================
+/// EXPORTAR BACKUP A ARCHIVO
+/// Genera un .json y abre el menú de compartir.
+/// Android permite subirlo a Drive, WhatsApp, Gmail, etc.
+/// ===============================
+Future<void> exportarBackupComoArchivo() async {
+  final backup = await generarBackupCompleto();
+
+  final dir = await getTemporaryDirectory();
+
+  final fecha = DateTime.now()
+      .toIso8601String()
+      .replaceAll(':', '-')
+      .replaceAll('.', '-');
+
+  final file = File('${dir.path}/backup_handball_sgs_$fecha.json');
+
+  await file.writeAsString(backup);
+
+  await Share.shareXFiles(
+    [XFile(file.path)],
+    text: 'Backup Handball SGS',
+  );
+}
+
+/// ===============================
+/// IMPORTAR BACKUP DESDE ARCHIVO
+/// Permite elegir un .json desde Archivos / Drive
+/// y restaurarlo en SharedPreferences.
+/// ===============================
+Future<void> importarBackupDesdeArchivo(BuildContext context) async {
+  try {
+    const typeGroup = XTypeGroup(
+      label: 'Backup JSON',
+      extensions: ['json'],
+      mimeTypes: ['application/json'],
+    );
+
+    final XFile? file = await openFile(
+      acceptedTypeGroups: [typeGroup],
+    );
+
+    if (file == null) return;
+
+    final backupJson = await file.readAsString();
+
+    await restaurarBackupCompleto(backupJson);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Backup importado correctamente'),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Error al importar backup'),
+      ),
+    );
+  }
+}
+
+
+
 
 String nombreArqueroDesdeDorsal({
   required String categoria,

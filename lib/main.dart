@@ -3599,65 +3599,196 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   /// al arquero propio.
   /// ===============================
   List<Map<String, dynamic>> _estadisticasPorArquero() {
-    final Map<String, Map<String, dynamic>> acumulado = {};
+  final Map<String, Map<String, dynamic>> acumulado = {};
 
-    for (final e in _eventos) {
-      final map = Map<String, dynamic>.from(e as Map);
+  String keyPeriodo(String estado) {
+    switch (estado) {
+      case 'primer_tiempo':
+        return '1T';
+      case 'segundo_tiempo':
+        return '2T';
+      case 'primer_tiempo_alargue':
+        return '1TA';
+      case 'segundo_tiempo_alargue':
+        return '2TA';
+      case 'penales':
+        return 'Penales';
+      default:
+        return 'Otro';
+    }
+  }
 
-      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
-      final resultado = (map['resultado'] ?? '').toString();
-      final modo = (map['modo'] ?? map['phase'] ?? '').toString();
+  for (final e in _eventos) {
+    final map = Map<String, dynamic>.from(e as Map);
 
-      final bool esTiro =
-          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+    final resultado = (map['resultado'] ?? '').toString();
+    final modo = (map['modo'] ?? map['phase'] ?? '').toString();
+    final estado = (map['estadoPartido'] ?? '').toString();
+    final zonaArco = (map['zonaArco'] ?? '').toString();
+    final zonaTiro = (map['zonaTiro'] ?? '').toString();
+    final actorId = (map['actorPrincipalId'] ?? '').toString();
+    final origen = (map['origenJugada'] ?? '').toString();
 
-      final bool esDefensivo = modo == 'defensa';
+    final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+    if (!esTiro) continue;
 
-      if (!esTiro || !esDefensivo) continue;
-      if (resultado != 'atajado' && resultado != 'gol') continue;
+    final esDefensivoArquero = modo == 'defensa';
+    final esContraDirectaArquero =
+        modo == 'ataque' &&
+        origen == 'contra' &&
+        zonaTiro == 'Contra directa arquero' &&
+        actorId.isNotEmpty;
 
-      String arquero = (map['arquero'] ?? '').toString().trim();
-      if (arquero.isEmpty || arquero == 'null') {
-        arquero = 'Sin arquero';
-      }
+    if (!esDefensivoArquero && !esContraDirectaArquero) continue;
 
-      acumulado.putIfAbsent(arquero, () {
-        return {'arquero': arquero, 'atajadas': 0, 'golesRecibidos': 0};
-      });
+    String arquero = (map['arquero'] ?? '').toString().trim();
+    if (esContraDirectaArquero) {
+      arquero = actorId;
+    }
 
+    if (arquero.isEmpty || arquero == 'null') {
+      arquero = 'Sin arquero';
+    }
+
+    acumulado.putIfAbsent(arquero, () {
+      return {
+        'arquero': arquero,
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
+        'tirosAlArco': 0,
+        'totalEventos': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'periodos': <String, Map<String, int>>{},
+        'zonasArco': <String, Map<String, int>>{},
+        'zonasTiro': <String, Map<String, int>>{},
+      };
+    });
+
+    final item = acumulado[arquero]!;
+
+    item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+    if (resultado == 'gol') {
+      item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
+      item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+    }
+
+    if (resultado == 'atajado') {
+      item['atajadas'] = (item['atajadas'] as int) + 1;
+      item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+    }
+
+    if (resultado == 'palo') {
+      item['palos'] = (item['palos'] as int) + 1;
+    }
+
+    if (resultado == 'fuera' || resultado == 'desvio') {
+      item['fuera'] = (item['fuera'] as int) + 1;
+    }
+
+    if (tipo == 'penal' || tipo == 'penal_tanda') {
+      item['penales'] = (item['penales'] as int) + 1;
       if (resultado == 'atajado') {
-        acumulado[arquero]!['atajadas'] =
-            (acumulado[arquero]!['atajadas'] as int) + 1;
-      }
-
-      if (resultado == 'gol') {
-        acumulado[arquero]!['golesRecibidos'] =
-            (acumulado[arquero]!['golesRecibidos'] as int) + 1;
+        item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
       }
     }
 
-    final lista = acumulado.values.map((item) {
-      final atajadas = item['atajadas'] as int;
-      final golesRecibidos = item['golesRecibidos'] as int;
-      final total = atajadas + golesRecibidos;
-      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+    if (esContraDirectaArquero) {
+      item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+    }
 
+    final periodos = item['periodos'] as Map<String, Map<String, int>>;
+    final periodoKey = keyPeriodo(estado);
+
+    periodos.putIfAbsent(periodoKey, () {
       return {
-        'arquero': item['arquero'],
-        'atajadas': atajadas,
-        'golesRecibidos': golesRecibidos,
-        'eficacia': eficacia,
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
       };
-    }).toList();
-
-    lista.sort((a, b) {
-      final nombreA = (a['arquero'] ?? '').toString();
-      final nombreB = (b['arquero'] ?? '').toString();
-      return nombreA.compareTo(nombreB);
     });
 
-    return lista;
+    if (resultado == 'atajado') periodos[periodoKey]!['atajadas'] =
+        periodos[periodoKey]!['atajadas']! + 1;
+    if (resultado == 'gol') periodos[periodoKey]!['golesRecibidos'] =
+        periodos[periodoKey]!['golesRecibidos']! + 1;
+    if (resultado == 'palo') periodos[periodoKey]!['palos'] =
+        periodos[periodoKey]!['palos']! + 1;
+    if (resultado == 'fuera' || resultado == 'desvio') {
+      periodos[periodoKey]!['fuera'] = periodos[periodoKey]!['fuera']! + 1;
+    }
+
+    if (zonaArco.isNotEmpty && zonaArco != 'null') {
+      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+      zonasArco.putIfAbsent(zonaArco, () {
+        return {
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+        };
+      });
+
+      if (resultado == 'atajado') zonasArco[zonaArco]!['atajadas'] =
+          zonasArco[zonaArco]!['atajadas']! + 1;
+      if (resultado == 'gol') zonasArco[zonaArco]!['golesRecibidos'] =
+          zonasArco[zonaArco]!['golesRecibidos']! + 1;
+      if (resultado == 'palo') zonasArco[zonaArco]!['palos'] =
+          zonasArco[zonaArco]!['palos']! + 1;
+      if (resultado == 'fuera' || resultado == 'desvio') {
+        zonasArco[zonaArco]!['fuera'] = zonasArco[zonaArco]!['fuera']! + 1;
+      }
+    }
+
+    if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
+      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+      zonasTiro.putIfAbsent(zonaTiro, () {
+        return {
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+        };
+      });
+
+      if (resultado == 'atajado') zonasTiro[zonaTiro]!['atajadas'] =
+          zonasTiro[zonaTiro]!['atajadas']! + 1;
+      if (resultado == 'gol') zonasTiro[zonaTiro]!['golesRecibidos'] =
+          zonasTiro[zonaTiro]!['golesRecibidos']! + 1;
+      if (resultado == 'palo') zonasTiro[zonaTiro]!['palos'] =
+          zonasTiro[zonaTiro]!['palos']! + 1;
+      if (resultado == 'fuera' || resultado == 'desvio') {
+        zonasTiro[zonaTiro]!['fuera'] = zonasTiro[zonaTiro]!['fuera']! + 1;
+      }
+    }
   }
+
+  final lista = acumulado.values.map((item) {
+    final atajadas = item['atajadas'] as int;
+    final golesRecibidos = item['golesRecibidos'] as int;
+    final total = atajadas + golesRecibidos;
+    final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+    return {
+      ...item,
+      'eficacia': eficacia,
+    };
+  }).toList();
+
+  lista.sort((a, b) {
+    final nombreA = (a['arquero'] ?? '').toString();
+    final nombreB = (b['arquero'] ?? '').toString();
+    return nombreA.compareTo(nombreB);
+  });
+
+  return lista;
+}
 
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
@@ -3745,7 +3876,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     return _eventos.where((e) {
       final map = Map<String, dynamic>.from(e as Map);
       final r = (map['resultado'] ?? '').toString();
-      return r == 'fuera' || r == 'desvio';
+      return r == 'fuera' || r == 'desvio' || r == 'palo';
     }).length;
   }
 
@@ -4011,15 +4142,14 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
+                                    _buildInfoRow('Eficacia', '${eficacia.toStringAsFixed(1)}%',),
                                     _buildInfoRow('Atajadas', '$atajadas'),
-                                    _buildInfoRow(
-                                      'Goles recibidos',
-                                      '$golesRecibidos',
-                                    ),
-                                    _buildInfoRow(
-                                      'Eficacia',
-                                      '${eficacia.toStringAsFixed(1)}%',
-                                    ),
+                                    _buildInfoRow('Goles recibidos', '$golesRecibidos',),
+                                    _buildInfoRow('Palos', '${item['palos']}'),
+                                    _buildInfoRow('Fuera', '${item['fuera']}'),
+                                    _buildInfoRow('Penales', '${item['penales']}'),
+                                    _buildInfoRow('Penales atajados', '${item['penalesAtajados']}'),
+                                    _buildInfoRow('Contra directa', '${item['contraDirecta']}'),
                                   ],
                                 ),
                               );
@@ -5237,7 +5367,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 }
   
   Future<void> _irAPartidoEnVivo() async {
-    _asegurarConvocatoriaDefaultSoloArqueros();
+    await _asegurarConvocatoriaDefaultSoloArqueros();
     final resultado = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -7442,6 +7572,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
+  bool get _esContraArqueroDirecta {
+    return mostrarContra == true && modo == 'ataque' && zonaTiro == null;
+  }
+
   Widget _goalCell(String label) {
     final bool isSelected = zonaTiro != null && zonaArco == label;
 
@@ -7466,7 +7600,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 return;
               }
 
-              if (zonaTiro == null) {
+              if (zonaTiro == null && !_esContraArqueroDirecta) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Primero seleccioná zona de tiro'),
@@ -8075,6 +8209,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   tipo: 'penal',
                   resultado: 'gol',
                   actorPrincipal: actor,
+                  actorPrincipalId: modoAntesDelEvento == 'ataque'
+                        ? jugadorSeleccionadoId
+                        : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: false,
@@ -8109,6 +8246,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   tipo: 'penal',
                   resultado: 'atajado',
                   actorPrincipal: actor,
+                  actorPrincipalId: modoAntesDelEvento == 'ataque'
+                        ? jugadorSeleccionadoId
+                        : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: true,
@@ -8119,7 +8259,42 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 _clearSelection(keepContra: true);
                 Navigator.pop(context);
               }),
+                _floatingOption('Palo', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
+                setState(() {
+                  penales++;
+
+                  if (modoAntesDelEvento == 'defensa') {
+                    atajadas++;
+                  }
+
+                  // 🔥 NUEVA LÓGICA:
+                  // no cambia modo automáticamente
+                  // solo habilita contra
+                  mostrarContra = true;
+                  contraDebeCambiarModo = true;
+                });
+
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'palo',
+                  actorPrincipal: actor,
+                  actorPrincipalId: modoAntesDelEvento == 'ataque'
+                        ? jugadorSeleccionadoId
+                        : _getCurrentGoalkeeperProfile()?.playerId,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: true,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _clearSelection(keepContra: true);
+                Navigator.pop(context);
+              }),
               _floatingOption('Fuera', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
@@ -8142,6 +8317,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   tipo: 'penal',
                   resultado: 'fuera',
                   actorPrincipal: actor,
+                  actorPrincipalId: modoAntesDelEvento == 'ataque'
+                        ? jugadorSeleccionadoId
+                        : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: false,
@@ -8251,6 +8429,25 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 );
 
                 _registrarPenalTanda('fuera');
+                Navigator.pop(context);
+              }),
+              _floatingOption('Palo', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
+
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'palo',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _registrarPenalTanda('palo');
                 Navigator.pop(context);
               }),
             ],
@@ -8649,7 +8846,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   prevState: prevState,
                 );
               }),
+                _floatingOption('Palo', () {
+                  final Map<String, dynamic> prevState = _captureStateSnapshot();
+                  final String modoAntesDelEvento = currentMode;
+                  Navigator.pop(context);
 
+                 _prepararORegistrarTiroNormal(
+                   resultado: 'palo',
+                   modoAntesDelEvento: modoAntesDelEvento,
+                   mantieneContexto: true,
+                   prevState: prevState,
+                  );
+               }),
               _floatingOption('Fuera', () {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentMode;
@@ -8749,7 +8957,12 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         mostrarContra = true;
         contraDebeCambiarModo = true;
       }
-
+      if (resultado == 'palo') {
+        // No suma atajada.
+        // Misma mecánica que atajado: habilita contra sin cambiar modo automático.
+        mostrarContra = true;
+        contraDebeCambiarModo = true;
+      }
       if (resultado == 'fuera') {
         if (modoAntesDelEvento == 'ataque') {
           modo = 'defensa';
@@ -8769,9 +8982,11 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       resultado: resultado,
       actorPrincipal: actor,
       actorPrincipalId: modoAntesDelEvento == 'ataque'
-        ? jugadorSeleccionadoId
-        : _getCurrentGoalkeeperProfile()?.playerId,
-      zonaTiroValor: zonaTiroEvento,
+    ? (_esContraArqueroDirecta
+        ? _getCurrentGoalkeeperProfile()?.playerId
+        : jugadorSeleccionadoId)
+    : _getCurrentGoalkeeperProfile()?.playerId,
+      zonaTiroValor: zonaTiroEvento ?? (_esContraArqueroDirecta ? 'Contra directa arquero' : null),
       zonaArcoValor: zonaArcoEvento,
       mantieneContexto: mantieneContexto,
       prevState: prevState,
@@ -8779,7 +8994,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
 
     _clearSelection(
-      keepContra: resultado == 'atajado' || modoAntesDelEvento == 'defensa',
+      keepContra: resultado == 'atajado' ||
+          resultado == 'palo' ||
+          modoAntesDelEvento == 'defensa',
     );
   }
 
@@ -9998,7 +10215,7 @@ class GameEvent {
 
   bool get isGoal => resultado == 'gol';
   bool get isSave => resultado == 'atajado';
-  bool get isMiss => resultado == 'fuera' || resultado == 'desvio';
+  bool get isMiss => resultado == 'fuera' || resultado == 'desvio' || resultado == 'palo';
 }
 
 GameEventKind _gameEventKindFromString(String tipo, Map<String, dynamic> map) {

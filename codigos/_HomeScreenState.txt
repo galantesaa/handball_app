@@ -1,4 +1,3 @@
-
 /// ===============================
 /// HOME PRINCIPAL
 /// ===============================
@@ -71,15 +70,16 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Menú futuro para importaciones, exportaciones y configuración general.
   /// No pertenece a Equipo porque no es gestión deportiva directa.
   /// ===============================
-  void _showGestionAdministrativaMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
+void _showGestionAdministrativaMenu() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -96,162 +96,91 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildAdminMenuOption(
                 icon: Icons.upload_file_rounded,
                 text: 'Importar jugadores',
-                onTap: () {
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               _buildAdminMenuOption(
                 icon: Icons.calendar_month_rounded,
                 text: 'Importar fixture',
-                onTap: () {
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               _buildAdminMenuOption(
                 icon: Icons.shield_rounded,
                 text: 'Importar escudos',
+                onTap: () => Navigator.pop(context),
+              ),
+              _buildAdminMenuOption(
+                icon: Icons.storage_rounded,
+                text: 'Exportar datos',
                 onTap: () {
                   Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.storage, color: Colors.white),
-                title: const Text('Exportar datos'),
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: const Color(0xFF0F1722),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                    builder: (_) {
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 12),
-
-                            /// EXPORTAR BACKUP
-                            ListTile(
-                              leading: const Icon(Icons.download, color: Colors.white),
-                              title: const Text('Exportar backup'),
-                              onTap: () async {
-                                Navigator.pop(context);
-
-                                final backup = await generarBackupCompleto();
-
-                                if (!context.mounted) return;
-
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    backgroundColor: const Color(0xFF0F1722),
-                                    title: const Text(
-                                      'Backup generado',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: SingleChildScrollView(
-                                      child: SelectableText(
-                                        backup,
-                                        style: const TextStyle(color: Colors.white70),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Clipboard.setData(
-                                            ClipboardData(text: backup),
-                                          );
-                                          Navigator.pop(context);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Copiado al portapapeles'),
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Copiar'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-
-                            /// IMPORTAR BACKUP
-                            ListTile(
-                              leading: const Icon(Icons.upload, color: Colors.white),
-                              title: const Text('Importar backup'),
-                              onTap: () async {
-                                Navigator.pop(context);
-
-                                final controller = TextEditingController();
-
-                                final confirmado = await showDialog<bool>(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    backgroundColor: const Color(0xFF0F1722),
-                                    title: const Text(
-                                      'Importar backup',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: TextField(
-                                      controller: controller,
-                                      maxLines: 10,
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(
-                                        hintText: 'Pegá el JSON acá...',
-                                        hintStyle: TextStyle(color: Colors.white54),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, false),
-                                        child: const Text('Cancelar'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, true),
-                                        child: const Text('Importar'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirmado != true) return;
-
-                                try {
-                                  await restaurarBackupCompleto(controller.text);
-
-                                  if (!context.mounted) return;
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Backup restaurado correctamente'),
-                                    ),
-                                  );
-                                } catch (_) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Error al importar backup'),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      );
-                    },
-                  );
+                  _showExportarDatosMenu();
                 },
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
+void _showExportarDatosMenu() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Exportar datos',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAdminMenuOption(
+                icon: Icons.download_rounded,
+                text: 'Exportar backup',
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  try {
+                    await exportarBackupComoArchivo();
+                  } catch (_) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No se pudo exportar el backup'),
+                      ),
+                    );
+                  }
+                },
+              ),
+              _buildAdminMenuOption(
+                icon: Icons.upload_rounded,
+                text: 'Importar backup',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await importarBackupDesdeArchivo(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
   ///===============================
   /// Opción visual del menú administrativo.

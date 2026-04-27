@@ -1,237 +1,331 @@
-class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
-  late String estadoPartido;
-  late List<GameEvent> gameEvents;
+void _showNormalPenaltyResultSheet() {
+    final String? currentModo = modo;
+    final String? currentZonaArco = zonaArco;
 
-  late int golesSanFernando;
-  late int golesRival;
-  late int golesRecibidos;
+    if (currentZonaArco == null || currentModo == null) return;
 
-  late int atajadas;
-  late int penales;
-  late int exclusiones2Min;
-  late int amarillas;
-  late int rojas;
-  late int perdidas;
-  late int recuperaciones;
+    final String actor = currentModo == 'defensa'
+        ? _currentGoalkeeperActorName
+        : _resolvePrimaryActorForShot(
+            eventMode: currentModo,
+            allowGoalkeeperInAttack: true,
+          );
 
-  late int penalesConvertidosSanFernando;
-  late int penalesConvertidosRival;
-  late int penalesIntentadosSanFernando;
-  late int penalesIntentadosRival;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Penal → $currentZonaArco',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-  /// Jugador actualmente seleccionado para cargar eventos.
-  /// Si está vacío, el evento queda como jugador genérico.
-  String? jugadorSeleccionado;
-  String? jugadorSeleccionadoId;
-  bool mostrarSelectorLateralJugador = false;
+              _floatingOption('Gol', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
-  String? _tiroPendienteResultado;
-  String? _tiroPendienteModo;
-  String? _tiroPendienteZonaTiro;
-  String? _tiroPendienteZonaArco;
-  bool _tiroPendienteMantieneContexto = false;
-  Map<String, dynamic>? _tiroPendientePrevState;
+                setState(() {
+                  penales++;
 
-  String? modo; // ataque / defensa
+                  if (modoAntesDelEvento == 'ataque') {
+                    golesSanFernando++;
+                    modo = 'defensa';
+                  } else {
+                    golesRival++;
+                    golesRecibidos++;
+                    modo = 'ataque';
+                  }
 
-  String? zonaTiro;
-  String? zonaArco;
+                  mostrarContra = false;
+                  contraDebeCambiarModo = true;
+                });
 
-  bool penalEnCurso = false;
-  String? actorPenalActual;
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'gol',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
 
-  bool mostrarContra = false;
-  bool contraDebeCambiarModo = true;
-  String origenJugadaActual = 'normal';
+                _clearSelection();
+                Navigator.pop(context);
+              }),
 
-  late List<Map<String, dynamic>> eventos;
-  int _contadorEventoId = 0;
+              _floatingOption('Atajado', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
-  String? modoInicioPrimerTiempo;
-  String? modoInicioPrimerTiempoAlargue;
+                setState(() {
+                  penales++;
 
-  PlayerProfile? _currentFieldPlayer;
+                  if (modoAntesDelEvento == 'defensa') {
+                    atajadas++;
+                  }
 
-  String _currentFieldPlayerActorName() {
-    if (_currentFieldPlayer == null) return 'Jugador';
+                  // 🔥 NUEVA LÓGICA:
+                  // no cambia modo automáticamente
+                  // solo habilita contra
+                  mostrarContra = true;
+                  contraDebeCambiarModo = true;
+                });
 
-    return _currentFieldPlayer!.displayName;
-  }
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'atajado',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: true,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
 
-  String _resolvePrimaryActorForShot({
-    required String eventMode,
-    bool allowGoalkeeperInAttack = false,
-  }) {
-    if (eventMode == 'defensa') {
-      return _currentGoalkeeperActorName;
-    }
+                _clearSelection(keepContra: true);
+                Navigator.pop(context);
+              }),
+                _floatingOption('Palo', () async {
+                  final Map<String, dynamic> prevState = _captureStateSnapshot();
+                  final String modoAntesDelEvento = currentModo;
+                  final String actor = await _actorParaTiro(modoAntesDelEvento);
 
-    if (allowGoalkeeperInAttack &&
-        mostrarContra &&
-        currentGoalkeeperNumber != null) {
-      return _currentGoalkeeperActorName;
-    }
+                  setState(() {
+                    penales++;
 
-    return _currentFieldPlayerActorName();
-  }
+                    if (modoAntesDelEvento == 'ataque') {
+                      modo = 'defensa';
+                      mostrarContra = false;
+                    } else {
+                      modo = 'ataque';
+                      mostrarContra = true;
+                      contraDebeCambiarModo = false;
+                    }
+                  });
 
-  static const bool _showCourtOverlay = true;
-  static const bool _showTouchDebug = false;
+                  _registrarEvento(
+                    tipo: 'penal',
+                    resultado: 'palo',
+                    actorPrincipal: actor,
+                    actorPrincipalId: modoAntesDelEvento == 'ataque'
+                        ? jugadorSeleccionadoId
+                        : _getCurrentGoalkeeperProfile()?.playerId,
+                    zonaArcoValor: currentZonaArco,
+                    subtipo: 'penal_7m',
+                    mantieneContexto: false,
+                    prevState: prevState,
+                    modoEvento: modoAntesDelEvento,
+                  );
 
-  bool get _hasUndoableGameEvents {
-    return gameEvents.any((e) => e.isUndoableGameEvent);
-  }
+                  _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+                  Navigator.pop(context);
+                }),
+              _floatingOption('Fuera', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
 
-  String? currentGoalkeeperNumber; // '33' o '1'
+                setState(() {
+                  penales++;
 
-  static const String _liveMatchStorageKey = 'live_match_current_v1';
-  static const String _finishedMatchesStorageKey =
-      'finished_matches_history_v1';
+                  if (modoAntesDelEvento == 'ataque') {
+                    modo = 'defensa';
+                    mostrarContra = false;
+                  } else {
+                    modo = 'ataque';
+                    mostrarContra = true;
+                    contraDebeCambiarModo = false;
+                  }
+                });
 
-  String _normalizeValue(dynamic value) {
-    return (value ?? '')
-        .toString()
-        .trim()
-        .toLowerCase()
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u');
-  }
+                _registrarEvento(
+                  tipo: 'penal',
+                  resultado: 'fuera',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'penal_7m',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
 
-  String get _matchIdentity {
-    return [
-      _normalizeValue(widget.partido['torneo']),
-      _normalizeValue(widget.partido['categoria']),
-      _normalizeValue(widget.partido['fecha']),
-      _normalizeValue(widget.partido['rival']),
-      _normalizeValue(widget.partido['condicion']),
-    ].join('|');
-  }
-
-  bool get _isArgentinosJuniorsOfficialMatch {
-    return _normalizeValue(widget.partido['torneo']) == 'apertura' &&
-        _normalizeValue(widget.partido['categoria']) == 'cadetes' &&
-        _normalizeValue(widget.partido['fecha']) == '4' &&
-        _normalizeValue(widget.partido['rival']) == 'argentinos juniors' &&
-        _normalizeValue(widget.partido['condicion']) == 'local';
-  }
-
-  List<PlayerProfile> get _jugadoresConvocados {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
-
-    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
-
-    final rosterBase = snapshotRaw == null
-        ? RosterRepository.rosterForCategory(
-            categoria: widget.partido['categoria'],
-            temporada: '2026',
-            includeStaff: false,
-          )
-        : snapshotRaw
-              .map(
-                (e) =>
-                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
-
-    if (squadMap == null) {
-      return rosterBase.where((p) => p.esArquero).toList();
-    }
-
-    final squad = MatchSquadConfig.fromMap(squadMap);
-
-    return rosterBase
-        .where((p) => squad.convocadosIds.contains(p.playerId))
-        .where((p) => !p.esCuerpoTecnico)
-        .toList();
-  }
-
-  List<PlayerProfile> get _jugadoresCampoConvocados {
-    return _jugadoresConvocados
-        .where((p) => !p.esArquero && !p.esCuerpoTecnico)
-        .toList();
-  }
-
-  bool _debeMostrarSelectorJugadorParaAtaque() {
-    return modo == 'ataque' &&
-        jugadorSeleccionado == null &&
-        _jugadoresCampoConvocados.isNotEmpty;
-  }
-
-  /// ===============================
-  /// ARQUEROS DISPONIBLES DEL PARTIDO
-  /// Lee desde matchRosterSnapshot si existe.
-  /// Esto permite usar arqueros creados/editados en Plantel 2.1.
-  /// ===============================
-  List<PlayerProfile> _availableGoalkeepersForMatch() {
-    final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
-
-    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
-
-    final rosterBase = snapshotRaw == null
-        ? RosterRepository.rosterForCategory(
-            categoria: widget.partido['categoria'],
-            temporada: '2026',
-            includeStaff: false,
-          )
-        : snapshotRaw
-              .map(
-                (e) =>
-                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
-
-    if (matchSquad != null) {
-      final config = MatchSquadConfig.fromMap(matchSquad);
-
-      final arquerosConvocados = rosterBase.where((p) {
-        return p.esArquero && config.arquerosIds.contains(p.playerId);
-      }).toList();
-
-      if (arquerosConvocados.isNotEmpty) {
-        return arquerosConvocados;
-      }
-    }
-
-    return rosterBase.where((p) => p.esArquero).toList();
-  }
-
-  PlayerProfile? _getCurrentGoalkeeperProfile() {
-  final lista = _availableGoalkeepersForMatch();
-
-  try {
-    return lista.firstWhere(
-      (gk) => gk.numeroPreferido == currentGoalkeeperNumber,
+                _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+                Navigator.pop(context);
+              }),
+            ],
+          ),
+        );
+      },
     );
-  } catch (_) {
-    return null;
   }
-}
 
+  void _showPenaltyShootoutResultSheet() {
+    final String? currentModo = modo;
+    final String? currentZonaArco = zonaArco;
 
-  final arqueros = _availableGoalkeepersForMatch();
+    if (currentZonaArco == null || currentModo == null) return;
 
-    if (arqueros.isEmpty) return null;
+    final String actor = currentModo == 'defensa'
+        ? _currentGoalkeeperActorName
+        : _resolvePrimaryActorForShot(
+            eventMode: currentModo,
+            allowGoalkeeperInAttack: true,
+          );
 
-    if (currentGoalkeeperNumber == null) {
-      return arqueros.first;
-    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Penal → $currentZonaArco',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
 
-    for (final gk in arqueros) {
-      if (gk.numeroPreferido == currentGoalkeeperNumber) {
-        return gk;
+              _floatingOption('Gol', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
+
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'gol',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _registrarPenalTanda('gol');
+                Navigator.pop(context);
+              }),
+
+              _floatingOption('Atajado', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
+
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'atajado',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _registrarPenalTanda('atajado');
+                Navigator.pop(context);
+              }),
+
+              _floatingOption('Fuera', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
+
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'fuera',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _registrarPenalTanda('fuera');
+                Navigator.pop(context);
+              }),
+              _floatingOption('Palo', () async {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentModo;
+                final String actor = await _actorParaTiro(modoAntesDelEvento);
+
+                _registrarEvento(
+                  tipo: 'penal_tanda',
+                  resultado: 'palo',
+                  actorPrincipal: actor,
+                  zonaArcoValor: currentZonaArco,
+                  subtipo: 'tanda_penales',
+                  mantieneContexto: false,
+                  prevState: prevState,
+                  modoEvento: modoAntesDelEvento,
+                );
+
+                _registrarPenalTanda('palo');
+                Navigator.pop(context);
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _registrarPenalTanda(String resultado) {
+    final String? currentModo = modo;
+    if (currentModo == null) return;
+
+    final String modoAntesDelEvento = currentModo;
+
+    setState(() {
+      if (modoAntesDelEvento == 'ataque') {
+        penalesIntentadosSanFernando++;
+        if (resultado == 'gol') {
+          penalesConvertidosSanFernando++;
+        }
+      } else {
+        penalesIntentadosRival++;
+        if (resultado == 'gol') {
+          penalesConvertidosRival++;
+        } else if (resultado == 'atajado') {
+          atajadas++;
+        }
       }
-    }
 
-    return arqueros.first;
-  }
+      zonaTiro = null;
+      zonaArco = null;
+      penalEnCurso = false;
+      actorPenalActual = null;
+      mostrarContra = false;
+      origenJugadaActual = 'normal';
+      contraDebeCambiarModo = true;
+    });
 
-//////////****************//////////////////
-
-  String get _currentGoalkeeperActorName {
-    final gk = _getCurrentGoalkeeperProfile();
-    if (gk == null) return 'Arquero';
-    return gk.displayName;
+    _alternarModoPenales();
+    _evaluarFinPenales();
   }

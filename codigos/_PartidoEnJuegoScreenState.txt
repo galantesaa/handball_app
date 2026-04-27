@@ -84,24 +84,32 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     return 'assets/images/san_fernando.png';
   }
 
-  void _asegurarConvocatoriaDefaultSoloArqueros() {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+  Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
+  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
 
-    if (squadMap != null) return;
+  if (squadMap != null) return;
 
-    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
 
-    final arqueros = RosterRepository.goalkeepersForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    );
+  await RosterStorage.seedCategoryIfEmpty(
+    categoria: categoria,
+    temporada: '2026',
+  );
 
-    widget.partido['matchSquad'] = MatchSquadConfig(
-      convocadosIds: arqueros.map((p) => p.playerId).toSet(),
-      arquerosIds: arqueros.map((p) => p.playerId).toSet(),
-    ).toMap();
-  }
+  final roster = await RosterStorage.readRosterForCategory(
+    categoria: categoria,
+    temporada: '2026',
+    includeStaff: false,
+  );
 
+  final arqueros = roster.where((p) => p.esArquero).toList();
+
+  widget.partido['matchSquad'] = MatchSquadConfig(
+    convocadosIds: arqueros.map((p) => p.playerId).toSet(),
+    arquerosIds: arqueros.map((p) => p.playerId).toSet(),
+  ).toMap();
+}
+  
   Future<void> _irAPartidoEnVivo() async {
     _asegurarConvocatoriaDefaultSoloArqueros();
     final resultado = await Navigator.push(
@@ -303,6 +311,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
     final bool esPartidoRealActual = widget.partido['esPartidoReal'] == true;
     final dynamic matchSquadActual = widget.partido['matchSquad'];
+    final dynamic matchRosterSnapshotActual = widget.partido['matchRosterSnapshot'];
+    
 
     widget.partido
       ..clear()
@@ -311,6 +321,9 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
     if (matchSquadActual != null) {
       widget.partido['matchSquad'] = matchSquadActual;
+    }
+    if (matchRosterSnapshotActual != null) {
+      widget.partido['matchRosterSnapshot'] = matchRosterSnapshotActual;
     }
   }
 
