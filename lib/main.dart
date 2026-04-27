@@ -4115,19 +4115,28 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                                   item['golesRecibidos'] as int;
                               final eficacia = item['eficacia'] as double;
 
-                              return Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(bottom: 10),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF182338,
-                                  ).withOpacity(0.75),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DetalleArqueroPartidoScreen(
+                                        stats: item,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF182338).withOpacity(0.75),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                     Text(
                                       arquero == 'Sin arquero'
                                           ? 'Sin arquero'
@@ -4152,6 +4161,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                                     _buildInfoRow('Contra directa', '${item['contraDirecta']}'),
                                   ],
                                 ),
+                               ),
                               );
                             }).toList(),
                           ),
@@ -4550,6 +4560,280 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     );
   }
 }
+
+
+/// ===============================
+/// DETALLE ARQUERO PARTIDO
+/// Muestra el detalle profundo de un arquero
+/// dentro de un partido finalizado.
+/// ===============================
+
+
+class DetalleArqueroPartidoScreen extends StatelessWidget {
+  final Map<String, dynamic> stats;
+
+  const DetalleArqueroPartidoScreen({
+    super.key,
+    required this.stats,
+  });
+
+  String get _nombreArquero => (stats['arqueroNombre'] ?? stats['arquero'] ?? 'Arquero').toString();
+
+  int _valor(String key) => (stats[key] ?? 0) as int;
+
+  double get _eficacia => (stats['eficacia'] ?? 0.0) as double;
+
+  Map<String, Map<String, int>> get _periodos {
+    final raw = stats['periodos'];
+    if (raw is Map<String, Map<String, int>>) return raw;
+
+    if (raw is Map) {
+      return raw.map((key, value) {
+        return MapEntry(
+          key.toString(),
+          Map<String, int>.from(value as Map),
+        );
+      });
+    }
+
+    return {};
+  }
+
+  Map<String, Map<String, int>> get _zonasArco {
+    final raw = stats['zonasArco'];
+    if (raw is Map<String, Map<String, int>>) return raw;
+
+    if (raw is Map) {
+      return raw.map((key, value) {
+        return MapEntry(
+          key.toString(),
+          Map<String, int>.from(value as Map),
+        );
+      });
+    }
+
+    return {};
+  }
+
+  Map<String, Map<String, int>> get _zonasTiro {
+    final raw = stats['zonasTiro'];
+    if (raw is Map<String, Map<String, int>>) return raw;
+
+    if (raw is Map) {
+      return raw.map((key, value) {
+        return MapEntry(
+          key.toString(),
+          Map<String, int>.from(value as Map),
+        );
+      });
+    }
+
+    return {};
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: Text(_nombreArquero),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: 'Global'),
+              Tab(text: 'Tiempos'),
+              Tab(text: 'Arco'),
+              Tab(text: 'Tiro'),
+            ],
+          ),
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/fondohd.jpeg',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+              ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF05080D).withOpacity(0.88),
+              ),
+            ),
+            SafeArea(
+              child: TabBarView(
+                children: [
+                  _buildGlobalTab(),
+                  _buildPeriodosTab(),
+                  _buildZonasTab(_zonasArco, 'Zona de arco'),
+                  _buildZonasTab(_zonasTiro, 'Zona de tiro'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlobalTab() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      children: [
+        _buildCard(
+          title: 'Resumen global',
+          children: [
+            _row('Eficacia', '${_eficacia.toStringAsFixed(1)}%'),
+            _row('Atajadas', '${_valor('atajadas')}'),
+            _row('Goles recibidos', '${_valor('golesRecibidos')}'),
+            _row('Palos', '${_valor('palos')}'),
+            _row('Fuera', '${_valor('fuera')}'),
+            _row('Penales', '${_valor('penales')}'),
+            _row('Penales atajados', '${_valor('penalesAtajados')}'),
+            _row('Contra directa', '${_valor('contraDirecta')}'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPeriodosTab() {
+    if (_periodos.isEmpty) {
+      return _empty('No hay detalle por tiempos.');
+    }
+
+    final orden = ['1T', '2T', '1TA', '2TA', 'Penales', 'Otro'];
+    final keys = [
+      ...orden.where(_periodos.containsKey),
+      ..._periodos.keys.where((k) => !orden.contains(k)),
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      children: keys.map((periodo) {
+        final data = _periodos[periodo]!;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildCard(
+            title: periodo,
+            children: [
+              _row('Atajadas', '${data['atajadas'] ?? 0}'),
+              _row('Goles recibidos', '${data['golesRecibidos'] ?? 0}'),
+              _row('Palos', '${data['palos'] ?? 0}'),
+              _row('Fuera', '${data['fuera'] ?? 0}'),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildZonasTab(
+    Map<String, Map<String, int>> data,
+    String titlePrefix,
+  ) {
+    if (data.isEmpty) {
+      return _empty('No hay datos suficientes.');
+    }
+
+    final keys = data.keys.toList()..sort();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      children: keys.map((zona) {
+        final item = data[zona]!;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildCard(
+            title: '$titlePrefix · $zona',
+            children: [
+              _row('Atajadas', '${item['atajadas'] ?? 0}'),
+              _row('Goles recibidos', '${item['golesRecibidos'] ?? 0}'),
+              _row('Palos', '${item['palos'] ?? 0}'),
+              _row('Fuera', '${item['fuera'] ?? 0}'),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCard({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _empty(String text) {
+    return Center(
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+}
+
+
 
 /// ===============================
 /// ===============================
