@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models_v2.dart';
 import 'partido_repository_v2.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -1127,15 +1131,16 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Menú futuro para importaciones, exportaciones y configuración general.
   /// No pertenece a Equipo porque no es gestión deportiva directa.
   /// ===============================
-  void _showGestionAdministrativaMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
+void _showGestionAdministrativaMenu() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1152,162 +1157,142 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildAdminMenuOption(
                 icon: Icons.upload_file_rounded,
                 text: 'Importar jugadores',
-                onTap: () {
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               _buildAdminMenuOption(
                 icon: Icons.calendar_month_rounded,
                 text: 'Importar fixture',
-                onTap: () {
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
               ),
               _buildAdminMenuOption(
                 icon: Icons.shield_rounded,
                 text: 'Importar escudos',
+                onTap: () => Navigator.pop(context),
+              ),
+              _buildAdminMenuOption(
+                icon: Icons.storage_rounded,
+                text: 'Exportar datos',
                 onTap: () {
                   Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.storage, color: Colors.white),
-                title: const Text('Exportar datos'),
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: const Color(0xFF0F1722),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                    ),
-                    builder: (_) {
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 12),
-
-                            /// EXPORTAR BACKUP
-                            ListTile(
-                              leading: const Icon(Icons.download, color: Colors.white),
-                              title: const Text('Exportar backup'),
-                              onTap: () async {
-                                Navigator.pop(context);
-
-                                final backup = await generarBackupCompleto();
-
-                                if (!context.mounted) return;
-
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    backgroundColor: const Color(0xFF0F1722),
-                                    title: const Text(
-                                      'Backup generado',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: SingleChildScrollView(
-                                      child: SelectableText(
-                                        backup,
-                                        style: const TextStyle(color: Colors.white70),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Clipboard.setData(
-                                            ClipboardData(text: backup),
-                                          );
-                                          Navigator.pop(context);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Copiado al portapapeles'),
-                                            ),
-                                          );
-                                        },
-                                        child: const Text('Copiar'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-
-                            /// IMPORTAR BACKUP
-                            ListTile(
-                              leading: const Icon(Icons.upload, color: Colors.white),
-                              title: const Text('Importar backup'),
-                              onTap: () async {
-                                Navigator.pop(context);
-
-                                final controller = TextEditingController();
-
-                                final confirmado = await showDialog<bool>(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    backgroundColor: const Color(0xFF0F1722),
-                                    title: const Text(
-                                      'Importar backup',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: TextField(
-                                      controller: controller,
-                                      maxLines: 10,
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(
-                                        hintText: 'Pegá el JSON acá...',
-                                        hintStyle: TextStyle(color: Colors.white54),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, false),
-                                        child: const Text('Cancelar'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context, true),
-                                        child: const Text('Importar'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirmado != true) return;
-
-                                try {
-                                  await restaurarBackupCompleto(controller.text);
-
-                                  if (!context.mounted) return;
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Backup restaurado correctamente'),
-                                    ),
-                                  );
-                                } catch (_) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Error al importar backup'),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      );
-                    },
-                  );
+                  _showExportarDatosMenu();
                 },
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
+void _showExportarDatosMenu() {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Exportar datos',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAdminMenuOption(
+                icon: Icons.download_rounded,
+                text: 'Exportar backup',
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  try {
+                    await exportarBackupComoArchivo();
+                  } catch (_) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No se pudo exportar el backup'),
+                      ),
+                    );
+                  }
+                },
+              ),
+              _buildAdminMenuOption(
+                icon: Icons.upload_rounded,
+                text: 'Importar backup',
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  final controller = TextEditingController();
+
+                  final confirmado = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: const Color(0xFF0F1722),
+                      title: const Text(
+                        'Importar backup',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: TextField(
+                        controller: controller,
+                        maxLines: 10,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'Pegá el JSON acá...',
+                          hintStyle: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Importar'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirmado != true) return;
+
+                  try {
+                    await restaurarBackupCompleto(controller.text);
+
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Backup restaurado correctamente'),
+                      ),
+                    );
+                  } catch (_) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error al importar backup'),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
   ///===============================
   /// Opción visual del menú administrativo.
@@ -5275,24 +5260,32 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     return 'assets/images/san_fernando.png';
   }
 
-  void _asegurarConvocatoriaDefaultSoloArqueros() {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+  Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
+  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
 
-    if (squadMap != null) return;
+  if (squadMap != null) return;
 
-    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
 
-    final arqueros = RosterRepository.goalkeepersForCategory(
-      categoria: categoria,
-      temporada: '2026',
-    );
+  await RosterStorage.seedCategoryIfEmpty(
+    categoria: categoria,
+    temporada: '2026',
+  );
 
-    widget.partido['matchSquad'] = MatchSquadConfig(
-      convocadosIds: arqueros.map((p) => p.playerId).toSet(),
-      arquerosIds: arqueros.map((p) => p.playerId).toSet(),
-    ).toMap();
-  }
+  final roster = await RosterStorage.readRosterForCategory(
+    categoria: categoria,
+    temporada: '2026',
+    includeStaff: false,
+  );
 
+  final arqueros = roster.where((p) => p.esArquero).toList();
+
+  widget.partido['matchSquad'] = MatchSquadConfig(
+    convocadosIds: arqueros.map((p) => p.playerId).toSet(),
+    arquerosIds: arqueros.map((p) => p.playerId).toSet(),
+  ).toMap();
+}
+  
   Future<void> _irAPartidoEnVivo() async {
     _asegurarConvocatoriaDefaultSoloArqueros();
     final resultado = await Navigator.push(
@@ -5494,6 +5487,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
     final bool esPartidoRealActual = widget.partido['esPartidoReal'] == true;
     final dynamic matchSquadActual = widget.partido['matchSquad'];
+    final dynamic matchRosterSnapshotActual = widget.partido['matchRosterSnapshot'];
+    
 
     widget.partido
       ..clear()
@@ -5502,6 +5497,9 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
     if (matchSquadActual != null) {
       widget.partido['matchSquad'] = matchSquadActual;
+    }
+    if (matchRosterSnapshotActual != null) {
+      widget.partido['matchRosterSnapshot'] = matchRosterSnapshotActual;
     }
   }
 
@@ -6293,22 +6291,22 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   PlayerProfile? _getCurrentGoalkeeperProfile() {
-    final arqueros = _availableGoalkeepersForMatch();
+  final arqueros = _availableGoalkeepersForMatch();
 
-    if (arqueros.isEmpty) return null;
+  if (arqueros.isEmpty) return null;
 
-    if (currentGoalkeeperNumber == null) {
-      return arqueros.first;
-    }
-
-    for (final gk in arqueros) {
-      if (gk.numeroPreferido == currentGoalkeeperNumber) {
-        return gk;
-      }
-    }
-
+  if (currentGoalkeeperNumber == null) {
     return arqueros.first;
   }
+
+  for (final gk in arqueros) {
+    if (gk.numeroPreferido == currentGoalkeeperNumber) {
+      return gk;
+    }
+  }
+
+  return arqueros.first;
+}
 
   String get _currentGoalkeeperActorName {
     final gk = _getCurrentGoalkeeperProfile();
@@ -8822,7 +8820,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       actorPrincipal: actor,
       actorPrincipalId: modoAntesDelEvento == 'ataque'
         ? jugadorSeleccionadoId
-        : currentGoalkeeperNumber,
+        : _getCurrentGoalkeeperProfile()?.playerId,
       zonaTiroValor: zonaTiroEvento,
       zonaArcoValor: zonaArcoEvento,
       mantieneContexto: mantieneContexto,
@@ -12070,57 +12068,83 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
 /// ===============================
 /// BACKUP TOTAL APP
-/// Exporta historial + plantel
+/// Exporta historial + planteles.
 /// ===============================
 Future<String> generarBackupCompleto() async {
   final prefs = await SharedPreferences.getInstance();
 
-  final backup = <String, dynamic>{};
+  final backup = <String, dynamic>{
+    'createdAt': DateTime.now().toIso8601String(),
+    'app': 'Handball SGS',
+    'historial': prefs.getString('finished_matches_history_v1'),
+    'liveMatch': prefs.getString('live_match_current_v1'),
+  };
 
-  /// Historial de partidos
-  backup['historial'] =
-      prefs.getString('finished_matches_history_v1');
-
-  /// Planteles por categoría (podés agregar más)
-  backup['roster_2026_Cadetes'] =
-      prefs.getString('roster_2026_Cadetes');
-
-  backup['roster_2026_Juveniles'] =
-      prefs.getString('roster_2026_Juveniles');
-
-  backup['roster_2026_Juniors'] =
-      prefs.getString('roster_2026_Juniors');
+  for (final key in prefs.getKeys()) {
+    if (key.startsWith('roster_')) {
+      backup[key] = prefs.getString(key);
+    }
+  }
 
   return jsonEncode(backup);
 }
 
 /// ===============================
 /// RESTAURAR BACKUP APP
-/// Lee JSON y lo guarda en SharedPreferences
+/// Restaura historial + planteles desde JSON pegado.
 /// ===============================
 Future<void> restaurarBackupCompleto(String backupJson) async {
   final prefs = await SharedPreferences.getInstance();
+  final data = Map<String, dynamic>.from(jsonDecode(backupJson) as Map);
 
-  final Map<String, dynamic> data = jsonDecode(backupJson);
-
-  /// Historial
   if (data['historial'] != null) {
     await prefs.setString(
       'finished_matches_history_v1',
-      data['historial'],
+      data['historial'].toString(),
     );
   }
 
-  /// Planteles (solo si existen en backup)
-  for (final key in data.keys) {
-    if (key.startsWith('roster_')) {
-      final value = data[key];
-      if (value != null) {
-        await prefs.setString(key, value);
-      }
+  if (data['liveMatch'] != null) {
+    await prefs.setString(
+      'live_match_current_v1',
+      data['liveMatch'].toString(),
+    );
+  }
+
+  for (final entry in data.entries) {
+    if (entry.key.startsWith('roster_') && entry.value != null) {
+      await prefs.setString(entry.key, entry.value.toString());
     }
   }
 }
+
+/// ===============================
+/// EXPORTAR BACKUP A ARCHIVO
+/// Genera un .json y abre el menú de compartir.
+/// Android permite subirlo a Drive, WhatsApp, Gmail, etc.
+/// ===============================
+Future<void> exportarBackupComoArchivo() async {
+  final backup = await generarBackupCompleto();
+
+  final dir = await getTemporaryDirectory();
+
+  final fecha = DateTime.now()
+      .toIso8601String()
+      .replaceAll(':', '-')
+      .replaceAll('.', '-');
+
+  final file = File('${dir.path}/backup_handball_sgs_$fecha.json');
+
+  await file.writeAsString(backup);
+
+  await Share.shareXFiles(
+    [XFile(file.path)],
+    text: 'Backup Handball SGS',
+  );
+}
+
+
+
 
 String nombreArqueroDesdeDorsal({
   required String categoria,

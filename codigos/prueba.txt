@@ -1,79 +1,237 @@
-@override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Plantel del partido'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondohd.jpeg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-  child: FutureBuilder<List<PlayerProfile>>(
-    future: _rosterFuture,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
+class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
+  late String estadoPartido;
+  late List<GameEvent> gameEvents;
+
+  late int golesSanFernando;
+  late int golesRival;
+  late int golesRecibidos;
+
+  late int atajadas;
+  late int penales;
+  late int exclusiones2Min;
+  late int amarillas;
+  late int rojas;
+  late int perdidas;
+  late int recuperaciones;
+
+  late int penalesConvertidosSanFernando;
+  late int penalesConvertidosRival;
+  late int penalesIntentadosSanFernando;
+  late int penalesIntentadosRival;
+
+  /// Jugador actualmente seleccionado para cargar eventos.
+  /// Si está vacío, el evento queda como jugador genérico.
+  String? jugadorSeleccionado;
+  String? jugadorSeleccionadoId;
+  bool mostrarSelectorLateralJugador = false;
+
+  String? _tiroPendienteResultado;
+  String? _tiroPendienteModo;
+  String? _tiroPendienteZonaTiro;
+  String? _tiroPendienteZonaArco;
+  bool _tiroPendienteMantieneContexto = false;
+  Map<String, dynamic>? _tiroPendientePrevState;
+
+  String? modo; // ataque / defensa
+
+  String? zonaTiro;
+  String? zonaArco;
+
+  bool penalEnCurso = false;
+  String? actorPenalActual;
+
+  bool mostrarContra = false;
+  bool contraDebeCambiarModo = true;
+  String origenJugadaActual = 'normal';
+
+  late List<Map<String, dynamic>> eventos;
+  int _contadorEventoId = 0;
+
+  String? modoInicioPrimerTiempo;
+  String? modoInicioPrimerTiempoAlargue;
+
+  PlayerProfile? _currentFieldPlayer;
+
+  String _currentFieldPlayerActorName() {
+    if (_currentFieldPlayer == null) return 'Jugador';
+
+    return _currentFieldPlayer!.displayName;
+  }
+
+  String _resolvePrimaryActorForShot({
+    required String eventMode,
+    bool allowGoalkeeperInAttack = false,
+  }) {
+    if (eventMode == 'defensa') {
+      return _currentGoalkeeperActorName;
+    }
+
+    if (allowGoalkeeperInAttack &&
+        mostrarContra &&
+        currentGoalkeeperNumber != null) {
+      return _currentGoalkeeperActorName;
+    }
+
+    return _currentFieldPlayerActorName();
+  }
+
+  static const bool _showCourtOverlay = true;
+  static const bool _showTouchDebug = false;
+
+  bool get _hasUndoableGameEvents {
+    return gameEvents.any((e) => e.isUndoableGameEvent);
+  }
+
+  String? currentGoalkeeperNumber; // '33' o '1'
+
+  static const String _liveMatchStorageKey = 'live_match_current_v1';
+  static const String _finishedMatchesStorageKey =
+      'finished_matches_history_v1';
+
+  String _normalizeValue(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u');
+  }
+
+  String get _matchIdentity {
+    return [
+      _normalizeValue(widget.partido['torneo']),
+      _normalizeValue(widget.partido['categoria']),
+      _normalizeValue(widget.partido['fecha']),
+      _normalizeValue(widget.partido['rival']),
+      _normalizeValue(widget.partido['condicion']),
+    ].join('|');
+  }
+
+  bool get _isArgentinosJuniorsOfficialMatch {
+    return _normalizeValue(widget.partido['torneo']) == 'apertura' &&
+        _normalizeValue(widget.partido['categoria']) == 'cadetes' &&
+        _normalizeValue(widget.partido['fecha']) == '4' &&
+        _normalizeValue(widget.partido['rival']) == 'argentinos juniors' &&
+        _normalizeValue(widget.partido['condicion']) == 'local';
+  }
+
+  List<PlayerProfile> get _jugadoresConvocados {
+    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
+
+    final rosterBase = snapshotRaw == null
+        ? RosterRepository.rosterForCategory(
+            categoria: widget.partido['categoria'],
+            temporada: '2026',
+            includeStaff: false,
+          )
+        : snapshotRaw
+              .map(
+                (e) =>
+                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
+              )
+              .toList();
+
+    if (squadMap == null) {
+      return rosterBase.where((p) => p.esArquero).toList();
+    }
+
+    final squad = MatchSquadConfig.fromMap(squadMap);
+
+    return rosterBase
+        .where((p) => squad.convocadosIds.contains(p.playerId))
+        .where((p) => !p.esCuerpoTecnico)
+        .toList();
+  }
+
+  List<PlayerProfile> get _jugadoresCampoConvocados {
+    return _jugadoresConvocados
+        .where((p) => !p.esArquero && !p.esCuerpoTecnico)
+        .toList();
+  }
+
+  bool _debeMostrarSelectorJugadorParaAtaque() {
+    return modo == 'ataque' &&
+        jugadorSeleccionado == null &&
+        _jugadoresCampoConvocados.isNotEmpty;
+  }
+
+  /// ===============================
+  /// ARQUEROS DISPONIBLES DEL PARTIDO
+  /// Lee desde matchRosterSnapshot si existe.
+  /// Esto permite usar arqueros creados/editados en Plantel 2.1.
+  /// ===============================
+  List<PlayerProfile> _availableGoalkeepersForMatch() {
+    final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
+
+    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
+
+    final rosterBase = snapshotRaw == null
+        ? RosterRepository.rosterForCategory(
+            categoria: widget.partido['categoria'],
+            temporada: '2026',
+            includeStaff: false,
+          )
+        : snapshotRaw
+              .map(
+                (e) =>
+                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
+              )
+              .toList();
+
+    if (matchSquad != null) {
+      final config = MatchSquadConfig.fromMap(matchSquad);
+
+      final arquerosConvocados = rosterBase.where((p) {
+        return p.esArquero && config.arquerosIds.contains(p.playerId);
+      }).toList();
+
+      if (arquerosConvocados.isNotEmpty) {
+        return arquerosConvocados;
       }
+    }
 
-      return ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        children: [
-          Text(
-            '${widget.partido['categoria']} · ${widget.partido['torneo']}',
-            style: const TextStyle(
-              color: Color(0xFFD4DCE7),
-              fontSize: 14,
-            ),
-          ),
+    return rosterBase.where((p) => p.esArquero).toList();
+  }
 
-          const SizedBox(height: 18),
+  PlayerProfile? _getCurrentGoalkeeperProfile() {
+  final lista = _availableGoalkeepersForMatch();
 
-          _buildSectionCard(
-            title: 'Convocados $categoria',
-            players: _titularesCategoria,
-          ),
-
-          const SizedBox(height: 20),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _guardar,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F8CFF),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              child: const Text(
-                'Guardar convocatoria',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-       );
-      }, // builder
-    ), 
-   ), 
-  ),
- );
+  try {
+    return lista.firstWhere(
+      (gk) => gk.numeroPreferido == currentGoalkeeperNumber,
+    );
+  } catch (_) {
+    return null;
+  }
 }
+
+
+  final arqueros = _availableGoalkeepersForMatch();
+
+    if (arqueros.isEmpty) return null;
+
+    if (currentGoalkeeperNumber == null) {
+      return arqueros.first;
+    }
+
+    for (final gk in arqueros) {
+      if (gk.numeroPreferido == currentGoalkeeperNumber) {
+        return gk;
+      }
+    }
+
+    return arqueros.first;
+  }
+
+//////////****************//////////////////
+
+  String get _currentGoalkeeperActorName {
+    final gk = _getCurrentGoalkeeperProfile();
+    if (gk == null) return 'Arquero';
+    return gk.displayName;
+  }
