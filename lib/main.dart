@@ -9,6 +9,7 @@ import 'partido_repository_v2.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:file_selector/file_selector.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -1231,58 +1232,7 @@ void _showExportarDatosMenu() {
                 text: 'Importar backup',
                 onTap: () async {
                   Navigator.pop(context);
-
-                  final controller = TextEditingController();
-
-                  final confirmado = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      backgroundColor: const Color(0xFF0F1722),
-                      title: const Text(
-                        'Importar backup',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      content: TextField(
-                        controller: controller,
-                        maxLines: 10,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Pegá el JSON acá...',
-                          hintStyle: TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancelar'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Importar'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirmado != true) return;
-
-                  try {
-                    await restaurarBackupCompleto(controller.text);
-
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Backup restaurado correctamente'),
-                      ),
-                    );
-                  } catch (_) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Error al importar backup'),
-                      ),
-                    );
-                  }
+                  await importarBackupDesdeArchivo(context);
                 },
               ),
             ],
@@ -12141,6 +12091,47 @@ Future<void> exportarBackupComoArchivo() async {
     [XFile(file.path)],
     text: 'Backup Handball SGS',
   );
+}
+
+/// ===============================
+/// IMPORTAR BACKUP DESDE ARCHIVO
+/// Permite elegir un .json desde Archivos / Drive
+/// y restaurarlo en SharedPreferences.
+/// ===============================
+Future<void> importarBackupDesdeArchivo(BuildContext context) async {
+  try {
+    const typeGroup = XTypeGroup(
+      label: 'Backup JSON',
+      extensions: ['json'],
+      mimeTypes: ['application/json'],
+    );
+
+    final XFile? file = await openFile(
+      acceptedTypeGroups: [typeGroup],
+    );
+
+    if (file == null) return;
+
+    final backupJson = await file.readAsString();
+
+    await restaurarBackupCompleto(backupJson);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Backup importado correctamente'),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Error al importar backup'),
+      ),
+    );
+  }
 }
 
 
