@@ -10671,8 +10671,6 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
                       );
                     },
                   ),
-                  const SizedBox(height: 12),
-                  _buildAddArqueroButton(context),
                 ],
               ),
             ),
@@ -11049,30 +11047,6 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
             size: 26,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAddArqueroButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Alta de arqueros se integrará acá')),
-          );
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Agregar arquero'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4F8CFF),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
       ),
     );
   }
@@ -11546,6 +11520,273 @@ class CuerpoTecnicoScreen extends StatefulWidget {
 class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
   late Future<List<PlayerProfile>> _staffFuture;
 
+  /// ===============================
+  /// ALTA CUERPO TÉCNICO
+  /// Crea un integrante del cuerpo técnico
+  /// y lo guarda en el plantel persistente.
+  /// ===============================
+  Future<void> _abrirAltaStaff() async {
+    final nombreController = TextEditingController();
+    final apellidoController = TextEditingController();
+    final rolController = TextEditingController(text: 'DT');
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Agregar cuerpo técnico',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputStaff('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputStaff('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputStaff('Rol', rolController),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    final nombre = nombreController.text.trim();
+    final apellido = apellidoController.text.trim();
+    final rol = rolController.text.trim();
+
+    if (nombre.isEmpty && apellido.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
+      );
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final nuevoStaff = PlayerProfile(
+      playerId: 'local_staff_${DateTime.now().millisecondsSinceEpoch}',
+      clubId: RosterRepository.currentClub.clubId,
+      nombre: nombre,
+      apellido: apellido,
+      posicion: rol.isEmpty ? 'DT' : rol,
+      numeroPreferido: 'DT',
+      esArquero: false,
+      esCuerpoTecnico: true,
+    );
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: [...rosterActual, nuevoStaff],
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _staffFuture = _loadStaff();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico agregado')));
+  }
+
+  /// ===============================
+  /// EDITAR CUERPO TÉCNICO
+  /// Edita nombre, apellido y rol.
+  /// También permite eliminar.
+  /// ===============================
+  Future<void> _abrirEditarStaff(PlayerProfile staff) async {
+    final nombreController = TextEditingController(text: staff.nombre);
+    final apellidoController = TextEditingController(text: staff.apellido);
+    final rolController = TextEditingController(text: staff.posicion ?? 'DT');
+
+    final accion = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Editar cuerpo técnico',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputStaff('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputStaff('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputStaff('Rol', rolController),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'delete'),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (accion == null || accion == 'cancel') return;
+
+    if (accion == 'delete') {
+      await _confirmarEliminarStaff(staff);
+      return;
+    }
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual.map((p) {
+      if (p.playerId != staff.playerId) return p;
+
+      return PlayerProfile(
+        playerId: p.playerId,
+        clubId: p.clubId,
+        nombre: nombreController.text.trim(),
+        apellido: apellidoController.text.trim(),
+        posicion: rolController.text.trim().isEmpty
+            ? 'DT'
+            : rolController.text.trim(),
+        numeroPreferido: 'DT',
+        esArquero: false,
+        esCuerpoTecnico: true,
+      );
+    }).toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _staffFuture = _loadStaff();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico actualizado')));
+  }
+
+  /// ===============================
+  /// ELIMINAR CUERPO TÉCNICO
+  /// Elimina el integrante técnico de esta categoría.
+  /// ===============================
+  Future<void> _confirmarEliminarStaff(PlayerProfile staff) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar cuerpo técnico',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '¿Seguro que querés eliminar a ${staff.displayName} de ${widget.categoria}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    final rosterActual = await RosterStorage.readRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      includeStaff: true,
+    );
+
+    final actualizado = rosterActual
+        .where((p) => p.playerId != staff.playerId)
+        .toList();
+
+    await RosterStorage.saveRosterForCategory(
+      categoria: widget.categoria,
+      temporada: '2026',
+      players: actualizado,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _staffFuture = _loadStaff();
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico eliminado')));
+  }
+
+  /// Campo visual reutilizable para alta/edición de cuerpo técnico.
+  Widget _inputStaff(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        filled: true,
+        fillColor: const Color(0xFF182338),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -11570,6 +11811,11 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F8CFF),
+        onPressed: _abrirAltaStaff,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Cuerpo técnico'),
@@ -11614,27 +11860,30 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
                       s.nombre.trim(),
                     ].where((e) => e.isNotEmpty).join(', ');
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F1722).withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.person, color: Colors.white),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              nombre.isNotEmpty ? nombre : 'Staff',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
+                    return GestureDetector(
+                      onTap: () => _abrirEditarStaff(s),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F1722).withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person, color: Colors.white),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                nombre.isNotEmpty ? nombre : 'Staff',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
