@@ -24,6 +24,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
   /// ===============================
   /// PARTIDOS FINALIZADOS V2
+  
+  
+  
   /// Cache local usando el nuevo repository
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];

@@ -111,7 +111,8 @@ class GameEvent {
 
   bool get isGoal => resultado == 'gol';
   bool get isSave => resultado == 'atajado';
-  bool get isMiss => resultado == 'fuera' || resultado == 'desvio' || resultado == 'palo';
+  bool get isMiss =>
+      resultado == 'fuera' || resultado == 'desvio' || resultado == 'palo';
 }
 
 GameEventKind _gameEventKindFromString(String tipo, Map<String, dynamic> map) {

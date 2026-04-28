@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models_v2.dart';
 import 'partido_repository_v2.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:file_selector/file_selector.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -47,4 +52,3 @@ class GoalKeeperApp extends StatelessWidget {
     );
   }
 }
-

@@ -70,117 +70,116 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Menú futuro para importaciones, exportaciones y configuración general.
   /// No pertenece a Equipo porque no es gestión deportiva directa.
   /// ===============================
-void _showGestionAdministrativaMenu() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (_) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Gestión administrativa',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+  void _showGestionAdministrativaMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Gestión administrativa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _buildAdminMenuOption(
-                icon: Icons.upload_file_rounded,
-                text: 'Importar jugadores',
-                onTap: () => Navigator.pop(context),
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.calendar_month_rounded,
-                text: 'Importar fixture',
-                onTap: () => Navigator.pop(context),
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.shield_rounded,
-                text: 'Importar escudos',
-                onTap: () => Navigator.pop(context),
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.storage_rounded,
-                text: 'Exportar datos',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showExportarDatosMenu();
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-void _showExportarDatosMenu() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (_) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Exportar datos',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: 16),
+                _buildAdminMenuOption(
+                  icon: Icons.upload_file_rounded,
+                  text: 'Importar jugadores',
+                  onTap: () => Navigator.pop(context),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _buildAdminMenuOption(
-                icon: Icons.download_rounded,
-                text: 'Exportar backup',
-                onTap: () async {
-                  Navigator.pop(context);
-
-                  try {
-                    await exportarBackupComoArchivo();
-                  } catch (_) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No se pudo exportar el backup'),
-                      ),
-                    );
-                  }
-                },
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.upload_rounded,
-                text: 'Importar backup',
-                onTap: () async {
-                  Navigator.pop(context);
-                  await importarBackupDesdeArchivo(context);
-                },
-              ),
-            ],
+                _buildAdminMenuOption(
+                  icon: Icons.calendar_month_rounded,
+                  text: 'Importar fixture',
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildAdminMenuOption(
+                  icon: Icons.shield_rounded,
+                  text: 'Importar escudos',
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildAdminMenuOption(
+                  icon: Icons.storage_rounded,
+                  text: 'Exportar datos',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showExportarDatosMenu();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
+  void _showExportarDatosMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Exportar datos',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildAdminMenuOption(
+                  icon: Icons.download_rounded,
+                  text: 'Exportar backup',
+                  onTap: () async {
+                    Navigator.pop(context);
+
+                    try {
+                      await exportarBackupComoArchivo();
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('No se pudo exportar el backup'),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                _buildAdminMenuOption(
+                  icon: Icons.upload_rounded,
+                  text: 'Importar backup',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await importarBackupDesdeArchivo(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   ///===============================
   /// Opción visual del menú administrativo.
