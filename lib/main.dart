@@ -4594,31 +4594,46 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   }
 
   int _valor(String key) {
-  final value = stats[key];
+    final value = stats[key];
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
 
-  if (value is int) return value;
-  if (value is double) return value.toInt();
-  if (value is String) return int.tryParse(value) ?? 0;
-
-  return 0;
-}
-  
-  double get _eficacia => (stats['eficacia'] ?? 0.0) as double;
+  double get _eficacia {
+    final value = stats['eficacia'];
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
 
   Map<String, Map<String, int>> _mapStatsInt(String key) {
     final raw = stats[key];
 
-    if (raw is Map<String, Map<String, int>>) {
-      return raw;
-    }
-
     if (raw is Map) {
-      return raw.map((k, v) {
-        return MapEntry(
-          k.toString(),
-          Map<String, int>.from(v as Map),
-        );
+      final result = <String, Map<String, int>>{};
+
+      raw.forEach((k, v) {
+        if (v is Map) {
+          final inner = <String, int>{};
+
+          v.forEach((ik, iv) {
+            if (iv is int) {
+              inner[ik.toString()] = iv;
+            } else if (iv is double) {
+              inner[ik.toString()] = iv.toInt();
+            } else if (iv is String) {
+              inner[ik.toString()] = int.tryParse(iv) ?? 0;
+            }
+          });
+
+          result[k.toString()] = inner;
+        }
       });
+
+      return result;
     }
 
     return {};
@@ -4627,17 +4642,16 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   Map<String, Map<String, dynamic>> get _periodos {
     final raw = stats['periodos'];
 
-    if (raw is Map<String, Map<String, dynamic>>) {
-      return raw;
-    }
-
     if (raw is Map) {
-      return raw.map((k, v) {
-        return MapEntry(
-          k.toString(),
-          Map<String, dynamic>.from(v as Map),
-        );
+      final result = <String, Map<String, dynamic>>{};
+
+      raw.forEach((k, v) {
+        if (v is Map) {
+          result[k.toString()] = Map<String, dynamic>.from(v);
+        }
       });
+
+      return result;
     }
 
     return {};
@@ -4649,22 +4663,32 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
 
   Map<String, Map<String, int>> _zonasArcoPorPeriodo(String periodo) {
     final dataPeriodo = _periodos[periodo];
-
     if (dataPeriodo == null) return {};
 
     final raw = dataPeriodo['zonasArco'];
 
-    if (raw is Map<String, Map<String, int>>) {
-      return raw;
-    }
-
     if (raw is Map) {
-      return raw.map((k, v) {
-        return MapEntry(
-          k.toString(),
-          Map<String, int>.from(v as Map),
-        );
+      final result = <String, Map<String, int>>{};
+
+      raw.forEach((k, v) {
+        if (v is Map) {
+          final inner = <String, int>{};
+
+          v.forEach((ik, iv) {
+            if (iv is int) {
+              inner[ik.toString()] = iv;
+            } else if (iv is double) {
+              inner[ik.toString()] = iv.toInt();
+            } else if (iv is String) {
+              inner[ik.toString()] = int.tryParse(iv) ?? 0;
+            }
+          });
+
+          result[k.toString()] = inner;
+        }
       });
+
+      return result;
     }
 
     return {};
@@ -4764,13 +4788,13 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
       children: keys.map((periodo) {
         final data = _periodos[periodo]!;
 
-        final atajadas = (data['atajadas'] ?? 0) as int;
-        final goles = (data['golesRecibidos'] ?? 0) as int;
+        final atajadas = _dynamicInt(data['atajadas']);
+        final goles = _dynamicInt(data['golesRecibidos']);
         final total = atajadas + goles;
         final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
 
-        final penales = (data['penales'] ?? 0) as int;
-        final penalesAtajados = (data['penalesAtajados'] ?? 0) as int;
+        final penales = _dynamicInt(data['penales']);
+        final penalesAtajados = _dynamicInt(data['penalesAtajados']);
         final eficaciaPenales =
             penales == 0 ? 0.0 : (penalesAtajados / penales) * 100;
 
@@ -4788,9 +4812,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
               ),
               _row('Penales', '$penales'),
               _row('Penales atajados', '$penalesAtajados'),
-              _row('Contra directa', '${data['contraDirecta'] ?? 0}'),
-              _row('Palos', '${data['palos'] ?? 0}'),
-              _row('Fuera', '${data['fuera'] ?? 0}'),
+              _row('Contra directa', '${_dynamicInt(data['contraDirecta'])}'),
+              _row('Palos', '${_dynamicInt(data['palos'])}'),
+              _row('Fuera', '${_dynamicInt(data['fuera'])}'),
             ],
           ),
         );
@@ -4818,8 +4842,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: periodosDisponibles.map((periodo) {
-                final data =
-                    periodo == 'Global' ? _zonasArco : _zonasArcoPorPeriodo(periodo);
+                final data = periodo == 'Global'
+                    ? _zonasArco
+                    : _zonasArcoPorPeriodo(periodo);
 
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -4934,88 +4959,142 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     required double eficacia,
     required int volumen,
   }) {
-    final double intensidad = (volumen / 10).clamp(0.18, 1.0);
+    final sinDatos = volumen == 0;
+    final double intensidad = sinDatos ? 0.12 : (volumen / 10).clamp(0.18, 1.0);
 
     Color baseColor;
 
-    if (volumen == 0) {
+    if (sinDatos) {
       baseColor = const Color(0xFF182338).withOpacity(0.60);
     } else if (eficacia >= 0.60) {
-      baseColor = const Color(0xFF1E7D4F).withOpacity(0.25 + intensidad * 0.45);
+      baseColor = const Color(0xFF1E7D4F).withOpacity(0.22 + intensidad * 0.46);
     } else if (eficacia >= 0.40) {
-      baseColor = const Color(0xFFC58B1D).withOpacity(0.25 + intensidad * 0.45);
+      baseColor = const Color(0xFFC58B1D).withOpacity(0.22 + intensidad * 0.46);
     } else {
-      baseColor = const Color(0xFF9F2D2D).withOpacity(0.25 + intensidad * 0.45);
+      baseColor = const Color(0xFF9F2D2D).withOpacity(0.22 + intensidad * 0.46);
     }
 
     final totalAlArco = atajadas + goles;
     final eficaciaTexto =
-        totalAlArco == 0 ? '-' : '${(eficacia * 100).toStringAsFixed(0)}%';
+        sinDatos || totalAlArco == 0 ? '' : '${(eficacia * 100).toStringAsFixed(0)}%';
 
-    return Container(
-      height: 92,
-      margin: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            baseColor.withOpacity(0.95),
-            baseColor.withOpacity(0.45),
-            Colors.black.withOpacity(0.12),
-          ],
-        ),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.06),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: baseColor.withOpacity(0.20),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: 8,
-            top: 6,
-            child: Text(
-              eficaciaTexto,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.55),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
+    return GestureDetector(
+      onTap: sinDatos
+          ? null
+          : () {
+              // Este diálogo usa el contexto más cercano disponible por Builder.
+            },
+      child: Builder(
+        builder: (context) {
+          return GestureDetector(
+            onTap: sinDatos
+                ? null
+                : () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: const Color(0xFF0F1722),
+                        title: Text(
+                          'Zona $zona',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _row('Eficacia', '${(eficacia * 100).toStringAsFixed(1)}%'),
+                            _row('Atajadas', '$atajadas'),
+                            _row('Goles recibidos', '$goles'),
+                            _row('Palos', '$palos'),
+                            _row('Fuera', '$fuera'),
+                            _row('Volumen total', '$volumen'),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 550),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: 0.96 + (0.04 * value),
+                  child: Opacity(
+                    opacity: value,
+                    child: child,
+                  ),
+                );
+              },
+              child: Container(
+                height: 92,
+                margin: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      baseColor.withOpacity(sinDatos ? 0.50 : 0.95),
+                      baseColor.withOpacity(sinDatos ? 0.28 : 0.45),
+                      Colors.black.withOpacity(0.12),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(sinDatos ? 0.045 : 0.07),
+                  ),
+                  boxShadow: [
+                    if (!sinDatos)
+                      BoxShadow(
+                        color: baseColor.withOpacity(0.22),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: 8,
+                      top: 6,
+                      child: Text(
+                        eficaciaTexto,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.55),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            zona,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(sinDatos ? 0.45 : 0.72),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            sinDatos ? '—' : '$atajadas / $goles',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(sinDatos ? 0.45 : 1),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  zona,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.72),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$atajadas / $goles',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -5088,7 +5167,15 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
       ),
     );
   }
+
+  int _dynamicInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
 }
+
 
 /// ===============================
 /// ===============================
@@ -11939,6 +12026,7 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 /// Lista global por arquero dentro de un partido.
 /// Desde acá se entra al detalle profundo.
 /// ===============================
+
 class ArquerosPartidoScreen extends StatelessWidget {
   final List<Map<String, dynamic>> estadisticasPorArquero;
   final String categoria;
@@ -12089,6 +12177,60 @@ class ArquerosPartidoScreen extends StatelessWidget {
     return 'Bajo';
   }
 
+  Widget _buildComparacionArqueros() {
+  if (estadisticasPorArquero.length < 2) {
+    return const SizedBox.shrink();
+  }
+
+  final ordenados = [...estadisticasPorArquero];
+
+  ordenados.sort((a, b) {
+    final ea = _double(a, 'eficacia');
+    final eb = _double(b, 'eficacia');
+    return eb.compareTo(ea);
+  });
+
+  final mejor = ordenados.first;
+  final segundo = ordenados.length > 1 ? ordenados[1] : null;
+
+  final nombreMejor = _nombreArquero(mejor);
+  final eficaciaMejor = _double(mejor, 'eficacia');
+
+  final nombreSegundo = segundo == null ? '-' : _nombreArquero(segundo);
+  final eficaciaSegundo = segundo == null ? 0.0 : _double(segundo, 'eficacia');
+
+  final diferencia = eficaciaMejor - eficaciaSegundo;
+
+  return Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.90),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: Colors.white.withOpacity(0.06)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Comparación rápida',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 14),
+        _row('Mejor eficacia', nombreMejor),
+        _row('Eficacia', '${eficaciaMejor.toStringAsFixed(1)}%'),
+        _row('Segundo', nombreSegundo),
+        _row('Diferencia', '+${diferencia.toStringAsFixed(1)} pts'),
+      ],
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -12120,7 +12262,9 @@ class ArquerosPartidoScreen extends StatelessWidget {
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    children: estadisticasPorArquero.map((item) {
+                    children: [
+                      _buildComparacionArqueros(),
+                      ...estadisticasPorArquero.map((item) {
                       final nombre = _nombreArquero(item);
                       final eficacia = _double(item, 'eficacia');
                       final analisis = _analisisArquero(item);
@@ -12283,6 +12427,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
                         ),
                       );
                     }).toList(),
+                    ],
                   ),
           ),
         ],
