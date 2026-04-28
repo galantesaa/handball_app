@@ -3804,6 +3804,84 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     return lista;
   }
 
+  Map<String, String> _analisisArquero(Map<String, dynamic> item) {
+    final zonasArco = Map<String, Map<String, int>>.from(
+      item['zonasArco'] ?? {},
+    );
+
+    final periodos = Map<String, Map<String, int>>.from(item['periodos'] ?? {});
+
+    /// -----------------------
+    /// MEJOR TRAMO
+    /// -----------------------
+    String mejorTramo = 'Sin datos';
+    double mejorEficacia = -1;
+
+    periodos.forEach((key, data) {
+      final atajadas = data['atajadas'] ?? 0;
+      final goles = data['golesRecibidos'] ?? 0;
+      final total = atajadas + goles;
+
+      if (total == 0) return;
+
+      final eficacia = atajadas / total;
+
+      if (eficacia > mejorEficacia) {
+        mejorEficacia = eficacia;
+        mejorTramo = key;
+      }
+    });
+
+    /// -----------------------
+    /// PUNTO DÉBIL (zona más goles)
+    /// -----------------------
+    String peorZona = '-';
+    int maxGoles = -1;
+
+    zonasArco.forEach((zona, data) {
+      final goles = data['golesRecibidos'] ?? 0;
+
+      if (goles > maxGoles) {
+        maxGoles = goles;
+        peorZona = zona;
+      }
+    });
+
+    /// -----------------------
+    /// PUNTO FUERTE (zona más atajadas)
+    /// -----------------------
+    String mejorZona = '-';
+    int maxAtajadas = -1;
+
+    zonasArco.forEach((zona, data) {
+      final atajadas = data['atajadas'] ?? 0;
+
+      if (atajadas > maxAtajadas) {
+        maxAtajadas = atajadas;
+        mejorZona = zona;
+      }
+    });
+
+    /// -----------------------
+    /// PENALES
+    /// -----------------------
+    final penales = item['penales'] ?? 0;
+    final penalesAtajados = item['penalesAtajados'] ?? 0;
+
+    String penalesTxt = 'Sin penales';
+    if (penales > 0) {
+      final ef = (penalesAtajados / penales) * 100;
+      penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
+    }
+
+    return {
+      'mejorTramo': mejorTramo,
+      'peorZona': peorZona,
+      'mejorZona': mejorZona,
+      'penales': penalesTxt,
+    };
+  }
+
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
       0,
@@ -11680,6 +11758,84 @@ class ArquerosPartidoScreen extends StatelessWidget {
     return (item[key] ?? 0.0) as double;
   }
 
+  Map<String, String> _analisisArquero(Map<String, dynamic> item) {
+    final zonasArco = Map<String, Map<String, int>>.from(
+      item['zonasArco'] ?? {},
+    );
+
+    final periodos = Map<String, Map<String, int>>.from(item['periodos'] ?? {});
+
+    /// -----------------------
+    /// MEJOR TRAMO
+    /// -----------------------
+    String mejorTramo = 'Sin datos';
+    double mejorEficacia = -1;
+
+    periodos.forEach((key, data) {
+      final atajadas = data['atajadas'] ?? 0;
+      final goles = data['golesRecibidos'] ?? 0;
+      final total = atajadas + goles;
+
+      if (total == 0) return;
+
+      final eficacia = atajadas / total;
+
+      if (eficacia > mejorEficacia) {
+        mejorEficacia = eficacia;
+        mejorTramo = key;
+      }
+    });
+
+    /// -----------------------
+    /// PUNTO DÉBIL (zona más goles)
+    /// -----------------------
+    String peorZona = '-';
+    int maxGoles = -1;
+
+    zonasArco.forEach((zona, data) {
+      final goles = data['golesRecibidos'] ?? 0;
+
+      if (goles > maxGoles) {
+        maxGoles = goles;
+        peorZona = zona;
+      }
+    });
+
+    /// -----------------------
+    /// PUNTO FUERTE (zona más atajadas)
+    /// -----------------------
+    String mejorZona = '-';
+    int maxAtajadas = -1;
+
+    zonasArco.forEach((zona, data) {
+      final atajadas = data['atajadas'] ?? 0;
+
+      if (atajadas > maxAtajadas) {
+        maxAtajadas = atajadas;
+        mejorZona = zona;
+      }
+    });
+
+    /// -----------------------
+    /// PENALES
+    /// -----------------------
+    final penales = item['penales'] ?? 0;
+    final penalesAtajados = item['penalesAtajados'] ?? 0;
+
+    String penalesTxt = 'Sin penales';
+    if (penales > 0) {
+      final ef = (penalesAtajados / penales) * 100;
+      penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
+    }
+
+    return {
+      'mejorTramo': mejorTramo,
+      'peorZona': peorZona,
+      'mejorZona': mejorZona,
+      'penales': penalesTxt,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -11715,6 +11871,9 @@ class ArquerosPartidoScreen extends StatelessWidget {
                       final nombre = _nombreArquero(item);
                       final eficacia = _double(item, 'eficacia');
 
+                      // 👇 ACA VA
+                      final analisis = _analisisArquero(item);
+
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -11748,7 +11907,9 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
+
                               const SizedBox(height: 12),
+
                               _row(
                                 'Eficacia',
                                 '${eficacia.toStringAsFixed(1)}%',
@@ -11758,17 +11919,15 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                 'Goles recibidos',
                                 '${_int(item, 'golesRecibidos')}',
                               ),
-                              _row('Palos', '${_int(item, 'palos')}'),
-                              _row('Fuera', '${_int(item, 'fuera')}'),
-                              _row('Penales', '${_int(item, 'penales')}'),
-                              _row(
-                                'Penales atajados',
-                                '${_int(item, 'penalesAtajados')}',
-                              ),
-                              _row(
-                                'Contra directa',
-                                '${_int(item, 'contraDirecta')}',
-                              ),
+
+                              const SizedBox(height: 12),
+                              Divider(color: Colors.white.withOpacity(0.08)),
+                              const SizedBox(height: 10),
+
+                              _row('Mejor tramo', analisis['mejorTramo']!),
+                              _row('Zona fuerte', analisis['mejorZona']!),
+                              _row('Zona débil', analisis['peorZona']!),
+                              _row('Penales', analisis['penales']!),
                             ],
                           ),
                         ),
