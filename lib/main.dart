@@ -1132,117 +1132,116 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Menú futuro para importaciones, exportaciones y configuración general.
   /// No pertenece a Equipo porque no es gestión deportiva directa.
   /// ===============================
-void _showGestionAdministrativaMenu() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (_) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Gestión administrativa',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+  void _showGestionAdministrativaMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Gestión administrativa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _buildAdminMenuOption(
-                icon: Icons.upload_file_rounded,
-                text: 'Importar jugadores',
-                onTap: () => Navigator.pop(context),
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.calendar_month_rounded,
-                text: 'Importar fixture',
-                onTap: () => Navigator.pop(context),
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.shield_rounded,
-                text: 'Importar escudos',
-                onTap: () => Navigator.pop(context),
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.storage_rounded,
-                text: 'Exportar datos',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showExportarDatosMenu();
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-void _showExportarDatosMenu() {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (_) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Exportar datos',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: 16),
+                _buildAdminMenuOption(
+                  icon: Icons.upload_file_rounded,
+                  text: 'Importar jugadores',
+                  onTap: () => Navigator.pop(context),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _buildAdminMenuOption(
-                icon: Icons.download_rounded,
-                text: 'Exportar backup',
-                onTap: () async {
-                  Navigator.pop(context);
-
-                  try {
-                    await exportarBackupComoArchivo();
-                  } catch (_) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No se pudo exportar el backup'),
-                      ),
-                    );
-                  }
-                },
-              ),
-              _buildAdminMenuOption(
-                icon: Icons.upload_rounded,
-                text: 'Importar backup',
-                onTap: () async {
-                  Navigator.pop(context);
-                  await importarBackupDesdeArchivo(context);
-                },
-              ),
-            ],
+                _buildAdminMenuOption(
+                  icon: Icons.calendar_month_rounded,
+                  text: 'Importar fixture',
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildAdminMenuOption(
+                  icon: Icons.shield_rounded,
+                  text: 'Importar escudos',
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildAdminMenuOption(
+                  icon: Icons.storage_rounded,
+                  text: 'Exportar datos',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showExportarDatosMenu();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
+  void _showExportarDatosMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Exportar datos',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildAdminMenuOption(
+                  icon: Icons.download_rounded,
+                  text: 'Exportar backup',
+                  onTap: () async {
+                    Navigator.pop(context);
+
+                    try {
+                      await exportarBackupComoArchivo();
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('No se pudo exportar el backup'),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                _buildAdminMenuOption(
+                  icon: Icons.upload_rounded,
+                  text: 'Importar backup',
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await importarBackupDesdeArchivo(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   ///===============================
   /// Opción visual del menú administrativo.
@@ -3599,196 +3598,211 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   /// al arquero propio.
   /// ===============================
   List<Map<String, dynamic>> _estadisticasPorArquero() {
-  final Map<String, Map<String, dynamic>> acumulado = {};
+    final Map<String, Map<String, dynamic>> acumulado = {};
 
-  String keyPeriodo(String estado) {
-    switch (estado) {
-      case 'primer_tiempo':
-        return '1T';
-      case 'segundo_tiempo':
-        return '2T';
-      case 'primer_tiempo_alargue':
-        return '1TA';
-      case 'segundo_tiempo_alargue':
-        return '2TA';
-      case 'penales':
-        return 'Penales';
-      default:
-        return 'Otro';
-    }
-  }
-
-  for (final e in _eventos) {
-    final map = Map<String, dynamic>.from(e as Map);
-
-    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
-    final resultado = (map['resultado'] ?? '').toString();
-    final modo = (map['modo'] ?? map['phase'] ?? '').toString();
-    final estado = (map['estadoPartido'] ?? '').toString();
-    final zonaArco = (map['zonaArco'] ?? '').toString();
-    final zonaTiro = (map['zonaTiro'] ?? '').toString();
-    final actorId = (map['actorPrincipalId'] ?? '').toString();
-    final origen = (map['origenJugada'] ?? '').toString();
-
-    final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
-    if (!esTiro) continue;
-
-    final esDefensivoArquero = modo == 'defensa';
-    final esContraDirectaArquero =
-        modo == 'ataque' &&
-        origen == 'contra' &&
-        zonaTiro == 'Contra directa arquero' &&
-        actorId.isNotEmpty;
-
-    if (!esDefensivoArquero && !esContraDirectaArquero) continue;
-
-    String arquero = (map['arquero'] ?? '').toString().trim();
-    if (esContraDirectaArquero) {
-      arquero = actorId;
+    String keyPeriodo(String estado) {
+      switch (estado) {
+        case 'primer_tiempo':
+          return '1T';
+        case 'segundo_tiempo':
+          return '2T';
+        case 'primer_tiempo_alargue':
+          return '1TA';
+        case 'segundo_tiempo_alargue':
+          return '2TA';
+        case 'penales':
+          return 'Penales';
+        default:
+          return 'Otro';
+      }
     }
 
-    if (arquero.isEmpty || arquero == 'null') {
-      arquero = 'Sin arquero';
-    }
+    for (final e in _eventos) {
+      final map = Map<String, dynamic>.from(e as Map);
 
-    acumulado.putIfAbsent(arquero, () {
-      return {
-        'arquero': arquero,
-        'atajadas': 0,
-        'golesRecibidos': 0,
-        'palos': 0,
-        'fuera': 0,
-        'tirosAlArco': 0,
-        'totalEventos': 0,
-        'penales': 0,
-        'penalesAtajados': 0,
-        'contraDirecta': 0,
-        'periodos': <String, Map<String, int>>{},
-        'zonasArco': <String, Map<String, int>>{},
-        'zonasTiro': <String, Map<String, int>>{},
-      };
-    });
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      final resultado = (map['resultado'] ?? '').toString();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString();
+      final estado = (map['estadoPartido'] ?? '').toString();
+      final zonaArco = (map['zonaArco'] ?? '').toString();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString();
+      final actorId = (map['actorPrincipalId'] ?? '').toString();
+      final origen = (map['origenJugada'] ?? '').toString();
 
-    final item = acumulado[arquero]!;
+      final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+      if (!esTiro) continue;
 
-    item['totalEventos'] = (item['totalEventos'] as int) + 1;
+      final esDefensivoArquero = modo == 'defensa';
+      final esContraDirectaArquero =
+          modo == 'ataque' &&
+          origen == 'contra' &&
+          zonaTiro == 'Contra directa arquero' &&
+          actorId.isNotEmpty;
 
-    if (resultado == 'gol') {
-      item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
-      item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
-    }
+      if (!esDefensivoArquero && !esContraDirectaArquero) continue;
 
-    if (resultado == 'atajado') {
-      item['atajadas'] = (item['atajadas'] as int) + 1;
-      item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
-    }
+      String arquero = (map['arquero'] ?? '').toString().trim();
+      if (esContraDirectaArquero) {
+        arquero = actorId;
+      }
 
-    if (resultado == 'palo') {
-      item['palos'] = (item['palos'] as int) + 1;
-    }
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
 
-    if (resultado == 'fuera' || resultado == 'desvio') {
-      item['fuera'] = (item['fuera'] as int) + 1;
-    }
+      acumulado.putIfAbsent(arquero, () {
+        return {
+          'arquero': arquero,
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+          'tirosAlArco': 0,
+          'totalEventos': 0,
+          'penales': 0,
+          'penalesAtajados': 0,
+          'contraDirecta': 0,
+          'periodos': <String, Map<String, int>>{},
+          'zonasArco': <String, Map<String, int>>{},
+          'zonasTiro': <String, Map<String, int>>{},
+        };
+      });
 
-    if (tipo == 'penal' || tipo == 'penal_tanda') {
-      item['penales'] = (item['penales'] as int) + 1;
+      final item = acumulado[arquero]!;
+
+      item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      if (resultado == 'gol') {
+        item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
       if (resultado == 'atajado') {
-        item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        item['atajadas'] = (item['atajadas'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        item['palos'] = (item['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' || resultado == 'desvio') {
+        item['fuera'] = (item['fuera'] as int) + 1;
+      }
+
+      if (tipo == 'penal' || tipo == 'penal_tanda') {
+        item['penales'] = (item['penales'] as int) + 1;
+        if (resultado == 'atajado') {
+          item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      final periodos = item['periodos'] as Map<String, Map<String, int>>;
+      final periodoKey = keyPeriodo(estado);
+
+      periodos.putIfAbsent(periodoKey, () {
+        return {
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+          'penales': 0,
+          'penalesAtajados': 0,
+          'contraDirecta': 0,
+        };
+      });
+
+      if (resultado == 'atajado') {
+        periodos[periodoKey]!['atajadas'] =
+            periodos[periodoKey]!['atajadas']! + 1;
+      }
+
+      if (resultado == 'gol') {
+        periodos[periodoKey]!['golesRecibidos'] =
+            periodos[periodoKey]!['golesRecibidos']! + 1;
+      }
+
+      if (resultado == 'palo') {
+        periodos[periodoKey]!['palos'] = periodos[periodoKey]!['palos']! + 1;
+      }
+
+      if (resultado == 'fuera' || resultado == 'desvio') {
+        periodos[periodoKey]!['fuera'] = periodos[periodoKey]!['fuera']! + 1;
+      }
+
+      /// ✅ PENALES POR TIEMPO
+      if (tipo == 'penal' || tipo == 'penal_tanda') {
+        periodos[periodoKey]!['penales'] =
+            periodos[periodoKey]!['penales']! + 1;
+
+        if (resultado == 'atajado') {
+          periodos[periodoKey]!['penalesAtajados'] =
+              periodos[periodoKey]!['penalesAtajados']! + 1;
+        }
+      }
+
+      /// ✅ CONTRA DIRECTA POR TIEMPO (ACÁ VA, NO ARRIBA)
+      if (esContraDirectaArquero) {
+        periodos[periodoKey]!['contraDirecta'] =
+            periodos[periodoKey]!['contraDirecta']! + 1;
+      }
+
+      if (zonaArco.isNotEmpty && zonaArco != 'null') {
+        final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+        zonasArco.putIfAbsent(zonaArco, () {
+          return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
+        });
+
+        if (resultado == 'atajado')
+          zonasArco[zonaArco]!['atajadas'] =
+              zonasArco[zonaArco]!['atajadas']! + 1;
+        if (resultado == 'gol')
+          zonasArco[zonaArco]!['golesRecibidos'] =
+              zonasArco[zonaArco]!['golesRecibidos']! + 1;
+        if (resultado == 'palo')
+          zonasArco[zonaArco]!['palos'] = zonasArco[zonaArco]!['palos']! + 1;
+        if (resultado == 'fuera' || resultado == 'desvio') {
+          zonasArco[zonaArco]!['fuera'] = zonasArco[zonaArco]!['fuera']! + 1;
+        }
+      }
+
+      if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
+        final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+        zonasTiro.putIfAbsent(zonaTiro, () {
+          return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
+        });
+
+        if (resultado == 'atajado')
+          zonasTiro[zonaTiro]!['atajadas'] =
+              zonasTiro[zonaTiro]!['atajadas']! + 1;
+        if (resultado == 'gol')
+          zonasTiro[zonaTiro]!['golesRecibidos'] =
+              zonasTiro[zonaTiro]!['golesRecibidos']! + 1;
+        if (resultado == 'palo')
+          zonasTiro[zonaTiro]!['palos'] = zonasTiro[zonaTiro]!['palos']! + 1;
+        if (resultado == 'fuera' || resultado == 'desvio') {
+          zonasTiro[zonaTiro]!['fuera'] = zonasTiro[zonaTiro]!['fuera']! + 1;
+        }
       }
     }
 
-    if (esContraDirectaArquero) {
-      item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
-    }
+    final lista = acumulado.values.map((item) {
+      final atajadas = item['atajadas'] as int;
+      final golesRecibidos = item['golesRecibidos'] as int;
+      final total = atajadas + golesRecibidos;
+      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
 
-    final periodos = item['periodos'] as Map<String, Map<String, int>>;
-    final periodoKey = keyPeriodo(estado);
+      return {...item, 'eficacia': eficacia};
+    }).toList();
 
-    periodos.putIfAbsent(periodoKey, () {
-      return {
-        'atajadas': 0,
-        'golesRecibidos': 0,
-        'palos': 0,
-        'fuera': 0,
-      };
+    lista.sort((a, b) {
+      final nombreA = (a['arquero'] ?? '').toString();
+      final nombreB = (b['arquero'] ?? '').toString();
+      return nombreA.compareTo(nombreB);
     });
 
-    if (resultado == 'atajado') periodos[periodoKey]!['atajadas'] =
-        periodos[periodoKey]!['atajadas']! + 1;
-    if (resultado == 'gol') periodos[periodoKey]!['golesRecibidos'] =
-        periodos[periodoKey]!['golesRecibidos']! + 1;
-    if (resultado == 'palo') periodos[periodoKey]!['palos'] =
-        periodos[periodoKey]!['palos']! + 1;
-    if (resultado == 'fuera' || resultado == 'desvio') {
-      periodos[periodoKey]!['fuera'] = periodos[periodoKey]!['fuera']! + 1;
-    }
-
-    if (zonaArco.isNotEmpty && zonaArco != 'null') {
-      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
-      zonasArco.putIfAbsent(zonaArco, () {
-        return {
-          'atajadas': 0,
-          'golesRecibidos': 0,
-          'palos': 0,
-          'fuera': 0,
-        };
-      });
-
-      if (resultado == 'atajado') zonasArco[zonaArco]!['atajadas'] =
-          zonasArco[zonaArco]!['atajadas']! + 1;
-      if (resultado == 'gol') zonasArco[zonaArco]!['golesRecibidos'] =
-          zonasArco[zonaArco]!['golesRecibidos']! + 1;
-      if (resultado == 'palo') zonasArco[zonaArco]!['palos'] =
-          zonasArco[zonaArco]!['palos']! + 1;
-      if (resultado == 'fuera' || resultado == 'desvio') {
-        zonasArco[zonaArco]!['fuera'] = zonasArco[zonaArco]!['fuera']! + 1;
-      }
-    }
-
-    if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
-      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
-      zonasTiro.putIfAbsent(zonaTiro, () {
-        return {
-          'atajadas': 0,
-          'golesRecibidos': 0,
-          'palos': 0,
-          'fuera': 0,
-        };
-      });
-
-      if (resultado == 'atajado') zonasTiro[zonaTiro]!['atajadas'] =
-          zonasTiro[zonaTiro]!['atajadas']! + 1;
-      if (resultado == 'gol') zonasTiro[zonaTiro]!['golesRecibidos'] =
-          zonasTiro[zonaTiro]!['golesRecibidos']! + 1;
-      if (resultado == 'palo') zonasTiro[zonaTiro]!['palos'] =
-          zonasTiro[zonaTiro]!['palos']! + 1;
-      if (resultado == 'fuera' || resultado == 'desvio') {
-        zonasTiro[zonaTiro]!['fuera'] = zonasTiro[zonaTiro]!['fuera']! + 1;
-      }
-    }
+    return lista;
   }
-
-  final lista = acumulado.values.map((item) {
-    final atajadas = item['atajadas'] as int;
-    final golesRecibidos = item['golesRecibidos'] as int;
-    final total = atajadas + golesRecibidos;
-    final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
-
-    return {
-      ...item,
-      'eficacia': eficacia,
-    };
-  }).toList();
-
-  lista.sort((a, b) {
-    final nombreA = (a['arquero'] ?? '').toString();
-    final nombreB = (b['arquero'] ?? '').toString();
-    return nombreA.compareTo(nombreB);
-  });
-
-  return lista;
-}
 
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
@@ -4078,93 +4092,48 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildSectionCard(
-                    title: 'Arquero',
-                    child: Column(
-                      children: [
-                        _buildInfoRow(
-                          'Eficacia',
-                          '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
-                        ),
-                        _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
-                        _buildInfoRow(
-                          'Goles recibidos',
-                          '$_golesRecibidosDesdeArqueros',
-                        ),
-                        _buildInfoRow('Penales en contra', '$_penalesV2'),
-                      ],
-                    ),
-                  ),
-                  _buildSectionCard(
-                    title: 'Estadísticas por arquero',
-                    child: estadisticasPorArquero.isEmpty
-                        ? const Text(
-                            'No hay eventos suficientes para separar estadísticas por arquero.',
-                            style: TextStyle(
-                              color: Color(0xFFAAB4C3),
-                              fontSize: 13,
-                            ),
-                          )
-                        : Column(
-                            children: estadisticasPorArquero.map((item) {
-                              final arquero = (item['arquero'] ?? 'Sin arquero')
-                                  .toString();
-                              final atajadas = item['atajadas'] as int;
-                              final golesRecibidos =
-                                  item['golesRecibidos'] as int;
-                              final eficacia = item['eficacia'] as double;
 
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetalleArqueroPartidoScreen(
-                                        stats: item,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  width: double.infinity,
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF182338).withOpacity(0.75),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                    Text(
-                                      arquero == 'Sin arquero'
-                                          ? 'Sin arquero'
-                                          : nombreArqueroDesdeDorsal(
-                                              categoria: partidoV2.categoria,
-                                              dorsal: arquero,
-                                            ),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildInfoRow('Eficacia', '${eficacia.toStringAsFixed(1)}%',),
-                                    _buildInfoRow('Atajadas', '$atajadas'),
-                                    _buildInfoRow('Goles recibidos', '$golesRecibidos',),
-                                    _buildInfoRow('Palos', '${item['palos']}'),
-                                    _buildInfoRow('Fuera', '${item['fuera']}'),
-                                    _buildInfoRow('Penales', '${item['penales']}'),
-                                    _buildInfoRow('Penales atajados', '${item['penalesAtajados']}'),
-                                    _buildInfoRow('Contra directa', '${item['contraDirecta']}'),
-                                  ],
-                                ),
-                               ),
-                              );
-                            }).toList(),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArquerosPartidoScreen(
+                            estadisticasPorArquero: estadisticasPorArquero,
+                            categoria: partidoV2.categoria,
                           ),
+                        ),
+                      );
+                    },
+                    child: _buildSectionCard(
+                      title: 'Arquero',
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                            'Eficacia global',
+                            '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
+                          ),
+                          _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
+                          _buildInfoRow(
+                            'Goles recibidos',
+                            '$_golesRecibidosDesdeArqueros',
+                          ),
+                          _buildInfoRow('Penales en contra', '$_penalesV2'),
+                          const SizedBox(height: 8),
+                          const Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              'Ver detalle por arquero ›',
+                              style: TextStyle(
+                                color: Color(0xFFD7C2FF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _buildSectionCard(
@@ -4561,75 +4530,46 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 }
 
-
 /// ===============================
 /// DETALLE ARQUERO PARTIDO
 /// Muestra el detalle profundo de un arquero
 /// dentro de un partido finalizado.
 /// ===============================
 
-
 class DetalleArqueroPartidoScreen extends StatelessWidget {
   final Map<String, dynamic> stats;
 
-  const DetalleArqueroPartidoScreen({
-    super.key,
-    required this.stats,
-  });
+  const DetalleArqueroPartidoScreen({super.key, required this.stats});
 
-  String get _nombreArquero => (stats['arqueroNombre'] ?? stats['arquero'] ?? 'Arquero').toString();
+  String get _nombreArquero {
+    final nombre = (stats['arqueroNombre'] ?? '').toString().trim();
+    if (nombre.isNotEmpty) return nombre;
+    return (stats['arquero'] ?? 'Arquero').toString();
+  }
 
   int _valor(String key) => (stats[key] ?? 0) as int;
 
   double get _eficacia => (stats['eficacia'] ?? 0.0) as double;
 
-  Map<String, Map<String, int>> get _periodos {
-    final raw = stats['periodos'];
-    if (raw is Map<String, Map<String, int>>) return raw;
+  Map<String, Map<String, int>> _mapStats(String key) {
+    final raw = stats[key];
+
+    if (raw is Map<String, Map<String, int>>) {
+      return raw;
+    }
 
     if (raw is Map) {
-      return raw.map((key, value) {
-        return MapEntry(
-          key.toString(),
-          Map<String, int>.from(value as Map),
-        );
+      return raw.map((k, v) {
+        return MapEntry(k.toString(), Map<String, int>.from(v as Map));
       });
     }
 
     return {};
   }
 
-  Map<String, Map<String, int>> get _zonasArco {
-    final raw = stats['zonasArco'];
-    if (raw is Map<String, Map<String, int>>) return raw;
-
-    if (raw is Map) {
-      return raw.map((key, value) {
-        return MapEntry(
-          key.toString(),
-          Map<String, int>.from(value as Map),
-        );
-      });
-    }
-
-    return {};
-  }
-
-  Map<String, Map<String, int>> get _zonasTiro {
-    final raw = stats['zonasTiro'];
-    if (raw is Map<String, Map<String, int>>) return raw;
-
-    if (raw is Map) {
-      return raw.map((key, value) {
-        return MapEntry(
-          key.toString(),
-          Map<String, int>.from(value as Map),
-        );
-      });
-    }
-
-    return {};
-  }
+  Map<String, Map<String, int>> get _periodos => _mapStats('periodos');
+  Map<String, Map<String, int>> get _zonasArco => _mapStats('zonasArco');
+  Map<String, Map<String, int>> get _zonasTiro => _mapStats('zonasTiro');
 
   @override
   Widget build(BuildContext context) {
@@ -4682,6 +4622,12 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   }
 
   Widget _buildGlobalTab() {
+    final penales = _valor('penales');
+    final penalesAtajados = _valor('penalesAtajados');
+    final eficaciaPenales = penales == 0
+        ? 0.0
+        : (penalesAtajados / penales) * 100;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       children: [
@@ -4691,11 +4637,12 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
             _row('Eficacia', '${_eficacia.toStringAsFixed(1)}%'),
             _row('Atajadas', '${_valor('atajadas')}'),
             _row('Goles recibidos', '${_valor('golesRecibidos')}'),
+            _row('Eficacia penales', '${eficaciaPenales.toStringAsFixed(1)}%'),
+            _row('Penales', '$penales'),
+            _row('Penales atajados', '$penalesAtajados'),
+            _row('Contra directa', '${_valor('contraDirecta')}'),
             _row('Palos', '${_valor('palos')}'),
             _row('Fuera', '${_valor('fuera')}'),
-            _row('Penales', '${_valor('penales')}'),
-            _row('Penales atajados', '${_valor('penalesAtajados')}'),
-            _row('Contra directa', '${_valor('contraDirecta')}'),
           ],
         ),
       ],
@@ -4708,6 +4655,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     }
 
     final orden = ['1T', '2T', '1TA', '2TA', 'Penales', 'Otro'];
+
     final keys = [
       ...orden.where(_periodos.containsKey),
       ..._periodos.keys.where((k) => !orden.contains(k)),
@@ -4717,13 +4665,33 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       children: keys.map((periodo) {
         final data = _periodos[periodo]!;
+
+        final atajadas = data['atajadas'] ?? 0;
+        final goles = data['golesRecibidos'] ?? 0;
+        final total = atajadas + goles;
+        final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+        final penales = data['penales'] ?? 0;
+        final penalesAtajados = data['penalesAtajados'] ?? 0;
+        final eficaciaPenales = penales == 0
+            ? 0.0
+            : (penalesAtajados / penales) * 100;
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _buildCard(
             title: periodo,
             children: [
-              _row('Atajadas', '${data['atajadas'] ?? 0}'),
-              _row('Goles recibidos', '${data['golesRecibidos'] ?? 0}'),
+              _row('Eficacia', '${eficacia.toStringAsFixed(1)}%'),
+              _row('Atajadas', '$atajadas'),
+              _row('Goles recibidos', '$goles'),
+              _row(
+                'Eficacia penales',
+                '${eficaciaPenales.toStringAsFixed(1)}%',
+              ),
+              _row('Penales', '$penales'),
+              _row('Penales atajados', '$penalesAtajados'),
+              _row('Contra directa', '${data['contraDirecta'] ?? 0}'),
               _row('Palos', '${data['palos'] ?? 0}'),
               _row('Fuera', '${data['fuera'] ?? 0}'),
             ],
@@ -4747,13 +4715,20 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       children: keys.map((zona) {
         final item = data[zona]!;
+
+        final atajadas = item['atajadas'] ?? 0;
+        final goles = item['golesRecibidos'] ?? 0;
+        final total = atajadas + goles;
+        final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _buildCard(
             title: '$titlePrefix · $zona',
             children: [
-              _row('Atajadas', '${item['atajadas'] ?? 0}'),
-              _row('Goles recibidos', '${item['golesRecibidos'] ?? 0}'),
+              _row('Eficacia', '${eficacia.toStringAsFixed(1)}%'),
+              _row('Atajadas', '$atajadas'),
+              _row('Goles recibidos', '$goles'),
               _row('Palos', '${item['palos'] ?? 0}'),
               _row('Fuera', '${item['fuera'] ?? 0}'),
             ],
@@ -4763,10 +4738,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildCard({required String title, required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -4801,10 +4773,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
             ),
           ),
           Text(
@@ -4824,16 +4793,11 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     return Center(
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFFAAB4C3),
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
       ),
     );
   }
 }
-
-
 
 /// ===============================
 /// ===============================
@@ -5625,31 +5589,31 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   }
 
   Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
-  final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
 
-  if (squadMap != null) return;
+    if (squadMap != null) return;
 
-  final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
 
-  await RosterStorage.seedCategoryIfEmpty(
-    categoria: categoria,
-    temporada: '2026',
-  );
+    await RosterStorage.seedCategoryIfEmpty(
+      categoria: categoria,
+      temporada: '2026',
+    );
 
-  final roster = await RosterStorage.readRosterForCategory(
-    categoria: categoria,
-    temporada: '2026',
-    includeStaff: false,
-  );
+    final roster = await RosterStorage.readRosterForCategory(
+      categoria: categoria,
+      temporada: '2026',
+      includeStaff: false,
+    );
 
-  final arqueros = roster.where((p) => p.esArquero).toList();
+    final arqueros = roster.where((p) => p.esArquero).toList();
 
-  widget.partido['matchSquad'] = MatchSquadConfig(
-    convocadosIds: arqueros.map((p) => p.playerId).toSet(),
-    arquerosIds: arqueros.map((p) => p.playerId).toSet(),
-  ).toMap();
-}
-  
+    widget.partido['matchSquad'] = MatchSquadConfig(
+      convocadosIds: arqueros.map((p) => p.playerId).toSet(),
+      arquerosIds: arqueros.map((p) => p.playerId).toSet(),
+    ).toMap();
+  }
+
   Future<void> _irAPartidoEnVivo() async {
     await _asegurarConvocatoriaDefaultSoloArqueros();
     final resultado = await Navigator.push(
@@ -5851,8 +5815,8 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
     final bool esPartidoRealActual = widget.partido['esPartidoReal'] == true;
     final dynamic matchSquadActual = widget.partido['matchSquad'];
-    final dynamic matchRosterSnapshotActual = widget.partido['matchRosterSnapshot'];
-    
+    final dynamic matchRosterSnapshotActual =
+        widget.partido['matchRosterSnapshot'];
 
     widget.partido
       ..clear()
@@ -6655,22 +6619,22 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   PlayerProfile? _getCurrentGoalkeeperProfile() {
-  final arqueros = _availableGoalkeepersForMatch();
+    final arqueros = _availableGoalkeepersForMatch();
 
-  if (arqueros.isEmpty) return null;
+    if (arqueros.isEmpty) return null;
 
-  if (currentGoalkeeperNumber == null) {
+    if (currentGoalkeeperNumber == null) {
+      return arqueros.first;
+    }
+
+    for (final gk in arqueros) {
+      if (gk.numeroPreferido == currentGoalkeeperNumber) {
+        return gk;
+      }
+    }
+
     return arqueros.first;
   }
-
-  for (final gk in arqueros) {
-    if (gk.numeroPreferido == currentGoalkeeperNumber) {
-      return gk;
-    }
-  }
-
-  return arqueros.first;
-}
 
   String get _currentGoalkeeperActorName {
     final gk = _getCurrentGoalkeeperProfile();
@@ -8494,8 +8458,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   resultado: 'gol',
                   actorPrincipal: actor,
                   actorPrincipalId: modoAntesDelEvento == 'ataque'
-                        ? jugadorSeleccionadoId
-                        : _getCurrentGoalkeeperProfile()?.playerId,
+                      ? jugadorSeleccionadoId
+                      : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: false,
@@ -8531,8 +8495,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   resultado: 'atajado',
                   actorPrincipal: actor,
                   actorPrincipalId: modoAntesDelEvento == 'ataque'
-                        ? jugadorSeleccionadoId
-                        : _getCurrentGoalkeeperProfile()?.playerId,
+                      ? jugadorSeleccionadoId
+                      : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: true,
@@ -8543,7 +8507,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                 _clearSelection(keepContra: true);
                 Navigator.pop(context);
               }),
-                _floatingOption('Palo', () async {
+              _floatingOption('Palo', () async {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentModo;
                 final String actor = await _actorParaTiro(modoAntesDelEvento);
@@ -8567,8 +8531,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   resultado: 'palo',
                   actorPrincipal: actor,
                   actorPrincipalId: modoAntesDelEvento == 'ataque'
-                        ? jugadorSeleccionadoId
-                        : _getCurrentGoalkeeperProfile()?.playerId,
+                      ? jugadorSeleccionadoId
+                      : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: true,
@@ -8602,8 +8566,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   resultado: 'fuera',
                   actorPrincipal: actor,
                   actorPrincipalId: modoAntesDelEvento == 'ataque'
-                        ? jugadorSeleccionadoId
-                        : _getCurrentGoalkeeperProfile()?.playerId,
+                      ? jugadorSeleccionadoId
+                      : _getCurrentGoalkeeperProfile()?.playerId,
                   zonaArcoValor: currentZonaArco,
                   subtipo: 'penal_7m',
                   mantieneContexto: false,
@@ -9130,18 +9094,18 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   prevState: prevState,
                 );
               }),
-                _floatingOption('Palo', () {
-                  final Map<String, dynamic> prevState = _captureStateSnapshot();
-                  final String modoAntesDelEvento = currentMode;
-                  Navigator.pop(context);
+              _floatingOption('Palo', () {
+                final Map<String, dynamic> prevState = _captureStateSnapshot();
+                final String modoAntesDelEvento = currentMode;
+                Navigator.pop(context);
 
-                 _prepararORegistrarTiroNormal(
-                   resultado: 'palo',
-                   modoAntesDelEvento: modoAntesDelEvento,
-                   mantieneContexto: true,
-                   prevState: prevState,
-                  );
-               }),
+                _prepararORegistrarTiroNormal(
+                  resultado: 'palo',
+                  modoAntesDelEvento: modoAntesDelEvento,
+                  mantieneContexto: true,
+                  prevState: prevState,
+                );
+              }),
               _floatingOption('Fuera', () {
                 final Map<String, dynamic> prevState = _captureStateSnapshot();
                 final String modoAntesDelEvento = currentMode;
@@ -9266,11 +9230,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       resultado: resultado,
       actorPrincipal: actor,
       actorPrincipalId: modoAntesDelEvento == 'ataque'
-    ? (_esContraArqueroDirecta
-        ? _getCurrentGoalkeeperProfile()?.playerId
-        : jugadorSeleccionadoId)
-    : _getCurrentGoalkeeperProfile()?.playerId,
-      zonaTiroValor: zonaTiroEvento ?? (_esContraArqueroDirecta ? 'Contra directa arquero' : null),
+          ? (_esContraArqueroDirecta
+                ? _getCurrentGoalkeeperProfile()?.playerId
+                : jugadorSeleccionadoId)
+          : _getCurrentGoalkeeperProfile()?.playerId,
+      zonaTiroValor:
+          zonaTiroEvento ??
+          (_esContraArqueroDirecta ? 'Contra directa arquero' : null),
       zonaArcoValor: zonaArcoEvento,
       mantieneContexto: mantieneContexto,
       prevState: prevState,
@@ -9278,7 +9244,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
 
     _clearSelection(
-      keepContra: resultado == 'atajado' ||
+      keepContra:
+          resultado == 'atajado' ||
           resultado == 'palo' ||
           modoAntesDelEvento == 'defensa',
     );
@@ -10499,7 +10466,8 @@ class GameEvent {
 
   bool get isGoal => resultado == 'gol';
   bool get isSave => resultado == 'atajado';
-  bool get isMiss => resultado == 'fuera' || resultado == 'desvio' || resultado == 'palo';
+  bool get isMiss =>
+      resultado == 'fuera' || resultado == 'desvio' || resultado == 'palo';
 }
 
 GameEventKind _gameEventKindFromString(String tipo, Map<String, dynamic> map) {
@@ -11673,6 +11641,172 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 }
 
 /// ===============================
+/// ARQUEROS PARTIDO SCREEN
+/// Lista global por arquero dentro de un partido.
+/// Desde acá se entra al detalle profundo.
+/// ===============================
+class ArquerosPartidoScreen extends StatelessWidget {
+  final List<Map<String, dynamic>> estadisticasPorArquero;
+  final String categoria;
+
+  const ArquerosPartidoScreen({
+    super.key,
+    required this.estadisticasPorArquero,
+    required this.categoria,
+  });
+
+  String _nombreArquero(Map<String, dynamic> item) {
+    final arquero = (item['arquero'] ?? 'Sin arquero').toString();
+
+    if (arquero == 'Sin arquero') return 'Sin arquero';
+
+    /// Si viene como dorsal.
+    if (RegExp(r'^\d+$').hasMatch(arquero)) {
+      return nombreArqueroDesdeDorsal(categoria: categoria, dorsal: arquero);
+    }
+
+    /// Si viene como playerId o texto nuevo.
+    final nombre = (item['arqueroNombre'] ?? '').toString();
+    if (nombre.trim().isNotEmpty) return nombre;
+
+    return arquero;
+  }
+
+  int _int(Map<String, dynamic> item, String key) {
+    return (item[key] ?? 0) as int;
+  }
+
+  double _double(Map<String, dynamic> item, String key) {
+    return (item[key] ?? 0.0) as double;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Arqueros del partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: estadisticasPorArquero.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No hay estadísticas por arquero.',
+                      style: TextStyle(color: Color(0xFFAAB4C3)),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    children: estadisticasPorArquero.map((item) {
+                      final nombre = _nombreArquero(item);
+                      final eficacia = _double(item, 'eficacia');
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetalleArqueroPartidoScreen(
+                                stats: {...item, 'arqueroNombre': nombre},
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF182338).withOpacity(0.78),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.04),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nombre,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _row(
+                                'Eficacia',
+                                '${eficacia.toStringAsFixed(1)}%',
+                              ),
+                              _row('Atajadas', '${_int(item, 'atajadas')}'),
+                              _row(
+                                'Goles recibidos',
+                                '${_int(item, 'golesRecibidos')}',
+                              ),
+                              _row('Palos', '${_int(item, 'palos')}'),
+                              _row('Fuera', '${_int(item, 'fuera')}'),
+                              _row('Penales', '${_int(item, 'penales')}'),
+                              _row(
+                                'Penales atajados',
+                                '${_int(item, 'penalesAtajados')}',
+                              ),
+                              _row(
+                                'Contra directa',
+                                '${_int(item, 'contraDirecta')}',
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ===============================
 /// JUGADORES CAMPO 2.1
 /// Lee jugadores de campo desde el plantel persistente.
 /// Si no hay datos guardados, inicializa desde el hardcode actual.
@@ -12588,10 +12722,7 @@ Future<void> exportarBackupComoArchivo() async {
 
   await file.writeAsString(backup);
 
-  await Share.shareXFiles(
-    [XFile(file.path)],
-    text: 'Backup Handball SGS',
-  );
+  await Share.shareXFiles([XFile(file.path)], text: 'Backup Handball SGS');
 }
 
 /// ===============================
@@ -12607,9 +12738,7 @@ Future<void> importarBackupDesdeArchivo(BuildContext context) async {
       mimeTypes: ['application/json'],
     );
 
-    final XFile? file = await openFile(
-      acceptedTypeGroups: [typeGroup],
-    );
+    final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
 
     if (file == null) return;
 
@@ -12620,23 +12749,16 @@ Future<void> importarBackupDesdeArchivo(BuildContext context) async {
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Backup importado correctamente'),
-      ),
+      const SnackBar(content: Text('Backup importado correctamente')),
     );
   } catch (e) {
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error al importar backup'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Error al importar backup')));
   }
 }
-
-
-
 
 String nombreArqueroDesdeDorsal({
   required String categoria,
@@ -12705,8 +12827,4 @@ String nombreJugadorDesdeDorsal({
   } catch (_) {
     return 'Jugador $dorsal';
   }
-
-
-
-  
 }
