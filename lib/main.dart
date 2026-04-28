@@ -3598,290 +3598,255 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   /// al arquero propio.
   /// ===============================
   List<Map<String, dynamic>> _estadisticasPorArquero() {
-    final Map<String, Map<String, dynamic>> acumulado = {};
+  final Map<String, Map<String, dynamic>> acumulado = {};
 
-    String keyPeriodo(String estado) {
-      switch (estado) {
-        case 'primer_tiempo':
-          return '1T';
-        case 'segundo_tiempo':
-          return '2T';
-        case 'primer_tiempo_alargue':
-          return '1TA';
-        case 'segundo_tiempo_alargue':
-          return '2TA';
-        case 'penales':
-          return 'Penales';
-        default:
-          return 'Otro';
-      }
+  String keyPeriodo(String estado) {
+    switch (estado) {
+      case 'primer_tiempo':
+        return '1T';
+      case 'segundo_tiempo':
+        return '2T';
+      case 'primer_tiempo_alargue':
+        return '1TA';
+      case 'segundo_tiempo_alargue':
+        return '2TA';
+      case 'penales':
+        return 'Penales';
+      default:
+        return 'Otro';
     }
-
-    for (final e in _eventos) {
-      final map = Map<String, dynamic>.from(e as Map);
-
-      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
-      final resultado = (map['resultado'] ?? '').toString();
-      final modo = (map['modo'] ?? map['phase'] ?? '').toString();
-      final estado = (map['estadoPartido'] ?? '').toString();
-      final zonaArco = (map['zonaArco'] ?? '').toString();
-      final zonaTiro = (map['zonaTiro'] ?? '').toString();
-      final actorId = (map['actorPrincipalId'] ?? '').toString();
-      final origen = (map['origenJugada'] ?? '').toString();
-
-      final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
-      if (!esTiro) continue;
-
-      final esDefensivoArquero = modo == 'defensa';
-      final esContraDirectaArquero =
-          modo == 'ataque' &&
-          origen == 'contra' &&
-          zonaTiro == 'Contra directa arquero' &&
-          actorId.isNotEmpty;
-
-      if (!esDefensivoArquero && !esContraDirectaArquero) continue;
-
-      String arquero = (map['arquero'] ?? '').toString().trim();
-      if (esContraDirectaArquero) {
-        arquero = actorId;
-      }
-
-      if (arquero.isEmpty || arquero == 'null') {
-        arquero = 'Sin arquero';
-      }
-
-      acumulado.putIfAbsent(arquero, () {
-        return {
-          'arquero': arquero,
-          'atajadas': 0,
-          'golesRecibidos': 0,
-          'palos': 0,
-          'fuera': 0,
-          'tirosAlArco': 0,
-          'totalEventos': 0,
-          'penales': 0,
-          'penalesAtajados': 0,
-          'contraDirecta': 0,
-          'periodos': <String, Map<String, int>>{},
-          'zonasArco': <String, Map<String, int>>{},
-          'zonasTiro': <String, Map<String, int>>{},
-        };
-      });
-
-      final item = acumulado[arquero]!;
-
-      item['totalEventos'] = (item['totalEventos'] as int) + 1;
-
-      if (resultado == 'gol') {
-        item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
-        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
-      }
-
-      if (resultado == 'atajado') {
-        item['atajadas'] = (item['atajadas'] as int) + 1;
-        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
-      }
-
-      if (resultado == 'palo') {
-        item['palos'] = (item['palos'] as int) + 1;
-      }
-
-      if (resultado == 'fuera' || resultado == 'desvio') {
-        item['fuera'] = (item['fuera'] as int) + 1;
-      }
-
-      if (tipo == 'penal' || tipo == 'penal_tanda') {
-        item['penales'] = (item['penales'] as int) + 1;
-        if (resultado == 'atajado') {
-          item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
-        }
-      }
-
-      final periodos = item['periodos'] as Map<String, Map<String, int>>;
-      final periodoKey = keyPeriodo(estado);
-
-      periodos.putIfAbsent(periodoKey, () {
-        return {
-          'atajadas': 0,
-          'golesRecibidos': 0,
-          'palos': 0,
-          'fuera': 0,
-          'penales': 0,
-          'penalesAtajados': 0,
-          'contraDirecta': 0,
-        };
-      });
-
-      if (resultado == 'atajado') {
-        periodos[periodoKey]!['atajadas'] =
-            periodos[periodoKey]!['atajadas']! + 1;
-      }
-
-      if (resultado == 'gol') {
-        periodos[periodoKey]!['golesRecibidos'] =
-            periodos[periodoKey]!['golesRecibidos']! + 1;
-      }
-
-      if (resultado == 'palo') {
-        periodos[periodoKey]!['palos'] = periodos[periodoKey]!['palos']! + 1;
-      }
-
-      if (resultado == 'fuera' || resultado == 'desvio') {
-        periodos[periodoKey]!['fuera'] = periodos[periodoKey]!['fuera']! + 1;
-      }
-
-      /// ✅ PENALES POR TIEMPO
-      if (tipo == 'penal' || tipo == 'penal_tanda') {
-        periodos[periodoKey]!['penales'] =
-            periodos[periodoKey]!['penales']! + 1;
-
-        if (resultado == 'atajado') {
-          periodos[periodoKey]!['penalesAtajados'] =
-              periodos[periodoKey]!['penalesAtajados']! + 1;
-        }
-      }
-
-      /// ✅ CONTRA DIRECTA POR TIEMPO (ACÁ VA, NO ARRIBA)
-      if (esContraDirectaArquero) {
-        periodos[periodoKey]!['contraDirecta'] =
-            periodos[periodoKey]!['contraDirecta']! + 1;
-      }
-
-      if (zonaArco.isNotEmpty && zonaArco != 'null') {
-        final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
-        zonasArco.putIfAbsent(zonaArco, () {
-          return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
-        });
-
-        if (resultado == 'atajado')
-          zonasArco[zonaArco]!['atajadas'] =
-              zonasArco[zonaArco]!['atajadas']! + 1;
-        if (resultado == 'gol')
-          zonasArco[zonaArco]!['golesRecibidos'] =
-              zonasArco[zonaArco]!['golesRecibidos']! + 1;
-        if (resultado == 'palo')
-          zonasArco[zonaArco]!['palos'] = zonasArco[zonaArco]!['palos']! + 1;
-        if (resultado == 'fuera' || resultado == 'desvio') {
-          zonasArco[zonaArco]!['fuera'] = zonasArco[zonaArco]!['fuera']! + 1;
-        }
-      }
-
-      if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
-        final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
-        zonasTiro.putIfAbsent(zonaTiro, () {
-          return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
-        });
-
-        if (resultado == 'atajado')
-          zonasTiro[zonaTiro]!['atajadas'] =
-              zonasTiro[zonaTiro]!['atajadas']! + 1;
-        if (resultado == 'gol')
-          zonasTiro[zonaTiro]!['golesRecibidos'] =
-              zonasTiro[zonaTiro]!['golesRecibidos']! + 1;
-        if (resultado == 'palo')
-          zonasTiro[zonaTiro]!['palos'] = zonasTiro[zonaTiro]!['palos']! + 1;
-        if (resultado == 'fuera' || resultado == 'desvio') {
-          zonasTiro[zonaTiro]!['fuera'] = zonasTiro[zonaTiro]!['fuera']! + 1;
-        }
-      }
-    }
-
-    final lista = acumulado.values.map((item) {
-      final atajadas = item['atajadas'] as int;
-      final golesRecibidos = item['golesRecibidos'] as int;
-      final total = atajadas + golesRecibidos;
-      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
-
-      return {...item, 'eficacia': eficacia};
-    }).toList();
-
-    lista.sort((a, b) {
-      final nombreA = (a['arquero'] ?? '').toString();
-      final nombreB = (b['arquero'] ?? '').toString();
-      return nombreA.compareTo(nombreB);
-    });
-
-    return lista;
   }
 
-  Map<String, String> _analisisArquero(Map<String, dynamic> item) {
-    final zonasArco = Map<String, Map<String, int>>.from(
-      item['zonasArco'] ?? {},
-    );
-
-    final periodos = Map<String, Map<String, int>>.from(item['periodos'] ?? {});
-
-    /// -----------------------
-    /// MEJOR TRAMO
-    /// -----------------------
-    String mejorTramo = 'Sin datos';
-    double mejorEficacia = -1;
-
-    periodos.forEach((key, data) {
-      final atajadas = data['atajadas'] ?? 0;
-      final goles = data['golesRecibidos'] ?? 0;
-      final total = atajadas + goles;
-
-      if (total == 0) return;
-
-      final eficacia = atajadas / total;
-
-      if (eficacia > mejorEficacia) {
-        mejorEficacia = eficacia;
-        mejorTramo = key;
-      }
-    });
-
-    /// -----------------------
-    /// PUNTO DÉBIL (zona más goles)
-    /// -----------------------
-    String peorZona = '-';
-    int maxGoles = -1;
-
-    zonasArco.forEach((zona, data) {
-      final goles = data['golesRecibidos'] ?? 0;
-
-      if (goles > maxGoles) {
-        maxGoles = goles;
-        peorZona = zona;
-      }
-    });
-
-    /// -----------------------
-    /// PUNTO FUERTE (zona más atajadas)
-    /// -----------------------
-    String mejorZona = '-';
-    int maxAtajadas = -1;
-
-    zonasArco.forEach((zona, data) {
-      final atajadas = data['atajadas'] ?? 0;
-
-      if (atajadas > maxAtajadas) {
-        maxAtajadas = atajadas;
-        mejorZona = zona;
-      }
-    });
-
-    /// -----------------------
-    /// PENALES
-    /// -----------------------
-    final penales = item['penales'] ?? 0;
-    final penalesAtajados = item['penalesAtajados'] ?? 0;
-
-    String penalesTxt = 'Sin penales';
-    if (penales > 0) {
-      final ef = (penalesAtajados / penales) * 100;
-      penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
-    }
-
+  Map<String, int> emptyZonaStats() {
     return {
-      'mejorTramo': mejorTramo,
-      'peorZona': peorZona,
-      'mejorZona': mejorZona,
-      'penales': penalesTxt,
+      'atajadas': 0,
+      'golesRecibidos': 0,
+      'palos': 0,
+      'fuera': 0,
     };
   }
 
+  void inc(Map<String, dynamic> map, String key) {
+    map[key] = ((map[key] ?? 0) as int) + 1;
+  }
+
+  void incZona(
+    Map<String, Map<String, int>> zonas,
+    String zona,
+    String key,
+  ) {
+    zonas.putIfAbsent(zona, emptyZonaStats);
+    zonas[zona]![key] = (zonas[zona]![key] ?? 0) + 1;
+  }
+
+  for (final e in _eventos) {
+    final map = Map<String, dynamic>.from(e as Map);
+
+    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+    final resultado = (map['resultado'] ?? '').toString();
+    final modo = (map['modo'] ?? map['phase'] ?? '').toString();
+    final estado = (map['estadoPartido'] ?? '').toString();
+    final zonaArco = (map['zonaArco'] ?? '').toString();
+    final zonaTiro = (map['zonaTiro'] ?? '').toString();
+    final actorId = (map['actorPrincipalId'] ?? '').toString();
+    final origen = (map['origenJugada'] ?? '').toString();
+
+    final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+    if (!esTiro) continue;
+
+    final esDefensivoArquero = modo == 'defensa';
+    final esContraDirectaArquero =
+        modo == 'ataque' &&
+        origen == 'contra' &&
+        zonaTiro == 'Contra directa arquero' &&
+        actorId.isNotEmpty;
+
+    if (!esDefensivoArquero && !esContraDirectaArquero) continue;
+
+    String arquero = (map['arquero'] ?? '').toString().trim();
+
+    if (esContraDirectaArquero) {
+      arquero = actorId;
+    }
+
+    if (arquero.isEmpty || arquero == 'null') {
+      arquero = 'Sin arquero';
+    }
+
+    acumulado.putIfAbsent(arquero, () {
+      return {
+        'arquero': arquero,
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
+        'tirosAlArco': 0,
+        'totalEventos': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'periodos': <String, Map<String, dynamic>>{},
+        'zonasArco': <String, Map<String, int>>{},
+        'zonasTiro': <String, Map<String, int>>{},
+      };
+    });
+
+    final item = acumulado[arquero]!;
+
+    inc(item, 'totalEventos');
+
+    if (resultado == 'gol') {
+      inc(item, 'golesRecibidos');
+      inc(item, 'tirosAlArco');
+    }
+
+    if (resultado == 'atajado') {
+      inc(item, 'atajadas');
+      inc(item, 'tirosAlArco');
+    }
+
+    if (resultado == 'palo') {
+      inc(item, 'palos');
+    }
+
+    if (resultado == 'fuera' || resultado == 'desvio') {
+      inc(item, 'fuera');
+    }
+
+    if (tipo == 'penal' || tipo == 'penal_tanda') {
+      inc(item, 'penales');
+
+      if (resultado == 'atajado') {
+        inc(item, 'penalesAtajados');
+      }
+    }
+
+    if (esContraDirectaArquero) {
+      inc(item, 'contraDirecta');
+    }
+
+    final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
+    final periodoKey = keyPeriodo(estado);
+
+    periodos.putIfAbsent(periodoKey, () {
+      return {
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'zonasArco': <String, Map<String, int>>{},
+      };
+    });
+
+    final periodo = periodos[periodoKey]!;
+
+    if (resultado == 'gol') {
+      inc(periodo, 'golesRecibidos');
+    }
+
+    if (resultado == 'atajado') {
+      inc(periodo, 'atajadas');
+    }
+
+    if (resultado == 'palo') {
+      inc(periodo, 'palos');
+    }
+
+    if (resultado == 'fuera' || resultado == 'desvio') {
+      inc(periodo, 'fuera');
+    }
+
+    if (tipo == 'penal' || tipo == 'penal_tanda') {
+      inc(periodo, 'penales');
+
+      if (resultado == 'atajado') {
+        inc(periodo, 'penalesAtajados');
+      }
+    }
+
+    if (esContraDirectaArquero) {
+      inc(periodo, 'contraDirecta');
+    }
+
+    if (zonaArco.isNotEmpty && zonaArco != 'null') {
+      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasPeriodo =
+          periodo['zonasArco'] as Map<String, Map<String, int>>;
+
+      if (resultado == 'atajado') {
+        incZona(zonasArco, zonaArco, 'atajadas');
+        incZona(zonasPeriodo, zonaArco, 'atajadas');
+      }
+
+      if (resultado == 'gol') {
+        incZona(zonasArco, zonaArco, 'golesRecibidos');
+        incZona(zonasPeriodo, zonaArco, 'golesRecibidos');
+      }
+
+      if (resultado == 'palo') {
+        incZona(zonasArco, zonaArco, 'palos');
+        incZona(zonasPeriodo, zonaArco, 'palos');
+      }
+
+      if (resultado == 'fuera' || resultado == 'desvio') {
+        incZona(zonasArco, zonaArco, 'fuera');
+        incZona(zonasPeriodo, zonaArco, 'fuera');
+      }
+    }
+
+    if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
+      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+
+      if (resultado == 'atajado') {
+        incZona(zonasTiro, zonaTiro, 'atajadas');
+      }
+
+      if (resultado == 'gol') {
+        incZona(zonasTiro, zonaTiro, 'golesRecibidos');
+      }
+
+      if (resultado == 'palo') {
+        incZona(zonasTiro, zonaTiro, 'palos');
+      }
+
+      if (resultado == 'fuera' || resultado == 'desvio') {
+        incZona(zonasTiro, zonaTiro, 'fuera');
+      }
+    }
+  }
+
+  final lista = acumulado.values.map((item) {
+  final atajadas = (item['atajadas'] ?? 0) is int
+      ? item['atajadas'] as int
+      : int.tryParse(item['atajadas'].toString()) ?? 0;
+
+  final golesRecibidos = (item['golesRecibidos'] ?? 0) is int
+      ? item['golesRecibidos'] as int
+      : int.tryParse(item['golesRecibidos'].toString()) ?? 0;
+
+  final total = atajadas + golesRecibidos;
+
+  final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+  return {
+    ...item,
+    'eficacia': eficacia,
+  };
+}).toList();
+
+  lista.sort((a, b) {
+    final nombreA = (a['arquero'] ?? '').toString();
+    final nombreB = (b['arquero'] ?? '').toString();
+    return nombreA.compareTo(nombreB);
+  });
+
+  return lista;
+}
+  
+  
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
       0,
@@ -4617,7 +4582,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 class DetalleArqueroPartidoScreen extends StatelessWidget {
   final Map<String, dynamic> stats;
 
-  const DetalleArqueroPartidoScreen({super.key, required this.stats});
+  const DetalleArqueroPartidoScreen({
+    super.key,
+    required this.stats,
+  });
 
   String get _nombreArquero {
     final nombre = (stats['arqueroNombre'] ?? '').toString().trim();
@@ -4625,11 +4593,19 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     return (stats['arquero'] ?? 'Arquero').toString();
   }
 
-  int _valor(String key) => (stats[key] ?? 0) as int;
+  int _valor(String key) {
+  final value = stats[key];
 
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+
+  return 0;
+}
+  
   double get _eficacia => (stats['eficacia'] ?? 0.0) as double;
 
-  Map<String, Map<String, int>> _mapStats(String key) {
+  Map<String, Map<String, int>> _mapStatsInt(String key) {
     final raw = stats[key];
 
     if (raw is Map<String, Map<String, int>>) {
@@ -4638,16 +4614,61 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
 
     if (raw is Map) {
       return raw.map((k, v) {
-        return MapEntry(k.toString(), Map<String, int>.from(v as Map));
+        return MapEntry(
+          k.toString(),
+          Map<String, int>.from(v as Map),
+        );
       });
     }
 
     return {};
   }
 
-  Map<String, Map<String, int>> get _periodos => _mapStats('periodos');
-  Map<String, Map<String, int>> get _zonasArco => _mapStats('zonasArco');
-  Map<String, Map<String, int>> get _zonasTiro => _mapStats('zonasTiro');
+  Map<String, Map<String, dynamic>> get _periodos {
+    final raw = stats['periodos'];
+
+    if (raw is Map<String, Map<String, dynamic>>) {
+      return raw;
+    }
+
+    if (raw is Map) {
+      return raw.map((k, v) {
+        return MapEntry(
+          k.toString(),
+          Map<String, dynamic>.from(v as Map),
+        );
+      });
+    }
+
+    return {};
+  }
+
+  Map<String, Map<String, int>> get _zonasArco => _mapStatsInt('zonasArco');
+
+  Map<String, Map<String, int>> get _zonasTiro => _mapStatsInt('zonasTiro');
+
+  Map<String, Map<String, int>> _zonasArcoPorPeriodo(String periodo) {
+    final dataPeriodo = _periodos[periodo];
+
+    if (dataPeriodo == null) return {};
+
+    final raw = dataPeriodo['zonasArco'];
+
+    if (raw is Map<String, Map<String, int>>) {
+      return raw;
+    }
+
+    if (raw is Map) {
+      return raw.map((k, v) {
+        return MapEntry(
+          k.toString(),
+          Map<String, int>.from(v as Map),
+        );
+      });
+    }
+
+    return {};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -4688,7 +4709,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
                 children: [
                   _buildGlobalTab(),
                   _buildPeriodosTab(),
-                  _buildZonasTab(_zonasArco, 'Zona de arco'),
+                  _buildArcoTabConPeriodos(),
                   _buildZonasTab(_zonasTiro, 'Zona de tiro'),
                 ],
               ),
@@ -4702,9 +4723,8 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   Widget _buildGlobalTab() {
     final penales = _valor('penales');
     final penalesAtajados = _valor('penalesAtajados');
-    final eficaciaPenales = penales == 0
-        ? 0.0
-        : (penalesAtajados / penales) * 100;
+    final eficaciaPenales =
+        penales == 0 ? 0.0 : (penalesAtajados / penales) * 100;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -4744,16 +4764,15 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
       children: keys.map((periodo) {
         final data = _periodos[periodo]!;
 
-        final atajadas = data['atajadas'] ?? 0;
-        final goles = data['golesRecibidos'] ?? 0;
+        final atajadas = (data['atajadas'] ?? 0) as int;
+        final goles = (data['golesRecibidos'] ?? 0) as int;
         final total = atajadas + goles;
         final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
 
-        final penales = data['penales'] ?? 0;
-        final penalesAtajados = data['penalesAtajados'] ?? 0;
-        final eficaciaPenales = penales == 0
-            ? 0.0
-            : (penalesAtajados / penales) * 100;
+        final penales = (data['penales'] ?? 0) as int;
+        final penalesAtajados = (data['penalesAtajados'] ?? 0) as int;
+        final eficaciaPenales =
+            penales == 0 ? 0.0 : (penalesAtajados / penales) * 100;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -4779,6 +4798,50 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildArcoTabConPeriodos() {
+    final periodosDisponibles = <String>[
+      'Global',
+      ...['1T', '2T', '1TA', '2TA', 'Penales', 'Otro'].where(
+        (p) => _zonasArcoPorPeriodo(p).isNotEmpty,
+      ),
+    ];
+
+    return DefaultTabController(
+      length: periodosDisponibles.length,
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          TabBar(
+            isScrollable: true,
+            tabs: periodosDisponibles.map((p) => Tab(text: p)).toList(),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: periodosDisponibles.map((periodo) {
+                final data =
+                    periodo == 'Global' ? _zonasArco : _zonasArcoPorPeriodo(periodo);
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                  children: [
+                    _buildCard(
+                      title: periodo == 'Global'
+                          ? 'Mapa de arco'
+                          : 'Mapa de arco · $periodo',
+                      children: [
+                        _buildArcoGrid(data),
+                      ],
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildZonasTab(
     Map<String, Map<String, int>> data,
     String titlePrefix,
@@ -4787,36 +4850,180 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
       return _empty('No hay datos suficientes.');
     }
 
-    final keys = data.keys.toList()..sort();
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      children: keys.map((zona) {
-        final item = data[zona]!;
+      children: _buildZonasDetalle(data, titlePrefix),
+    );
+  }
 
-        final atajadas = item['atajadas'] ?? 0;
-        final goles = item['golesRecibidos'] ?? 0;
-        final total = atajadas + goles;
-        final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+  List<Widget> _buildZonasDetalle(
+    Map<String, Map<String, int>> data,
+    String titlePrefix,
+  ) {
+    final keys = data.keys.toList()..sort();
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildCard(
-            title: '$titlePrefix · $zona',
-            children: [
-              _row('Eficacia', '${eficacia.toStringAsFixed(1)}%'),
-              _row('Atajadas', '$atajadas'),
-              _row('Goles recibidos', '$goles'),
-              _row('Palos', '${item['palos'] ?? 0}'),
-              _row('Fuera', '${item['fuera'] ?? 0}'),
-            ],
-          ),
+    return keys.map((zona) {
+      final item = data[zona]!;
+
+      final atajadas = item['atajadas'] ?? 0;
+      final goles = item['golesRecibidos'] ?? 0;
+      final total = atajadas + goles;
+      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _buildCard(
+          title: '$titlePrefix · $zona',
+          children: [
+            _row('Eficacia', '${eficacia.toStringAsFixed(1)}%'),
+            _row('Atajadas', '$atajadas'),
+            _row('Goles recibidos', '$goles'),
+            _row('Palos', '${item['palos'] ?? 0}'),
+            _row('Fuera', '${item['fuera'] ?? 0}'),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildArcoGrid(Map<String, Map<String, int>> zonas) {
+    final orden = [
+      ['AI', 'AC', 'AD'],
+      ['CI', 'CC', 'CD'],
+      ['BI', 'BC', 'BD'],
+    ];
+
+    return Column(
+      children: orden.map((fila) {
+        return Row(
+          children: fila.map((zona) {
+            final data = zonas[zona] ?? {};
+
+            final atajadas = data['atajadas'] ?? 0;
+            final goles = data['golesRecibidos'] ?? 0;
+            final palos = data['palos'] ?? 0;
+            final fuera = data['fuera'] ?? 0;
+
+            final totalAlArco = atajadas + goles;
+            final eficacia = totalAlArco == 0 ? 0.0 : atajadas / totalAlArco;
+            final volumen = atajadas + goles + palos + fuera;
+
+            return Expanded(
+              child: _zonaHeatBox(
+                zona: zona,
+                atajadas: atajadas,
+                goles: goles,
+                palos: palos,
+                fuera: fuera,
+                eficacia: eficacia,
+                volumen: volumen,
+              ),
+            );
+          }).toList(),
         );
       }).toList(),
     );
   }
 
-  Widget _buildCard({required String title, required List<Widget> children}) {
+  Widget _zonaHeatBox({
+    required String zona,
+    required int atajadas,
+    required int goles,
+    required int palos,
+    required int fuera,
+    required double eficacia,
+    required int volumen,
+  }) {
+    final double intensidad = (volumen / 10).clamp(0.18, 1.0);
+
+    Color baseColor;
+
+    if (volumen == 0) {
+      baseColor = const Color(0xFF182338).withOpacity(0.60);
+    } else if (eficacia >= 0.60) {
+      baseColor = const Color(0xFF1E7D4F).withOpacity(0.25 + intensidad * 0.45);
+    } else if (eficacia >= 0.40) {
+      baseColor = const Color(0xFFC58B1D).withOpacity(0.25 + intensidad * 0.45);
+    } else {
+      baseColor = const Color(0xFF9F2D2D).withOpacity(0.25 + intensidad * 0.45);
+    }
+
+    final totalAlArco = atajadas + goles;
+    final eficaciaTexto =
+        totalAlArco == 0 ? '-' : '${(eficacia * 100).toStringAsFixed(0)}%';
+
+    return Container(
+      height: 92,
+      margin: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            baseColor.withOpacity(0.95),
+            baseColor.withOpacity(0.45),
+            Colors.black.withOpacity(0.12),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: baseColor.withOpacity(0.20),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: 8,
+            top: 6,
+            child: Text(
+              eficaciaTexto,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.55),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  zona,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.72),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$atajadas / $goles',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -4851,7 +5058,10 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 14,
+              ),
             ),
           ),
           Text(
@@ -4871,7 +5081,10 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     return Center(
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
+        style: const TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 14,
+        ),
       ),
     );
   }
@@ -4903,6 +5116,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
   /// ===============================
   /// PARTIDOS FINALIZADOS V2
+  
+  
+  
   /// Cache local usando el nuevo repository
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
@@ -11738,12 +11954,13 @@ class ArquerosPartidoScreen extends StatelessWidget {
 
     if (arquero == 'Sin arquero') return 'Sin arquero';
 
-    /// Si viene como dorsal.
     if (RegExp(r'^\d+$').hasMatch(arquero)) {
-      return nombreArqueroDesdeDorsal(categoria: categoria, dorsal: arquero);
+      return nombreArqueroDesdeDorsal(
+        categoria: categoria,
+        dorsal: arquero,
+      );
     }
 
-    /// Si viene como playerId o texto nuevo.
     final nombre = (item['arqueroNombre'] ?? '').toString();
     if (nombre.trim().isNotEmpty) return nombre;
 
@@ -11751,89 +11968,125 @@ class ArquerosPartidoScreen extends StatelessWidget {
   }
 
   int _int(Map<String, dynamic> item, String key) {
-    return (item[key] ?? 0) as int;
-  }
+  final value = item[key];
+
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+
+  return 0;
+}
 
   double _double(Map<String, dynamic> item, String key) {
-    return (item[key] ?? 0.0) as double;
+  final value = item[key];
+
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+
+  return 0.0;
+}
+
+  Map<String, Map<String, int>> _nestedStats(dynamic raw) {
+  if (raw is Map) {
+    final result = <String, Map<String, int>>{};
+
+    raw.forEach((key, value) {
+      if (value is Map) {
+        final inner = <String, int>{};
+
+        value.forEach((k, v) {
+          if (v is int) {
+            inner[k.toString()] = v;
+          } else if (v is double) {
+            inner[k.toString()] = v.toInt();
+          } else if (v is String) {
+            inner[k.toString()] = int.tryParse(v) ?? 0;
+          }
+          // Si v es Map, como zonasArco, se ignora acá.
+        });
+
+        result[key.toString()] = inner;
+      }
+    });
+
+    return result;
   }
 
+  return {};
+}
+  
   Map<String, String> _analisisArquero(Map<String, dynamic> item) {
-    final zonasArco = Map<String, Map<String, int>>.from(
-      item['zonasArco'] ?? {},
-    );
+  final zonasArco = _nestedStats(item['zonasArco']);
+  final periodos = _nestedStats(item['periodos']);
 
-    final periodos = Map<String, Map<String, int>>.from(item['periodos'] ?? {});
+  String mejorTramo = 'Sin datos';
+  double mejorEficacia = -1;
 
-    /// -----------------------
-    /// MEJOR TRAMO
-    /// -----------------------
-    String mejorTramo = 'Sin datos';
-    double mejorEficacia = -1;
+  periodos.forEach((key, data) {
+    final atajadas = data['atajadas'] ?? 0;
+    final goles = data['golesRecibidos'] ?? 0;
+    final total = atajadas + goles;
 
-    periodos.forEach((key, data) {
-      final atajadas = data['atajadas'] ?? 0;
-      final goles = data['golesRecibidos'] ?? 0;
-      final total = atajadas + goles;
+    if (total == 0) return;
 
-      if (total == 0) return;
+    final eficacia = atajadas / total;
 
-      final eficacia = atajadas / total;
-
-      if (eficacia > mejorEficacia) {
-        mejorEficacia = eficacia;
-        mejorTramo = key;
-      }
-    });
-
-    /// -----------------------
-    /// PUNTO DÉBIL (zona más goles)
-    /// -----------------------
-    String peorZona = '-';
-    int maxGoles = -1;
-
-    zonasArco.forEach((zona, data) {
-      final goles = data['golesRecibidos'] ?? 0;
-
-      if (goles > maxGoles) {
-        maxGoles = goles;
-        peorZona = zona;
-      }
-    });
-
-    /// -----------------------
-    /// PUNTO FUERTE (zona más atajadas)
-    /// -----------------------
-    String mejorZona = '-';
-    int maxAtajadas = -1;
-
-    zonasArco.forEach((zona, data) {
-      final atajadas = data['atajadas'] ?? 0;
-
-      if (atajadas > maxAtajadas) {
-        maxAtajadas = atajadas;
-        mejorZona = zona;
-      }
-    });
-
-    /// -----------------------
-    /// PENALES
-    /// -----------------------
-    final penales = item['penales'] ?? 0;
-    final penalesAtajados = item['penalesAtajados'] ?? 0;
-
-    String penalesTxt = 'Sin penales';
-    if (penales > 0) {
-      final ef = (penalesAtajados / penales) * 100;
-      penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
+    if (eficacia > mejorEficacia) {
+      mejorEficacia = eficacia;
+      mejorTramo = key;
     }
+  });
 
-    return {
-      'mejorTramo': mejorTramo,
-      'peorZona': peorZona,
-      'mejorZona': mejorZona,
-      'penales': penalesTxt,
-    };
+  String peorZona = '-';
+  int maxGoles = -1;
+
+  zonasArco.forEach((zona, data) {
+    final goles = data['golesRecibidos'] ?? 0;
+    if (goles > maxGoles) {
+      maxGoles = goles;
+      peorZona = zona;
+    }
+  });
+
+  String mejorZona = '-';
+  int maxAtajadas = -1;
+
+  zonasArco.forEach((zona, data) {
+    final atajadas = data['atajadas'] ?? 0;
+    if (atajadas > maxAtajadas) {
+      maxAtajadas = atajadas;
+      mejorZona = zona;
+    }
+  });
+
+  final penales = _int(item, 'penales');
+  final penalesAtajados = _int(item, 'penalesAtajados');
+
+  String penalesTxt = 'Sin penales';
+  if (penales > 0) {
+    final ef = (penalesAtajados / penales) * 100;
+    penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
+  }
+
+  return {
+    'mejorTramo': mejorTramo,
+    'peorZona': peorZona,
+    'mejorZona': mejorZona,
+    'penales': penalesTxt,
+  };
+}
+  
+  Color _colorEficacia(double eficacia) {
+    if (eficacia >= 45) return const Color(0xFF1E7D4F);
+    if (eficacia >= 30) return const Color(0xFFC58B1D);
+    return const Color(0xFF9F2D2D);
+  }
+
+  String _textoNivel(double eficacia) {
+    if (eficacia >= 45) return 'Alto';
+    if (eficacia >= 30) return 'Medio';
+    return 'Bajo';
   }
 
   @override
@@ -11870,9 +12123,8 @@ class ArquerosPartidoScreen extends StatelessWidget {
                     children: estadisticasPorArquero.map((item) {
                       final nombre = _nombreArquero(item);
                       final eficacia = _double(item, 'eficacia');
-
-                      // 👇 ACA VA
                       final analisis = _analisisArquero(item);
+                      final colorNivel = _colorEficacia(eficacia);
 
                       return GestureDetector(
                         onTap: () {
@@ -11880,54 +12132,152 @@ class ArquerosPartidoScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => DetalleArqueroPartidoScreen(
-                                stats: {...item, 'arqueroNombre': nombre},
+                                stats: {
+                                  ...item,
+                                  'arqueroNombre': nombre,
+                                },
                               ),
                             ),
                           );
                         },
                         child: Container(
                           width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 12),
+                          margin: const EdgeInsets.only(bottom: 14),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF182338).withOpacity(0.78),
-                            borderRadius: BorderRadius.circular(18),
+                            color: const Color(0xFF0F1722).withOpacity(0.88),
+                            borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.04),
+                              color: Colors.white.withOpacity(0.06),
+                              width: 1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.22),
+                                blurRadius: 12,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                nombre,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF182338).withOpacity(0.95),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: colorNivel.withOpacity(0.55),
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        (item['arquero'] ?? '-').toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      nombre.replaceFirst(
+                                        RegExp(r'^\d+\s*·\s*'),
+                                        '',
+                                      ),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorNivel.withOpacity(0.20),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _textoNivel(eficacia),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
 
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
 
-                              _row(
-                                'Eficacia',
-                                '${eficacia.toStringAsFixed(1)}%',
-                              ),
-                              _row('Atajadas', '${_int(item, 'atajadas')}'),
-                              _row(
-                                'Goles recibidos',
-                                '${_int(item, 'golesRecibidos')}',
+                              _efficacyBar(
+                                eficacia: eficacia,
+                                color: colorNivel,
                               ),
 
-                              const SizedBox(height: 12),
-                              Divider(color: Colors.white.withOpacity(0.08)),
+                              const SizedBox(height: 14),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _metricBox(
+                                      label: 'Eficacia',
+                                      value: '${eficacia.toStringAsFixed(1)}%',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _metricBox(
+                                      label: 'Atajadas',
+                                      value: '${_int(item, 'atajadas')}',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _metricBox(
+                                      label: 'Goles',
+                                      value: '${_int(item, 'golesRecibidos')}',
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 14),
+
+                              Divider(color: Colors.white.withOpacity(0.06)),
+
                               const SizedBox(height: 10),
 
                               _row('Mejor tramo', analisis['mejorTramo']!),
                               _row('Zona fuerte', analisis['mejorZona']!),
                               _row('Zona débil', analisis['peorZona']!),
                               _row('Penales', analisis['penales']!),
+
+                              const SizedBox(height: 10),
+
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  'Ver detalle profundo ›',
+                                  style: TextStyle(
+                                    color: colorNivel.withOpacity(0.95),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -11940,6 +12290,79 @@ class ArquerosPartidoScreen extends StatelessWidget {
     );
   }
 
+  Widget _metricBox({
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _efficacyBar({
+  required double eficacia,
+  required Color color,
+}) {
+  final value = (eficacia / 100).clamp(0.0, 1.0);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Nivel de eficacia',
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.58),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 7),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(99),
+        child: Container(
+          height: 8,
+          width: double.infinity,
+          color: Colors.white.withOpacity(0.08),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: value,
+            child: Container(
+              color: color,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
   Widget _row(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -11948,7 +12371,10 @@ class ArquerosPartidoScreen extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 14,
+              ),
             ),
           ),
           Text(
