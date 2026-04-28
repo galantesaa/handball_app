@@ -12177,60 +12177,68 @@ class ArquerosPartidoScreen extends StatelessWidget {
     return 'Bajo';
   }
 
-  Widget _buildComparacionArqueros() {
-  if (estadisticasPorArquero.length < 2) {
-    return const SizedBox.shrink();
+  Widget _buildComparacionArqueros(List<Map<String, dynamic>> arqueros) {
+  if (arqueros.length < 2) return const SizedBox();
+
+  arqueros.sort((a, b) =>
+      (b['eficacia'] as double).compareTo(a['eficacia'] as double));
+
+  final mejor = arqueros[0];
+  final segundo = arqueros[1];
+
+  final dif = (mejor['eficacia'] as double) - (segundo['eficacia'] as double);
+
+  String lectura;
+
+  if (dif > 20) {
+    lectura = 'Dominio claro de ${_nombreArquero(mejor)}';
+  } else if (dif > 10) {
+    lectura = 'Mejor rendimiento de ${mejor['dorsal']}, diferencia moderada';
+  } else {
+    lectura = 'Rendimiento parejo entre arqueros';
   }
 
-  final ordenados = [...estadisticasPorArquero];
-
-  ordenados.sort((a, b) {
-    final ea = _double(a, 'eficacia');
-    final eb = _double(b, 'eficacia');
-    return eb.compareTo(ea);
-  });
-
-  final mejor = ordenados.first;
-  final segundo = ordenados.length > 1 ? ordenados[1] : null;
-
-  final nombreMejor = _nombreArquero(mejor);
-  final eficaciaMejor = _double(mejor, 'eficacia');
-
-  final nombreSegundo = segundo == null ? '-' : _nombreArquero(segundo);
-  final eficaciaSegundo = segundo == null ? 0.0 : _double(segundo, 'eficacia');
-
-  final diferencia = eficaciaMejor - eficaciaSegundo;
-
   return Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 14),
+    margin: const EdgeInsets.only(bottom: 16),
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: const Color(0xFF0F1722).withOpacity(0.90),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: Colors.white.withOpacity(0.06)),
+      borderRadius: BorderRadius.circular(18),
+      color: Colors.white.withOpacity(0.03),
+      border: Border.all(color: Colors.white.withOpacity(0.05)),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Comparación rápida',
+          'Lectura del partido',
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 14),
-        _row('Mejor eficacia', nombreMejor),
-        _row('Eficacia', '${eficaciaMejor.toStringAsFixed(1)}%'),
-        _row('Segundo', nombreSegundo),
-        _row('Diferencia', '+${diferencia.toStringAsFixed(1)} pts'),
+
+        const SizedBox(height: 12),
+
+        _row('Mejor arquero', _nombreArquero(mejor)),
+        _row('Eficacia', '${(mejor['eficacia'] as double).toStringAsFixed(1)}%'),
+        _row('Diferencia', '+${dif.toStringAsFixed(1)} pts'),
+
+        const SizedBox(height: 10),
+        Divider(color: Colors.white.withOpacity(0.08)),
+        const SizedBox(height: 10),
+
+        Text(
+          lectura,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 13,
+          ),
+        ),
       ],
     ),
   );
 }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -12263,7 +12271,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                     children: [
-                      _buildComparacionArqueros(),
+                      _buildComparacionArqueros(estadisticasPorArquero),
                       ...estadisticasPorArquero.map((item) {
                       final nombre = _nombreArquero(item);
                       final eficacia = _double(item, 'eficacia');
