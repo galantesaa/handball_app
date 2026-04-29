@@ -2396,7 +2396,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
       final decoded = jsonDecode(finishedHistoryRaw) as List<dynamic>;
       finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
-        return _partidoDesdeFinishedHistoryEntry(Map<String, dynamic>.from(e));
+        return _partidoDesdeFinishedHistoryEntry(
+          Map<String, dynamic>.from(e),
+        );
       }).toList();
     }
 
@@ -2419,25 +2421,19 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
       try {
         final decoded = jsonDecode(siguientesRaw) as List<dynamic>;
-        siguientesPartidos = decoded
-            .whereType<Map>()
-            .map((e) {
-              final item = Map<String, dynamic>.from(e);
-              item['escudoRival'] =
-                  item['escudoRival'] ??
-                  _rivalShieldAssetByName((item['rival'] ?? '').toString());
-              return item;
-            })
-            .where(_esPartidoValido)
-            .toList();
+        siguientesPartidos = decoded.whereType<Map>().map((e) {
+          final item = Map<String, dynamic>.from(e);
+          item['escudoRival'] = item['escudoRival'] ??
+              _rivalShieldAssetByName((item['rival'] ?? '').toString());
+          return item;
+        }).where(_esPartidoValido).toList();
       } catch (_) {
         siguientesPartidos = [];
       }
     }
 
     final debeReconstruir =
-        !_esPartidoValido(proximoPartido) ||
-        _estaFinalizadoGlobal(proximoPartido);
+        !_esPartidoValido(proximoPartido) || _estaFinalizadoGlobal(proximoPartido);
 
     if (debeReconstruir) {
       _recalcularProximoYSiguientesDesdeBase();
@@ -2978,7 +2974,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               final identidad = _identityFromMap(proximoPartido);
 
               final finalizado = _finalizadosV2.firstWhere(
-                (p) => buildNormalizedMatchIdentity(p.toMap()) == identidad,
+                (p) =>
+                    buildNormalizedMatchIdentity(p.toMap()) ==
+                    identidad,
               );
 
               Navigator.push(
@@ -3168,11 +3166,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           Row(
             children: [
               _buildTeamBadge(
-                assetPath:
-                    proximoPartido['escudoRival'] as String? ??
-                    _rivalShieldAssetByName(
-                      (proximoPartido['rival'] ?? '').toString(),
-                    ),
+                assetPath: proximoPartido['escudoRival'] as String? ?? _rivalShieldAssetByName((proximoPartido['rival'] ?? '').toString()),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -4154,6 +4148,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     );
   }
 
+
   /// ===============================
   /// ENTERO SEGURO
   /// ===============================
@@ -4353,9 +4348,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           if (at + gl == 0) continue;
 
           final efp = (at / (at + gl)) * 100;
-          lines.add(
-            '      ⏱️ $k: ${efp.toStringAsFixed(1)}% · $at atajadas / $gl goles',
-          );
+          lines.add('      ⏱️ $k: ${efp.toStringAsFixed(1)}% · $at atajadas / $gl goles');
 
           final penalesP = _int(v, 'penales');
           final penalesAtP = _int(v, 'penalesAtajados');
@@ -4395,14 +4388,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       }
     }
 
-    final amarillas =
-        _contarEventosResultado('tarjeta_amarilla') +
-        _contarEventosTipo('amarilla');
-    final exclusiones =
-        _contarEventosResultado('exclusion_2_min') +
-        _contarEventosTipo('dos_minutos');
-    final rojas =
-        _contarEventosResultado('tarjeta_roja') + _contarEventosTipo('roja');
+    final amarillas = _contarEventosResultado('tarjeta_amarilla') + _contarEventosTipo('amarilla');
+    final exclusiones = _contarEventosResultado('exclusion_2_min') + _contarEventosTipo('dos_minutos');
+    final rojas = _contarEventosResultado('tarjeta_roja') + _contarEventosTipo('roja');
 
     if (amarillas + exclusiones + rojas > 0) {
       lines.add('🚨 *SANCIONES*');
@@ -4427,9 +4415,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       final file = File('${dir.path}/resumen_handball_sgs.png');
       await file.writeAsBytes(bytes);
 
-      await Share.shareXFiles([
-        XFile(file.path),
-      ], text: 'Resumen del partido · Handball SGS');
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Resumen del partido · Handball SGS',
+      );
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -4455,8 +4444,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
     canvas.drawRect(Offset.zero & size, bgPaint);
 
-    final cardPaint = Paint()
-      ..color = const Color(0xFF0F1722).withOpacity(0.94);
+    final cardPaint = Paint()..color = const Color(0xFF0F1722).withOpacity(0.94);
     final card = RRect.fromRectAndRadius(
       const Rect.fromLTWH(55, 90, 970, 1160),
       const Radius.circular(48),
@@ -4486,27 +4474,17 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       x: 125,
       y: 315,
       name: _nombreLocal,
-      asset: _somosLocales
-          ? 'assets/images/san_fernando.png'
-          : _rivalShieldAsset(),
+      asset: _somosLocales ? 'assets/images/san_fernando.png' : _rivalShieldAsset(),
     );
     await _drawTeam(
       canvas,
       x: 735,
       y: 315,
       name: _nombreVisitante,
-      asset: _somosLocales
-          ? _rivalShieldAsset()
-          : 'assets/images/san_fernando.png',
+      asset: _somosLocales ? _rivalShieldAsset() : 'assets/images/san_fernando.png',
     );
 
-    await _drawCenteredText(
-      canvas,
-      '$_golesLocal - $_golesVisitante',
-      430,
-      92,
-      FontWeight.w900,
-    );
+    await _drawCenteredText(canvas, '$_golesLocal - $_golesVisitante', 430, 92, FontWeight.w900);
 
     final stats = _estadisticasPorArquero();
     var y = 640.0;
@@ -4521,25 +4499,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       final zonaFuerte = _traducirZona(analisis['mejorZona'] ?? '');
       final zonaDebil = _traducirZona(analisis['peorZona'] ?? '');
 
-      await _drawCenteredText(
-        canvas,
-        '🧤 Arquero destacado',
-        y,
-        30,
-        FontWeight.w800,
-        color: const Color(0xFF66D196),
-      );
+      await _drawCenteredText(canvas, '🧤 Arquero destacado', y, 30, FontWeight.w800, color: const Color(0xFF66D196));
       y += 45;
       await _drawCenteredText(canvas, nombre, y, 34, FontWeight.w900);
       y += 48;
-      await _drawCenteredText(
-        canvas,
-        'Eficacia $ef% · $atajadas atajadas · $goles goles',
-        y,
-        28,
-        FontWeight.w700,
-        color: const Color(0xFFDCE4EF),
-      );
+      await _drawCenteredText(canvas, 'Eficacia $ef% · $atajadas atajadas · $goles goles', y, 28, FontWeight.w700, color: const Color(0xFFDCE4EF));
       y += 52;
 
       final periodos = mejor['periodos'] as Map<String, dynamic>? ?? {};
@@ -4551,87 +4515,40 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         final gl = _int(item, 'golesRecibidos');
         if (at + gl == 0) continue;
         final efp = ((at / (at + gl)) * 100).toStringAsFixed(1);
-        await _drawCenteredText(
-          canvas,
-          '⏱️ $key: $efp% · $at atajadas / $gl goles',
-          y,
-          26,
-          FontWeight.w700,
-          color: const Color(0xFFAAB4C3),
-        );
+        await _drawCenteredText(canvas, '⏱️ $key: $efp% · $at atajadas / $gl goles', y, 26, FontWeight.w700, color: const Color(0xFFAAB4C3));
         y += 38;
       }
 
       final penales = _int(mejor, 'penales');
       final penalesAt = _int(mejor, 'penalesAtajados');
       if (penales > 0) {
-        await _drawCenteredText(
-          canvas,
-          '🎯 Penales: $penalesAt/$penales atajados',
-          y,
-          26,
-          FontWeight.w800,
-          color: const Color(0xFFFFD166),
-        );
+        await _drawCenteredText(canvas, '🎯 Penales: $penalesAt/$penales atajados', y, 26, FontWeight.w800, color: const Color(0xFFFFD166));
         y += 42;
       }
 
       if (zonaFuerte.isNotEmpty) {
-        await _drawCenteredText(
-          canvas,
-          '🟢 Zona fuerte: $zonaFuerte',
-          y,
-          26,
-          FontWeight.w800,
-          color: const Color(0xFF66D196),
-        );
+        await _drawCenteredText(canvas, '🟢 Zona fuerte: $zonaFuerte', y, 26, FontWeight.w800, color: const Color(0xFF66D196));
         y += 38;
       }
       if (zonaDebil.isNotEmpty && zonaDebil != zonaFuerte) {
-        await _drawCenteredText(
-          canvas,
-          '🔴 Zona débil: $zonaDebil',
-          y,
-          26,
-          FontWeight.w800,
-          color: const Color(0xFFFF6B6B),
-        );
+        await _drawCenteredText(canvas, '🔴 Zona débil: $zonaDebil', y, 26, FontWeight.w800, color: const Color(0xFFFF6B6B));
         y += 38;
       }
     }
 
-    final amarillas =
-        _contarEventosResultado('tarjeta_amarilla') +
-        _contarEventosTipo('amarilla');
-    final exclusiones =
-        _contarEventosResultado('exclusion_2_min') +
-        _contarEventosTipo('dos_minutos');
-    final rojas =
-        _contarEventosResultado('tarjeta_roja') + _contarEventosTipo('roja');
+    final amarillas = _contarEventosResultado('tarjeta_amarilla') + _contarEventosTipo('amarilla');
+    final exclusiones = _contarEventosResultado('exclusion_2_min') + _contarEventosTipo('dos_minutos');
+    final rojas = _contarEventosResultado('tarjeta_roja') + _contarEventosTipo('roja');
     if (amarillas + exclusiones + rojas > 0) {
       y += 20;
       final sanciones = <String>[];
       if (amarillas > 0) sanciones.add('🟨 $amarillas');
       if (exclusiones > 0) sanciones.add('⏱️ $exclusiones');
       if (rojas > 0) sanciones.add('🟥 $rojas');
-      await _drawCenteredText(
-        canvas,
-        '🚨 Sanciones: ${sanciones.join(' · ')}',
-        y,
-        26,
-        FontWeight.w800,
-        color: const Color(0xFFFFD166),
-      );
+      await _drawCenteredText(canvas, '🚨 Sanciones: ${sanciones.join(' · ')}', y, 26, FontWeight.w800, color: const Color(0xFFFFD166));
     }
 
-    await _drawCenteredText(
-      canvas,
-      'Generado con Handball SGS',
-      1200,
-      26,
-      FontWeight.w700,
-      color: const Color(0xFFAAB4C3),
-    );
+    await _drawCenteredText(canvas, 'Generado con Handball SGS', 1200, 26, FontWeight.w700, color: const Color(0xFFAAB4C3));
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(width.toInt(), height.toInt());
@@ -4653,35 +4570,15 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     if (asset != null) {
       try {
         final data = await rootBundle.load(asset);
-        final codec = await ui.instantiateImageCodec(
-          data.buffer.asUint8List(),
-          targetWidth: 145,
-          targetHeight: 145,
-        );
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: 145, targetHeight: 145);
         final frame = await codec.getNextFrame();
         canvas.drawImage(frame.image, Offset(x + 38, y + 38), Paint());
       } catch (_) {
-        await _drawCenteredText(
-          canvas,
-          'SGS',
-          y + 95,
-          30,
-          FontWeight.w900,
-          xCenter: x + 110,
-          color: const Color(0xFF1C2B44),
-        );
+        await _drawCenteredText(canvas, 'SGS', y + 95, 30, FontWeight.w900, xCenter: x + 110, color: const Color(0xFF1C2B44));
       }
     }
 
-    await _drawCenteredText(
-      canvas,
-      name,
-      y + 250,
-      28,
-      FontWeight.w800,
-      xCenter: x + 110,
-      maxWidth: 260,
-    );
+    await _drawCenteredText(canvas, name, y + 250, 28, FontWeight.w800, xCenter: x + 110, maxWidth: 260);
   }
 
   Future<void> _drawCenteredText(
@@ -4696,7 +4593,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }) async {
     final span = TextSpan(
       text: text,
-      style: TextStyle(color: color, fontSize: fontSize, fontWeight: weight),
+      style: TextStyle(
+        color: color,
+        fontSize: fontSize,
+        fontWeight: weight,
+      ),
     );
 
     final tp = TextPainter(
@@ -4811,17 +4712,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: 'texto',
-                child: Text(
-                  'Compartir texto',
-                  style: TextStyle(color: Colors.white),
-                ),
+                child: Text('Compartir texto', style: TextStyle(color: Colors.white)),
               ),
               PopupMenuItem(
                 value: 'imagen',
-                child: Text(
-                  'Compartir placa',
-                  style: TextStyle(color: Colors.white),
-                ),
+                child: Text('Compartir placa', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -5750,8 +5645,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     final String fecha = (partido['fecha'] ?? '-').toString();
     final String hora = (partido['hora'] ?? '-').toString();
     final int fechaNumero = (partido['fechaNumero'] ?? 0) as int;
-    final String? escudoRival =
-        partido['escudoRival'] as String? ?? _rivalShieldAssetByName(rival);
+    final String? escudoRival = partido['escudoRival'] as String? ?? _rivalShieldAssetByName(rival);
 
     final int golesSF =
         finalizadoV2?.golesSanFernando ??
@@ -5767,10 +5661,10 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     final Color statusColor = estaFinalizadoV2
         ? empato
-              ? const Color(0xFFC58B1D)
-              : gano
-              ? const Color(0xFF1E7D4F)
-              : const Color(0xFF9F2D2D)
+            ? const Color(0xFFC58B1D)
+            : gano
+                ? const Color(0xFF1E7D4F)
+                : const Color(0xFF9F2D2D)
         : const Color(0xFF4F8CFF);
 
     Future<void> abrir() async {
@@ -5778,8 +5672,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) =>
-                ResumenPartidoFinalizadoScreen(partido: finalizadoV2!.toMap()),
+            builder: (_) => ResumenPartidoFinalizadoScreen(
+              partido: finalizadoV2!.toMap(),
+            ),
           ),
         );
       } else {
@@ -5871,8 +5766,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
               onTap: abrir,
               child: Container(
                 width: double.infinity,
@@ -11204,6 +11099,7 @@ class _ExtremeZonePainter extends CustomPainter {
 /// ==============================
 ///===============================
 
+
 class EstadisticasScreen extends StatefulWidget {
   const EstadisticasScreen({super.key});
 
@@ -11237,16 +11133,14 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
       if (map['isReal'] != true) continue;
 
       final base = Map<String, dynamic>.from(
-        (map['partido'] as Map?)?.cast<String, dynamic>() ??
-            <String, dynamic>{},
+        (map['partido'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{},
       );
 
       partidos.add({
         ...base,
         'matchIdentity': map['matchIdentity'],
         'archivedAt': map['archivedAt'] ?? map['timestamp'],
-        'golesSanFernando':
-            map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
+        'golesSanFernando': map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
         'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
         'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
         'eventos': map['eventos'] ?? base['eventos'] ?? const [],
@@ -11355,10 +11249,7 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
                 );
 
                 final promedio = jugados == 0 ? 0.0 : golesFavor / jugados;
-                final racha = partidos.reversed
-                    .take(3)
-                    .map(_resultado)
-                    .toList();
+                final racha = partidos.reversed.take(3).map(_resultado).toList();
 
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -11411,27 +11302,15 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
       child: Column(
         children: [
           _statRow(Icons.stadium_rounded, 'Partidos jugados', '$jugados'),
-          _statRow(
-            Icons.sports_handball_rounded,
-            'Goles en temporada',
-            '$golesFavor',
-          ),
+          _statRow(Icons.sports_handball_rounded, 'Goles en temporada', '$golesFavor'),
           _statRow(Icons.shield_rounded, 'Goles en contra', '$golesContra'),
-          _statRow(
-            Icons.show_chart_rounded,
-            'Promedio de goles',
-            promedio.toStringAsFixed(2),
-          ),
+          _statRow(Icons.show_chart_rounded, 'Promedio de goles', promedio.toStringAsFixed(2)),
           _statRow(Icons.sports_mma_rounded, 'Atajadas', '$atajadas'),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 9),
             child: Row(
               children: [
-                const Icon(
-                  Icons.bar_chart_rounded,
-                  color: Color(0xFF4F8CFF),
-                  size: 26,
-                ),
+                const Icon(Icons.bar_chart_rounded, color: Color(0xFF4F8CFF), size: 26),
                 const SizedBox(width: 14),
                 const Expanded(
                   child: Text(
@@ -11447,11 +11326,7 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
                   children: racha.map((r) {
                     return Padding(
                       padding: const EdgeInsets.only(left: 4),
-                      child: Icon(
-                        _rachaIcon(r),
-                        color: _rachaColor(r),
-                        size: 26,
-                      ),
+                      child: Icon(_rachaIcon(r), color: _rachaColor(r), size: 26),
                     );
                   }).toList(),
                 ),
@@ -11507,11 +11382,7 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
         children: [
           const Text(
             'Últimos partidos',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 12),
           ...partidos.map((p) {
@@ -11525,20 +11396,12 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
                   Expanded(
                     child: Text(
                       (p['rival'] ?? 'Rival').toString(),
-                      style: const TextStyle(
-                        color: Color(0xFFDCE4EF),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: const TextStyle(color: Color(0xFFDCE4EF), fontSize: 14, fontWeight: FontWeight.w700),
                     ),
                   ),
                   Text(
                     '${_int(p, 'golesSanFernando')} - ${_int(p, 'golesRival')}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
                   ),
                 ],
               ),
@@ -15019,8 +14882,7 @@ String buildNormalizedMatchIdentity(Map<String, dynamic> partido) {
     if (localNorm == 'san fernando handball' || localNorm == 'san fernando') {
       rival = visitante;
       condicion = condicion.trim().isEmpty ? 'Local' : condicion;
-    } else if (visitanteNorm == 'san fernando handball' ||
-        visitanteNorm == 'san fernando') {
+    } else if (visitanteNorm == 'san fernando handball' || visitanteNorm == 'san fernando') {
       rival = local;
       condicion = condicion.trim().isEmpty ? 'Visitante' : condicion;
     }
@@ -15090,6 +14952,7 @@ String? rivalShieldAssetGlobal(dynamic rivalRaw) {
       return null;
   }
 }
+
 
 String nombreArqueroDesdeDorsal({
   required String categoria,

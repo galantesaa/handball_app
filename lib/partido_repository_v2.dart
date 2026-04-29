@@ -61,56 +61,47 @@ class PartidoRepositoryV2 {
   }
 
   /// ===============================
-  /// LEER PARTIDO EN VIVO
-  /// Devuelve el partido en vivo actual si existe.
+  /// READ LIVE MATCH SEGURO
+  /// No rompe si live_match_current_v1 está null/corrupto.
   /// ===============================
   static Future<PartidoModel?> readLiveMatch() async {
+    const liveMatchStorageKey = 'live_match_current_v1';
+
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(liveMatchStorageKey);
 
-    if (raw == null || raw.isEmpty) return null;
+    if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+      await prefs.remove(liveMatchStorageKey);
+      return null;
+    }
 
-    final data = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    try {
+      final decoded = jsonDecode(raw);
 
-    final partidoMap = Map<String, dynamic>.from(
-      (data['partido'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{},
-    );
+      if (decoded == null || decoded is! Map) {
+        await prefs.remove(liveMatchStorageKey);
+        return null;
+      }
 
-    final merged = {
-      ...partidoMap,
-      'estadoPartido': data['estadoPartido'] ?? partidoMap['estadoPartido'],
-      'golesSanFernando':
-          data['golesSanFernando'] ?? partidoMap['golesSanFernando'],
-      'golesRival': data['golesRival'] ?? partidoMap['golesRival'],
-      'golesRecibidos': data['golesRecibidos'] ?? partidoMap['golesRecibidos'],
-      'atajadas': data['atajadas'] ?? partidoMap['atajadas'],
-      'penales': data['penales'] ?? partidoMap['penales'],
-      'exclusiones2Min':
-          data['exclusiones2Min'] ?? partidoMap['exclusiones2Min'],
-      'amarillas': data['amarillas'] ?? partidoMap['amarillas'],
-      'rojas': data['rojas'] ?? partidoMap['rojas'],
-      'perdidas': data['perdidas'] ?? partidoMap['perdidas'],
-      'recuperaciones': data['recuperaciones'] ?? partidoMap['recuperaciones'],
-      'penalesConvertidosSanFernando':
-          data['penalesConvertidosSanFernando'] ??
-          partidoMap['penalesConvertidosSanFernando'],
-      'penalesConvertidosRival':
-          data['penalesConvertidosRival'] ??
-          partidoMap['penalesConvertidosRival'],
-      'modoActual': data['modo'] ?? partidoMap['modoActual'],
-      'modoInicioPrimerTiempo':
-          data['modoInicioPrimerTiempo'] ??
-          partidoMap['modoInicioPrimerTiempo'],
-      'modoInicioPrimerTiempoAlargue':
-          data['modoInicioPrimerTiempoAlargue'] ??
-          partidoMap['modoInicioPrimerTiempoAlargue'],
-      'currentGoalkeeperNumber':
-          data['currentGoalkeeperNumber'] ??
-          partidoMap['currentGoalkeeperNumber'],
-      'eventos': data['eventos'] ?? partidoMap['eventos'] ?? <dynamic>[],
-    };
+      final map = Map<String, dynamic>.from(decoded as Map);
 
-    return PartidoModel.fromMap(merged);
+      if (map.isEmpty) {
+        await prefs.remove(liveMatchStorageKey);
+        return null;
+      }
+
+      final partidoRaw = map['partido'];
+
+      if (partidoRaw is Map) {
+        final partidoMap = Map<String, dynamic>.from(partidoRaw);
+        return PartidoModel.fromMap(partidoMap);
+      }
+
+      return PartidoModel.fromMap(map);
+    } catch (_) {
+      await prefs.remove(liveMatchStorageKey);
+      return null;
+    }
   }
 
   /// ===============================
