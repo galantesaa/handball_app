@@ -1,17 +1,607 @@
-List<PlayerProfile> get _jugadoresConvocados {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+/// ===============================
+/// PLANTEL
+/// ===============================
+/// ===============================
 
-    if (squadMap == null) {
-      return RosterRepository.rosterForCategory(
-        categoria: widget.partido['categoria'],
-        temporada: '2026',
-      ).where((p) => !p.esCuerpoTecnico).toList();
+class PlayerProfile {
+  final String playerId;
+  final String clubId;
+  final String nombre;
+  final String apellido;
+  final String? posicion;
+  final String? numeroPreferido;
+  final bool esArquero;
+  final bool esCuerpoTecnico;
+
+  const PlayerProfile({
+    required this.playerId,
+    required this.clubId,
+    required this.nombre,
+    required this.apellido,
+    this.posicion,
+    this.numeroPreferido,
+    required this.esArquero,
+    this.esCuerpoTecnico = false,
+  });
+
+  String get nombreCompleto => '$nombre $apellido'.trim();
+
+  String get displayName {
+    final numero = (numeroPreferido ?? '').trim();
+    if (numero.isEmpty || numero == 'DT') {
+      return '$apellido, $nombre'.trim();
     }
-
-    final squad = MatchSquadConfig.fromMap(squadMap);
-
-    return RosterRepository.players
-        .where((p) => squad.convocadosIds.contains(p.playerId))
-        .where((p) => !p.esCuerpoTecnico)
-        .toList();
+    return '$numero · $apellido, $nombre'.trim();
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'playerId': playerId,
+      'clubId': clubId,
+      'nombre': nombre,
+      'apellido': apellido,
+      'posicion': posicion,
+      'numeroPreferido': numeroPreferido,
+      'esArquero': esArquero,
+      'esCuerpoTecnico': esCuerpoTecnico,
+    };
+  }
+
+  factory PlayerProfile.fromMap(Map<String, dynamic> map) {
+    return PlayerProfile(
+      playerId: (map['playerId'] ?? '').toString(),
+      clubId: (map['clubId'] ?? 'san_fernando').toString(),
+      nombre: (map['nombre'] ?? '').toString(),
+      apellido: (map['apellido'] ?? '').toString(),
+      posicion: map['posicion']?.toString(),
+      numeroPreferido: map['numeroPreferido']?.toString(),
+      esArquero: map['esArquero'] == true,
+      esCuerpoTecnico: map['esCuerpoTecnico'] == true,
+    );
+  }
+}
+
+class RosterAssignment {
+  final String playerId;
+  final String categoria;
+  final String temporada;
+  final String? numeroEnCategoria;
+  final bool activo;
+
+  const RosterAssignment({
+    required this.playerId,
+    required this.categoria,
+    required this.temporada,
+    this.numeroEnCategoria,
+    this.activo = true,
+  });
+}
+
+class ClubContext {
+  final String clubId;
+  final String clubNombre;
+  final String escudoAsset;
+
+  const ClubContext({
+    required this.clubId,
+    required this.clubNombre,
+    required this.escudoAsset,
+  });
+}
+
+class RosterRepository {
+  static const ClubContext currentClub = ClubContext(
+    clubId: 'san_fernando',
+    clubNombre: 'San Fernando Handball',
+    escudoAsset: 'assets/images/san_fernando.png',
+  );
+
+  static const List<PlayerProfile> players = [
+    PlayerProfile(
+      playerId: 'sf_bautista_galante_saavedra',
+      clubId: 'san_fernando',
+      nombre: 'Bautista',
+      apellido: 'Galante Saavedra',
+      posicion: 'Arquero',
+      numeroPreferido: '33',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_juan_frascarelli',
+      clubId: 'san_fernando',
+      nombre: 'Juan',
+      apellido: 'Frascarelli',
+      posicion: 'Pivot',
+      numeroPreferido: '77',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_julian_della_vecchia',
+      clubId: 'san_fernando',
+      nombre: 'Julian',
+      apellido: 'Della Vecchia',
+      posicion: 'Central',
+      numeroPreferido: '54',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_joaquin_leon_rodriguez',
+      clubId: 'san_fernando',
+      nombre: 'Joaquin',
+      apellido: 'Leon Rodriguez',
+      posicion: 'Extremo izquierdo',
+      numeroPreferido: '26',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_juan_pundang',
+      clubId: 'san_fernando',
+      nombre: 'Juan',
+      apellido: 'Pundang',
+      posicion: 'Extremo derecho',
+      numeroPreferido: '78',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_francisco_parente',
+      clubId: 'san_fernando',
+      nombre: 'Francisco',
+      apellido: 'Parente',
+      posicion: 'Lateral derecho',
+      numeroPreferido: '2',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lucas_fontana_bondar',
+      clubId: 'san_fernando',
+      nombre: 'Lucas',
+      apellido: 'Fontana Bondar',
+      posicion: 'Extremo izquierdo',
+      numeroPreferido: '7',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_bautista_villarino',
+      clubId: 'san_fernando',
+      nombre: 'Bautista',
+      apellido: 'Villarino',
+      posicion: 'Extremo derecho',
+      numeroPreferido: '32',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_ulises_lopez_aranda',
+      clubId: 'san_fernando',
+      nombre: 'Ulises',
+      apellido: 'Lopez Aranda',
+      posicion: 'Extremo izquierdo',
+      numeroPreferido: '17',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_felipe_palacios',
+      clubId: 'san_fernando',
+      nombre: 'Felipe',
+      apellido: 'Palacios',
+      posicion: 'Lateral derecho',
+      numeroPreferido: '61',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_agustin_del_groso',
+      clubId: 'san_fernando',
+      nombre: 'Agustin',
+      apellido: 'Del Groso',
+      posicion: 'Pivot',
+      numeroPreferido: '37',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_facundo_avero',
+      clubId: 'san_fernando',
+      nombre: 'Facundo',
+      apellido: 'Avero',
+      posicion: 'Pivot',
+      numeroPreferido: '55',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lorenzo_guinazu',
+      clubId: 'san_fernando',
+      nombre: 'Lorenzo',
+      apellido: 'Guinazu',
+      posicion: 'Lateral izquierdo',
+      numeroPreferido: '4',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lautaro_zapata',
+      clubId: 'san_fernando',
+      nombre: 'Lautaro',
+      apellido: 'Zapata',
+      posicion: 'Arquero',
+      numeroPreferido: '1',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_gabriel_farias',
+      clubId: 'san_fernando',
+      nombre: 'Gabriel',
+      apellido: 'Farias',
+      posicion: 'DT',
+      numeroPreferido: 'DT',
+      esArquero: false,
+      esCuerpoTecnico: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lorenzo_baron_siccardi',
+      clubId: 'san_fernando',
+      nombre: 'Lorenzo',
+      apellido: 'Baron Siccardi',
+      numeroPreferido: '5',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_luciano_farfallini',
+      clubId: 'san_fernando',
+      nombre: 'Luciano',
+      apellido: 'Farfallini',
+      numeroPreferido: '7',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_valentin_villar_senra',
+      clubId: 'san_fernando',
+      nombre: 'Valentin',
+      apellido: 'Villar Senra',
+      numeroPreferido: '8',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_juan_manuel_medan',
+      clubId: 'san_fernando',
+      nombre: 'Juan Manuel',
+      apellido: 'Medan',
+      numeroPreferido: '9',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_francisco_javier_sanches',
+      clubId: 'san_fernando',
+      nombre: 'Francisco Javier',
+      apellido: 'Sanches',
+      posicion: 'Arquero',
+      numeroPreferido: '12',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_mario_bautista_salgado',
+      clubId: 'san_fernando',
+      nombre: 'Mario Bautista',
+      apellido: 'Salgado',
+      numeroPreferido: '16',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_bautista_dominguez_bianco',
+      clubId: 'san_fernando',
+      nombre: 'Bautista',
+      apellido: 'Dominguez Bianco',
+      numeroPreferido: '17',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_agustin_emanuel_drewanz',
+      clubId: 'san_fernando',
+      nombre: 'Agustin Emanuel',
+      apellido: 'Drewanz',
+      numeroPreferido: '20',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_tiziano_folino_carames',
+      clubId: 'san_fernando',
+      nombre: 'Tiziano',
+      apellido: 'Folino Carames',
+      numeroPreferido: '22',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_felipe_verdejo',
+      clubId: 'san_fernando',
+      nombre: 'Felipe',
+      apellido: 'Verdejo',
+      posicion: 'Arquero',
+      numeroPreferido: '23',
+      esArquero: true,
+    ),
+    PlayerProfile(
+      playerId: 'sf_lucas_riesgo_santos',
+      clubId: 'san_fernando',
+      nombre: 'Lucas',
+      apellido: 'Riesgo Santos',
+      numeroPreferido: '26',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_alvaro_joaquin_alcaraz',
+      clubId: 'san_fernando',
+      nombre: 'Alvaro Joaquin',
+      apellido: 'Alcaraz',
+      numeroPreferido: '28',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_jairo_uriel_perez',
+      clubId: 'san_fernando',
+      nombre: 'Jairo Uriel',
+      apellido: 'Perez',
+      numeroPreferido: '39',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_benicio_dominguez_rividdi',
+      clubId: 'san_fernando',
+      nombre: 'Benicio',
+      apellido: 'Dominguez Rividdi',
+      numeroPreferido: '74',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_alejo_ricalde',
+      clubId: 'san_fernando',
+      nombre: 'Alejo',
+      apellido: 'Ricalde',
+      numeroPreferido: '76',
+      esArquero: false,
+    ),
+    PlayerProfile(
+      playerId: 'sf_federico_fernandez',
+      clubId: 'san_fernando',
+      nombre: 'Federico',
+      apellido: 'Fernandez',
+      posicion: 'DT',
+      numeroPreferido: 'DT',
+      esArquero: false,
+      esCuerpoTecnico: true,
+    ),
+  ];
+
+  static const List<RosterAssignment> assignments = [
+    RosterAssignment(
+      playerId: 'sf_bautista_galante_saavedra',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '33',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_frascarelli',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '77',
+    ),
+    RosterAssignment(
+      playerId: 'sf_julian_della_vecchia',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '54',
+    ),
+    RosterAssignment(
+      playerId: 'sf_joaquin_leon_rodriguez',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '26',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_pundang',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '78',
+    ),
+    RosterAssignment(
+      playerId: 'sf_francisco_parente',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '2',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lucas_fontana_bondar',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '7',
+    ),
+    RosterAssignment(
+      playerId: 'sf_bautista_villarino',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '32',
+    ),
+    RosterAssignment(
+      playerId: 'sf_ulises_lopez_aranda',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '17',
+    ),
+    RosterAssignment(
+      playerId: 'sf_felipe_palacios',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '61',
+    ),
+    RosterAssignment(
+      playerId: 'sf_agustin_del_groso',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '37',
+    ),
+    RosterAssignment(
+      playerId: 'sf_facundo_avero',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '55',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lorenzo_guinazu',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '4',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lautaro_zapata',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: '1',
+    ),
+    RosterAssignment(
+      playerId: 'sf_gabriel_farias',
+      categoria: 'Cadetes',
+      temporada: '2026',
+      numeroEnCategoria: 'DT',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lorenzo_baron_siccardi',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '5',
+    ),
+    RosterAssignment(
+      playerId: 'sf_luciano_farfallini',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '7',
+    ),
+    RosterAssignment(
+      playerId: 'sf_valentin_villar_senra',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '8',
+    ),
+    RosterAssignment(
+      playerId: 'sf_juan_manuel_medan',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '9',
+    ),
+    RosterAssignment(
+      playerId: 'sf_francisco_javier_sanches',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '12',
+    ),
+    RosterAssignment(
+      playerId: 'sf_mario_bautista_salgado',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '16',
+    ),
+    RosterAssignment(
+      playerId: 'sf_bautista_dominguez_bianco',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '17',
+    ),
+    RosterAssignment(
+      playerId: 'sf_agustin_emanuel_drewanz',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '20',
+    ),
+    RosterAssignment(
+      playerId: 'sf_tiziano_folino_carames',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '22',
+    ),
+    RosterAssignment(
+      playerId: 'sf_felipe_verdejo',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '23',
+    ),
+    RosterAssignment(
+      playerId: 'sf_lucas_riesgo_santos',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '26',
+    ),
+    RosterAssignment(
+      playerId: 'sf_alvaro_joaquin_alcaraz',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '28',
+    ),
+    RosterAssignment(
+      playerId: 'sf_jairo_uriel_perez',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '39',
+    ),
+    RosterAssignment(
+      playerId: 'sf_benicio_dominguez_rividdi',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '74',
+    ),
+    RosterAssignment(
+      playerId: 'sf_alejo_ricalde',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: '76',
+    ),
+    RosterAssignment(
+      playerId: 'sf_federico_fernandez',
+      categoria: 'Juveniles',
+      temporada: '2026',
+      numeroEnCategoria: 'DT',
+    ),
+  ];
+
+  static List<PlayerProfile> rosterForCategory({
+    required String categoria,
+    required String temporada,
+    bool includeStaff = false,
+  }) {
+    final ids = assignments
+        .where(
+          (a) =>
+              a.categoria == categoria && a.temporada == temporada && a.activo,
+        )
+        .map((a) => a.playerId)
+        .toSet();
+
+    final result = players.where((p) {
+      if (!ids.contains(p.playerId)) return false;
+      if (!includeStaff && p.esCuerpoTecnico) return false;
+      return true;
+    }).toList();
+
+    result.sort((a, b) {
+      final aNum = int.tryParse(a.numeroPreferido ?? '');
+      final bNum = int.tryParse(b.numeroPreferido ?? '');
+      if (aNum == null && bNum == null) return a.apellido.compareTo(b.apellido);
+      if (aNum == null) return 1;
+      if (bNum == null) return -1;
+      return aNum.compareTo(bNum);
+    });
+
+    return result;
+  }
+
+  static List<PlayerProfile> goalkeepersForCategory({
+    required String categoria,
+    required String temporada,
+  }) {
+    return rosterForCategory(
+      categoria: categoria,
+      temporada: temporada,
+    ).where((p) => p.esArquero).toList();
+  }
+
+  static PlayerProfile? findByPreferredNumber(String? number) {
+    if (number == null) return null;
+    for (final p in players) {
+      if (p.numeroPreferido == number) return p;
+    }
+    return null;
+  }
+}

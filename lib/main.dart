@@ -12,6 +12,55 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_selector/file_selector.dart';
 
+
+/// ===============================
+/// TEXTO SEGURO / NORMALIZACIÓN GLOBAL
+/// - fixTextoRoto: para mostrar bien en pantalla
+/// - textoKey: para comparar sin depender de acentos
+/// ===============================
+String fixTextoRoto(dynamic value) {
+  var text = (value ?? '').toString();
+
+  text = text
+      .replaceAll('Ã¡', 'á')
+      .replaceAll('Ã©', 'é')
+      .replaceAll('Ã­', 'í')
+      .replaceAll('Ã³', 'ó')
+      .replaceAll('Ãº', 'ú')
+      .replaceAll('Ã±', 'ñ')
+      .replaceAll('Ã', 'Á')
+      .replaceAll('Ã‰', 'É')
+      .replaceAll('Ã', 'Í')
+      .replaceAll('Ã“', 'Ó')
+      .replaceAll('Ãš', 'Ú')
+      .replaceAll('Ã‘', 'Ñ')
+      .replaceAll('Â', '');
+
+  text = text
+      .replaceAll('Guinazu', 'Guiñazu')
+      .replaceAll('Joaquin', 'Joaquín')
+      .replaceAll('Julian', 'Julián')
+      .replaceAll('Agustin', 'Agustín')
+      .replaceAll('Leon Rodriguez', 'León Rodríguez')
+      .replaceAll('Lopez Aranda', 'López Aranda')
+      .replaceAll('Municipalidad de Vicente Lopez', 'Municipalidad de Vicente López')
+      .replaceAll('C.A. Velez Sarsfield', 'C.A. Vélez Sarsfield');
+
+  return text;
+}
+
+String textoKey(dynamic value) {
+  return fixTextoRoto(value)
+      .toLowerCase()
+      .trim()
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u')
+      .replaceAll('ñ', 'n');
+}
+
 /// ===============================
 /// PUNTO DE ENTRADA
 /// ===============================
@@ -81,16 +130,26 @@ class PlayerProfile {
     this.esCuerpoTecnico = false,
   });
 
-  String get nombreCompleto => '$nombre $apellido'.trim();
+  String get nombreCompleto {
+  return fixTextoRoto('$nombre $apellido'.trim());
+}
 
   String get displayName {
-    final numero = (numeroPreferido ?? '').trim();
-    if (numero.isEmpty || numero == 'DT') {
-      return '$apellido, $nombre'.trim();
-    }
-    return '$numero · $apellido, $nombre'.trim();
+  final numero = (numeroPreferido ?? '').trim();
+  final nombreLimpio = fixTextoRoto(nombre);
+  final apellidoLimpio = fixTextoRoto(apellido);
+
+  if (numero.isEmpty || numero == 'DT') {
+    return '$apellidoLimpio, $nombreLimpio'.trim();
   }
 
+  return '$numero · $apellidoLimpio, $nombreLimpio'.trim();
+}
+
+  String get nombreLista {
+  return '${fixTextoRoto(apellido)}, ${fixTextoRoto(nombre)}'.trim();
+}
+  
   Map<String, dynamic> toMap() {
     return {
       'playerId': playerId,
@@ -108,8 +167,8 @@ class PlayerProfile {
     return PlayerProfile(
       playerId: (map['playerId'] ?? '').toString(),
       clubId: (map['clubId'] ?? 'san_fernando').toString(),
-      nombre: (map['nombre'] ?? '').toString(),
-      apellido: (map['apellido'] ?? '').toString(),
+      nombre: fixTextoRoto(map['nombre']),
+      apellido: fixTextoRoto(map['apellido']),
       posicion: map['posicion']?.toString(),
       numeroPreferido: map['numeroPreferido']?.toString(),
       esArquero: map['esArquero'] == true,
@@ -2766,7 +2825,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   Future<void> _abrirCentroDeControl() async {
     if (!hayPartido || proximoPartido.isEmpty) return;
 
-    final rival = (proximoPartido['rival'] ?? '').toString().trim();
+    final rival = fixTextoRoto(proximoPartido['rival'] ?? 'Rival');
     if (rival.isEmpty) {
       setState(() {
         _recalcularProximoYSiguientesDesdeBase();
@@ -5746,7 +5805,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     }
 
     final bool somosLocales = (partido['condicion'] ?? 'Local') == 'Local';
-    final String rival = (partido['rival'] ?? 'Rival').toString();
+    final String rival = fixTextoRoto(partido['rival'] ?? 'Rival');
     final String fecha = (partido['fecha'] ?? '-').toString();
     final String hora = (partido['hora'] ?? '-').toString();
     final int fechaNumero = (partido['fechaNumero'] ?? 0) as int;
@@ -9731,7 +9790,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   void _seleccionarJugadorParaTiroPendiente(PlayerProfile jugador) {
     final dorsal = jugador.numeroPreferido ?? '-';
-    final nombre = '${jugador.apellido}, ${jugador.nombre}'.trim();
+    final nombre = jugador.nombreLista; // 🔥 CLAVE
     final actor = '$dorsal · $nombre';
 
     final resultado = _tiroPendienteResultado;
@@ -10647,7 +10706,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                         itemBuilder: (context, index) {
                           final partido = _filtrados[index];
 
-                          final rival = (partido['rival'] ?? 'Rival').toString();
+                          final rival = fixTextoRoto(partido['rival'] ?? 'Rival');
                           final escudo = _rivalShieldAsset(rival);
 
                           final golesSF = toInt(partido['golesSanFernando']);
@@ -11541,13 +11600,24 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
                       ),
                     ),
                   ),
-                  Text(
-                    '${_int(p, 'golesSanFernando')} - ${_int(p, 'golesRival')}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  Builder(
+                    builder: (_) {
+                      final gf = _int(p, 'golesSanFernando');
+                      final gc = _int(p, 'golesRival');
+                      final condicion = (p['condicion'] ?? '').toString();
+                      final esLocal = condicion == 'Local';
+
+                      final score = esLocal ? '$gf - $gc' : '$gc - $gf';
+
+                      return Text(
+                        score,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -12849,7 +12919,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        nombre.replaceFirst(
+                                        fixTextoRoto(nombre).replaceFirst(
                                           RegExp(r'^\d+\s*·\s*'),
                                           '',
                                         ),
@@ -14428,7 +14498,7 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    nombre.isNotEmpty ? nombre : 'Jugador',
+                                    fixTextoRoto(nombre).isNotEmpty ? nombre : 'Jugador',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -14836,7 +14906,7 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                nombre.isNotEmpty ? nombre : 'Staff',
+                                fixTextoRoto(nombre).isNotEmpty ? nombre : 'Staff',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
