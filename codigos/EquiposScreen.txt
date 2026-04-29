@@ -1,13 +1,13 @@
 ///===============================
 /// EQUIPOS
-/// gestion de jugadores, arqueros, cuerpo técnico, categorías, convocados por partido, etc.
+/// gestion de jugadores, arqueros, cuerpo tecnico, categorías, convocados por partido, etc.
 ///===============================
 ///===============================
 
 /// ===============================
 /// EQUIPO 2.1
-/// Gestión deportiva del equipo.
-/// Acá NO va importación/exportación.
+/// Gestion deportiva del equipo.
+/// Acá NO va importacion/exportacion.
 /// La convocatoria por partido queda en Centro de control.
 /// ===============================
 class EquiposScreen extends StatelessWidget {
@@ -48,7 +48,7 @@ class EquiposScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Gestión de estructura deportiva',
+                    'Gestion de estructura deportiva',
                     style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
                   ),
                   const SizedBox(height: 18),
@@ -56,7 +56,7 @@ class EquiposScreen extends StatelessWidget {
                     context: context,
                     icon: Icons.groups_rounded,
                     title: 'Plantel',
-                    subtitle: 'Jugadores, arqueros y cuerpo técnico',
+                    subtitle: 'Jugadores, arqueros y cuerpo tecnico',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -249,8 +249,8 @@ class _PlantelScreenState extends State<PlantelScreen> {
                   const SizedBox(height: 12),
                   _buildPlantelCard(
                     icon: Icons.badge_rounded,
-                    title: 'Cuerpo técnico',
-                    subtitle: 'Estructura técnica de $categoriaSeleccionada',
+                    title: 'Cuerpo tecnico',
+                    subtitle: 'Estructura tecnica de $categoriaSeleccionada',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -635,7 +635,7 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   /// ===============================
   /// EDITAR ARQUERO
   /// Permite modificar nombre, apellido y dorsal.
-  /// También permite eliminarlo del plantel persistente.
+  /// Tambien permite eliminarlo del plantel persistente.
   /// ===============================
   Future<void> _abrirEditarArquero(PlayerProfile arquero) async {
     final nombreController = TextEditingController(text: arquero.nombre);
@@ -736,7 +736,7 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   /// ===============================
   /// ELIMINAR ARQUERO
   /// Elimina al arquero del plantel persistente de esta categoría.
-  /// No borra eventos históricos ya cargados.
+  /// No borra eventos historicos ya cargados.
   /// ===============================
   Future<void> _confirmarEliminarArquero(PlayerProfile arquero) async {
     final confirmar = await showDialog<bool>(
@@ -748,7 +748,7 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          '¿Seguro que querés eliminar a ${arquero.displayName} de ${widget.categoria}?',
+          '¿Seguro que queres eliminar a ${arquero.displayName} de ${widget.categoria}?',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -796,7 +796,7 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
     ).showSnackBar(const SnackBar(content: Text('Arquero eliminado')));
   }
 
-  /// Campo visual reutilizable para alta/edición de arquero.
+  /// Campo visual reutilizable para alta/edicion de arquero.
   Widget _inputArquero(String label, TextEditingController controller) {
     return TextField(
       controller: controller,
@@ -912,615 +912,99 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   }
 }
 
-/// ===============================
-/// ARQUEROS PARTIDO SCREEN
-/// Lista global por arquero dentro de un partido.
-/// Desde acá se entra al detalle profundo.
-/// ===============================
 
+///======================================================
+/// ArquerosPartidoScreen (FIX COMPLETO Y ESTABLE)
+/// - Lee datos desde PartidoModel (V2)
+/// - Calcula correctamente atajadas, goles y eficacia
+/// - NO depende de Maps sueltos inconsistentes
+///======================================================
 class ArquerosPartidoScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> estadisticasPorArquero;
-  final String categoria;
+  final Map<String, dynamic> partido;
 
   const ArquerosPartidoScreen({
-    super.key,
-    required this.estadisticasPorArquero,
-    required this.categoria,
-  });
+    Key? key,
+    required this.partido,
+  }) : super(key: key);
 
-  String _nombreArquero(Map<String, dynamic> item) {
-    final arquero = (item['arquero'] ?? 'Sin arquero').toString();
+  ///------------------------------------------
+  /// Getter centralizado del modelo V2
+  ///------------------------------------------
+  PartidoModel get partidoV2 => PartidoModel.fromMap(partido);
 
-    if (arquero == 'Sin arquero') return 'Sin arquero';
-
-    if (RegExp(r'^\d+$').hasMatch(arquero)) {
-      return nombreArqueroDesdeDorsal(
-        categoria: categoria,
-        dorsal: arquero,
-      );
-    }
-
-    final nombre = (item['arqueroNombre'] ?? '').toString();
-    if (nombre.trim().isNotEmpty) return nombre;
-
-    return arquero;
-  }
-
-  int _int(Map<String, dynamic> item, String key) {
-  final value = item[key];
-
-  if (value is int) return value;
-  if (value is double) return value.toInt();
-  if (value is String) return int.tryParse(value) ?? 0;
-
-  return 0;
-}
-
-  double _double(Map<String, dynamic> item, String key) {
-  final value = item[key];
-
-  if (value is double) return value;
-  if (value is int) return value.toDouble();
-  if (value is String) return double.tryParse(value) ?? 0.0;
-
-  return 0.0;
-}
-
-  Map<String, Map<String, int>> _nestedStats(dynamic raw) {
-  if (raw is Map) {
-    final result = <String, Map<String, int>>{};
-
-    raw.forEach((key, value) {
-      if (value is Map) {
-        final inner = <String, int>{};
-
-        value.forEach((k, v) {
-          if (v is int) {
-            inner[k.toString()] = v;
-          } else if (v is double) {
-            inner[k.toString()] = v.toInt();
-          } else if (v is String) {
-            inner[k.toString()] = int.tryParse(v) ?? 0;
-          }
-          // Si v es Map, como zonasArco, se ignora acá.
-        });
-
-        result[key.toString()] = inner;
-      }
-    });
-
-    return result;
-  }
-
-  return {};
-}
-  
-  Map<String, String> _analisisArquero(Map<String, dynamic> item) {
-  final zonasArco = _nestedStats(item['zonasArco']);
-  final periodos = _nestedStats(item['periodos']);
-
-  String mejorTramo = 'Sin datos';
-  double mejorEficacia = -1;
-
-  periodos.forEach((key, data) {
-    final atajadas = data['atajadas'] ?? 0;
-    final goles = data['golesRecibidos'] ?? 0;
-    final total = atajadas + goles;
-
-    if (total == 0) return;
-
-    final eficacia = atajadas / total;
-
-    if (eficacia > mejorEficacia) {
-      mejorEficacia = eficacia;
-      mejorTramo = key;
-    }
-  });
-
-  String peorZona = '-';
-  int maxGoles = -1;
-
-  zonasArco.forEach((zona, data) {
-    final goles = data['golesRecibidos'] ?? 0;
-    if (goles > maxGoles) {
-      maxGoles = goles;
-      peorZona = zona;
-    }
-  });
-
-  String mejorZona = '-';
-  int maxAtajadas = -1;
-
-  zonasArco.forEach((zona, data) {
-    final atajadas = data['atajadas'] ?? 0;
-    if (atajadas > maxAtajadas) {
-      maxAtajadas = atajadas;
-      mejorZona = zona;
-    }
-  });
-
-  final penales = _int(item, 'penales');
-  final penalesAtajados = _int(item, 'penalesAtajados');
-
-  String penalesTxt = 'Sin penales';
-  if (penales > 0) {
-    final ef = (penalesAtajados / penales) * 100;
-    penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
-  }
-
-  return {
-    'mejorTramo': mejorTramo,
-    'peorZona': peorZona,
-    'mejorZona': mejorZona,
-    'penales': penalesTxt,
-  };
-}
-  
-  Color _colorEficacia(double eficacia) {
-    if (eficacia >= 45) return const Color(0xFF1E7D4F);
-    if (eficacia >= 30) return const Color(0xFFC58B1D);
-    return const Color(0xFF9F2D2D);
-  }
-
-  String _textoNivel(double eficacia) {
-    if (eficacia >= 45) return 'Alto';
-    if (eficacia >= 30) return 'Medio';
-    return 'Bajo';
-  }
-
-/// ===============================
-/// COMPARACIÓN AVANZADA + INSIGHT REAL
-/// ===============================
-
-  Widget _buildComparacionArqueros(List<Map<String, dynamic>> arqueros) {
-  if (arqueros.length < 2) return const SizedBox();
-
-  /// Orden por eficacia
-  arqueros.sort(
-    (a, b) => (_double(b, 'eficacia')).compareTo(_double(a, 'eficacia')),
-  );
-
-  final mejor = arqueros[0];
-  final segundo = arqueros[1];
-
-  final ef1 = _double(mejor, 'eficacia');
-  final ef2 = _double(segundo, 'eficacia');
-  final dif = ef1 - ef2;
-
-  final goles1 = _int(mejor, 'golesRecibidos');
-  final goles2 = _int(segundo, 'golesRecibidos');
-
-  final analisis1 = _analisisArquero(mejor);
-
-  /// ===============================
-  /// INSIGHT INTELIGENTE
-  /// ===============================
-  String insight;
-
-  if (ef1 >= 50 && dif > 15) {
-    insight = 'Arquero determinante en el resultado';
-  } else if (ef1 >= 45) {
-    insight = 'Rendimiento sólido bajo los tres palos';
-  } else if (ef1 < 30) {
-    insight = 'Partido complicado para el arquero';
-  } else if (dif < 5) {
-    insight = 'Duelo parejo entre arqueros';
-  } else {
-    insight = 'Diferencia marcada en eficacia';
-  }
-
-  /// Contexto por zonas
-  if (analisis1['peorZona'] == 'CD' || analisis1['peorZona'] == 'AD') {
-    insight += ' · sufrió en tiros cruzados';
-  }
-
-  if (analisis1['mejorZona'] == 'BC' || analisis1['mejorZona'] == 'BI') {
-    insight += ' · fuerte en zonas bajas';
-  }
-
-  /// ===============================
-  /// CONTEXTO DE PARTIDO (simple)
-  /// ===============================
-  final totalGoles = goles1 + goles2;
-
-  String contexto;
-
-  if (totalGoles < 15) {
-    contexto = 'Partido defensivo';
-  } else if (totalGoles > 35) {
-    contexto = 'Partido de alto ritmo ofensivo';
-  } else {
-    contexto = 'Partido equilibrado';
-  }
-
-  /// ===============================
-  /// UI
-  /// ===============================
-  return Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(18),
-      color: Colors.white.withOpacity(0.03),
-      border: Border.all(color: Colors.white.withOpacity(0.05)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Lectura del partido',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        _row('Mejor arquero', _nombreArquero(mejor)),
-        _row('Eficacia', '${ef1.toStringAsFixed(1)}%'),
-        _row('Diferencia', '+${dif.toStringAsFixed(1)} pts'),
-
-        const SizedBox(height: 10),
-
-        /// ===============================
-        /// BARRA COMPARATIVA ANIMADA
-        /// ===============================
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: ef1 / 100),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, _) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: Container(
-                height: 8,
-                color: Colors.white.withOpacity(0.08),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: value,
-                  child: Container(
-                    color: _colorEficacia(ef1),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-
-        const SizedBox(height: 14),
-
-        Divider(color: Colors.white.withOpacity(0.08)),
-
-        const SizedBox(height: 10),
-
-        /// INSIGHT PRINCIPAL
-        Text(
-          insight,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.85),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-
-        const SizedBox(height: 6),
-
-        /// CONTEXTO
-        Text(
-          contexto,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.55),
-            fontSize: 12,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-  
   @override
   Widget build(BuildContext context) {
+    final arqueros = partidoV2.arqueros ?? [];
+
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Arqueros del partido'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondohd.jpeg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-            child: estadisticasPorArquero.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No hay estadísticas por arquero.',
-                      style: TextStyle(color: Color(0xFFAAB4C3)),
+      body: arqueros.isEmpty
+          ? const Center(child: Text('No hay arqueros registrados'))
+          : ListView.builder(
+              itemCount: arqueros.length,
+              itemBuilder: (context, index) {
+                final arquero = arqueros[index];
+
+                ///------------------------------------------
+                /// Cálculo correcto de stats
+                ///------------------------------------------
+                final atajadas = arquero.atajadas;
+                final goles = arquero.golesRecibidos;
+
+                final total = atajadas + goles;
+
+                final eficacia = total == 0
+                    ? 0
+                    : ((atajadas / total) * 100).round();
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      child: Text(
+                        arquero.dorsal?.toString() ?? '-',
+                      ),
                     ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    children: [
-                      _buildComparacionArqueros(estadisticasPorArquero),
-                      ...estadisticasPorArquero.map((item) {
-                      final nombre = _nombreArquero(item);
-                      final eficacia = _double(item, 'eficacia');
-                      final analisis = _analisisArquero(item);
-                      final colorNivel = _colorEficacia(eficacia);
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DetalleArqueroPartidoScreen(
-                                stats: {
-                                  ...item,
-                                  'arqueroNombre': nombre,
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F1722).withOpacity(0.88),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.06),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.22),
-                                blurRadius: 12,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF182338).withOpacity(0.95),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: colorNivel.withOpacity(0.55),
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        (item['arquero'] ?? '-').toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      nombre.replaceFirst(
-                                        RegExp(r'^\d+\s*·\s*'),
-                                        '',
-                                      ),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colorNivel.withOpacity(0.20),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      _textoNivel(eficacia),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              _efficacyBar(
-                                eficacia: eficacia,
-                                color: colorNivel,
-                              ),
-
-                              const SizedBox(height: 14),
-
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _metricBox(
-                                      label: 'Eficacia',
-                                      value: '${eficacia.toStringAsFixed(1)}%',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _metricBox(
-                                      label: 'Atajadas',
-                                      value: '${_int(item, 'atajadas')}',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _metricBox(
-                                      label: 'Goles',
-                                      value: '${_int(item, 'golesRecibidos')}',
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 14),
-
-                              Divider(color: Colors.white.withOpacity(0.06)),
-
-                              const SizedBox(height: 10),
-
-                              _row('Mejor tramo', analisis['mejorTramo']!),
-                              _row('Zona fuerte', analisis['mejorZona']!),
-                              _row('Zona débil', analisis['peorZona']!),
-                              _row('Penales', analisis['penales']!),
-
-                              const SizedBox(height: 10),
-
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  'Ver detalle profundo ›',
-                                  style: TextStyle(
-                                    color: colorNivel.withOpacity(0.95),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ],
+                    title: Text(
+                      '${arquero.apellido ?? ''} ${arquero.nombre ?? ''}'.trim(),
+                    ),
+                    subtitle: Text(
+                      'Atajadas: $atajadas | Goles: $goles',
+                    ),
+                    trailing: Text(
+                      '$eficacia%',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _colorEficacia(eficacia),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DetalleArqueroPartidoScreen(
+                            arquero: arquero,
                           ),
                         ),
                       );
-                    }).toList(),
-                    ],
+                    },
                   ),
-          ),
-        ],
-      ),
+                );
+              },
+            ),
     );
   }
 
-  Widget _metricBox({
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF182338).withOpacity(0.90),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFAAB4C3),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _efficacyBar({
-  required double eficacia,
-  required Color color,
-}) {
-  final value = (eficacia / 100).clamp(0.0, 1.0);
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Nivel de eficacia',
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.58),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      const SizedBox(height: 7),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(99),
-        child: Container(
-          height: 8,
-          width: double.infinity,
-          color: Colors.white.withOpacity(0.08),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: value,
-            child: Container(
-              color: color,
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
+  ///------------------------------------------
+  /// Color según eficacia
+  ///------------------------------------------
+  Color _colorEficacia(int eficacia) {
+    if (eficacia >= 60) return Colors.green;
+    if (eficacia >= 40) return Colors.orange;
+    return Colors.red;
   }
 }
 
@@ -1533,10 +1017,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
 class DetalleArqueroPartidoScreen extends StatelessWidget {
   final Map<String, dynamic> stats;
 
-  const DetalleArqueroPartidoScreen({
-    super.key,
-    required this.stats,
-  });
+  const DetalleArqueroPartidoScreen({super.key, required this.stats});
 
   String get _nombreArquero {
     final nombre = (stats['arqueroNombre'] ?? '').toString().trim();
@@ -1698,8 +1179,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   Widget _buildGlobalTab() {
     final penales = _valor('penales');
     final penalesAtajados = _valor('penalesAtajados');
-    final eficaciaPenales =
-        penales == 0 ? 0.0 : (penalesAtajados / penales) * 100;
+    final eficaciaPenales = penales == 0
+        ? 0.0
+        : (penalesAtajados / penales) * 100;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -1746,8 +1228,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
 
         final penales = _dynamicInt(data['penales']);
         final penalesAtajados = _dynamicInt(data['penalesAtajados']);
-        final eficaciaPenales =
-            penales == 0 ? 0.0 : (penalesAtajados / penales) * 100;
+        final eficaciaPenales = penales == 0
+            ? 0.0
+            : (penalesAtajados / penales) * 100;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -1776,9 +1259,14 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   Widget _buildArcoTabConPeriodos() {
     final periodosDisponibles = <String>[
       'Global',
-      ...['1T', '2T', '1TA', '2TA', 'Penales', 'Otro'].where(
-        (p) => _zonasArcoPorPeriodo(p).isNotEmpty,
-      ),
+      ...[
+        '1T',
+        '2T',
+        '1TA',
+        '2TA',
+        'Penales',
+        'Otro',
+      ].where((p) => _zonasArcoPorPeriodo(p).isNotEmpty),
     ];
 
     return DefaultTabController(
@@ -1804,9 +1292,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
                       title: periodo == 'Global'
                           ? 'Mapa de arco'
                           : 'Mapa de arco · $periodo',
-                      children: [
-                        _buildArcoGrid(data),
-                      ],
+                      children: [_buildArcoGrid(data)],
                     ),
                   ],
                 );
@@ -1926,8 +1412,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     }
 
     final totalAlArco = atajadas + goles;
-    final eficaciaTexto =
-        sinDatos || totalAlArco == 0 ? '' : '${(eficacia * 100).toStringAsFixed(0)}%';
+    final eficaciaTexto = sinDatos || totalAlArco == 0
+        ? ''
+        : '${(eficacia * 100).toStringAsFixed(0)}%';
 
     return GestureDetector(
       onTap: sinDatos
@@ -1952,7 +1439,10 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _row('Eficacia', '${(eficacia * 100).toStringAsFixed(1)}%'),
+                            _row(
+                              'Eficacia',
+                              '${(eficacia * 100).toStringAsFixed(1)}%',
+                            ),
                             _row('Atajadas', '$atajadas'),
                             _row('Goles recibidos', '$goles'),
                             _row('Palos', '$palos'),
@@ -1970,10 +1460,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
               builder: (context, value, child) {
                 return Transform.scale(
                   scale: 0.96 + (0.04 * value),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
+                  child: Opacity(opacity: value, child: child),
                 );
               },
               child: Container(
@@ -2023,7 +1510,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
                           Text(
                             zona,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(sinDatos ? 0.45 : 0.72),
+                              color: Colors.white.withOpacity(
+                                sinDatos ? 0.45 : 0.72,
+                              ),
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
                             ),
@@ -2032,7 +1521,9 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
                           Text(
                             sinDatos ? '—' : '$atajadas / $goles',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(sinDatos ? 0.45 : 1),
+                              color: Colors.white.withOpacity(
+                                sinDatos ? 0.45 : 1,
+                              ),
                               fontSize: 17,
                               fontWeight: FontWeight.w900,
                             ),
@@ -2050,10 +1541,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildCard({required String title, required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -2088,10 +1576,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
             ),
           ),
           Text(
@@ -2111,10 +1596,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
     return Center(
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFFAAB4C3),
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
       ),
     );
   }
@@ -2128,7 +1610,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
 }
 
 /// ===============================
-/// HISTÓRICO DE ARQUEROS
+/// HISToRICO DE ARQUEROS
 /// Lee partidos finalizados reales desde SharedPreferences
 /// y arma ranking acumulado por arquero.
 /// ===============================
@@ -2144,7 +1626,8 @@ class HistoricoArquerosScreen extends StatefulWidget {
   });
 
   @override
-  State<HistoricoArquerosScreen> createState() => _HistoricoArquerosScreenState();
+  State<HistoricoArquerosScreen> createState() =>
+      _HistoricoArquerosScreenState();
 }
 
 class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
@@ -2193,11 +1676,13 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
         final zonaTiro = (ev['zonaTiro'] ?? '').toString();
         final actorId = (ev['actorPrincipalId'] ?? '').toString();
 
-        final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+        final esTiro =
+            tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
         if (!esTiro) continue;
 
         final esDefensa = modo == 'defensa';
-        final esContraDirecta = modo == 'ataque' &&
+        final esContraDirecta =
+            modo == 'ataque' &&
             origen == 'contra' &&
             zonaTiro == 'Contra directa arquero' &&
             actorId.isNotEmpty;
@@ -2270,8 +1755,9 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
 
       final penales = row['penales'] as int;
       final penalesAtajados = row['penalesAtajados'] as int;
-      final eficaciaPenales =
-          penales == 0 ? 0.0 : (penalesAtajados / penales) * 100;
+      final eficaciaPenales = penales == 0
+          ? 0.0
+          : (penalesAtajados / penales) * 100;
 
       return {
         ...row,
@@ -2314,7 +1800,7 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Histórico de arqueros'),
+        title: const Text('Historico de arqueros'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -2328,9 +1814,7 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
             ),
           ),
           Positioned.fill(
-            child: Container(
-              color: const Color(0xFF05080D).withOpacity(0.88),
-            ),
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
           ),
           SafeArea(
             child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -2345,12 +1829,9 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
                 if (data.isEmpty) {
                   return const Center(
                     child: Text(
-                      'Todavía no hay partidos reales para armar histórico.',
+                      'Todavía no hay partidos reales para armar historico.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFFAAB4C3),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
                     ),
                   );
                 }
@@ -2388,7 +1869,7 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Lectura histórica',
+            'Lectura historica',
             style: TextStyle(
               color: Colors.white,
               fontSize: 17,
@@ -2430,10 +1911,7 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _animatedBar(
-            value: eficacia / 100,
-            color: color,
-          ),
+          _animatedBar(value: eficacia / 100, color: color),
           const SizedBox(height: 14),
           _row('Partidos', '${item['partidosJugados']}'),
           _row('Eficacia', '${eficacia.toStringAsFixed(1)}%'),
@@ -2451,10 +1929,7 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
     );
   }
 
-  Widget _animatedBar({
-    required double value,
-    required Color color,
-  }) {
+  Widget _animatedBar({required double value, required Color color}) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: value.clamp(0.0, 1.0)),
       duration: const Duration(milliseconds: 600),
@@ -2484,10 +1959,7 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFFAAB4C3),
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
             ),
           ),
           Text(
@@ -2574,7 +2046,7 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
                 const SizedBox(height: 10),
                 _inputAltaJugador('Dorsal', dorsalController),
                 const SizedBox(height: 10),
-                _inputAltaJugador('Posición', posicionController),
+                _inputAltaJugador('Posicion', posicionController),
               ],
             ),
           ),
@@ -2662,8 +2134,8 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 
   /// ===============================
   /// EDITAR JUGADOR
-  /// Permite modificar nombre, apellido, dorsal y posición.
-  /// También permite eliminarlo del plantel persistente.
+  /// Permite modificar nombre, apellido, dorsal y posicion.
+  /// Tambien permite eliminarlo del plantel persistente.
   /// ===============================
   Future<void> _abrirEditarJugador(PlayerProfile jugador) async {
     final nombreController = TextEditingController(text: jugador.nombre);
@@ -2694,7 +2166,7 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
                 const SizedBox(height: 10),
                 _inputAltaJugador('Dorsal', dorsalController),
                 const SizedBox(height: 10),
-                _inputAltaJugador('Posición', posicionController),
+                _inputAltaJugador('Posicion', posicionController),
               ],
             ),
           ),
@@ -2771,7 +2243,7 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
   /// ===============================
   /// ELIMINAR JUGADOR
   /// Elimina al jugador del plantel persistente de esta categoría.
-  /// No borra eventos históricos ya cargados.
+  /// No borra eventos historicos ya cargados.
   /// ===============================
   Future<void> _confirmarEliminarJugador(PlayerProfile jugador) async {
     final confirmar = await showDialog<bool>(
@@ -2783,7 +2255,7 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          '¿Seguro que querés eliminar a ${jugador.displayName} de ${widget.categoria}?',
+          '¿Seguro que queres eliminar a ${jugador.displayName} de ${widget.categoria}?',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -2920,7 +2392,7 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    nombre.isNotEmpty ? nombre : 'Jugador',
+                                    fixTextoRoto(nombre).isNotEmpty ? nombre : 'Jugador',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -2958,8 +2430,8 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 }
 
 /// ===============================
-/// CUERPO TÉCNICO 2.1
-/// Lee cuerpo técnico desde plantel persistente.
+/// CUERPO TeCNICO 2.1
+/// Lee cuerpo tecnico desde plantel persistente.
 /// ===============================
 class CuerpoTecnicoScreen extends StatefulWidget {
   final String categoria;
@@ -2974,8 +2446,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
   late Future<List<PlayerProfile>> _staffFuture;
 
   /// ===============================
-  /// ALTA CUERPO TÉCNICO
-  /// Crea un integrante del cuerpo técnico
+  /// ALTA CUERPO TeCNICO
+  /// Crea un integrante del cuerpo tecnico
   /// y lo guarda en el plantel persistente.
   /// ===============================
   Future<void> _abrirAltaStaff() async {
@@ -2988,7 +2460,7 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF0F1722),
         title: const Text(
-          'Agregar cuerpo técnico',
+          'Agregar cuerpo tecnico',
           style: TextStyle(color: Colors.white),
         ),
         content: SingleChildScrollView(
@@ -3060,13 +2532,13 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico agregado')));
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo tecnico agregado')));
   }
 
   /// ===============================
-  /// EDITAR CUERPO TÉCNICO
+  /// EDITAR CUERPO TeCNICO
   /// Edita nombre, apellido y rol.
-  /// También permite eliminar.
+  /// Tambien permite eliminar.
   /// ===============================
   Future<void> _abrirEditarStaff(PlayerProfile staff) async {
     final nombreController = TextEditingController(text: staff.nombre);
@@ -3078,7 +2550,7 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF0F1722),
         title: const Text(
-          'Editar cuerpo técnico',
+          'Editar cuerpo tecnico',
           style: TextStyle(color: Colors.white),
         ),
         content: SingleChildScrollView(
@@ -3157,12 +2629,12 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico actualizado')));
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo tecnico actualizado')));
   }
 
   /// ===============================
-  /// ELIMINAR CUERPO TÉCNICO
-  /// Elimina el integrante técnico de esta categoría.
+  /// ELIMINAR CUERPO TeCNICO
+  /// Elimina el integrante tecnico de esta categoría.
   /// ===============================
   Future<void> _confirmarEliminarStaff(PlayerProfile staff) async {
     final confirmar = await showDialog<bool>(
@@ -3170,11 +2642,11 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF0F1722),
         title: const Text(
-          'Eliminar cuerpo técnico',
+          'Eliminar cuerpo tecnico',
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          '¿Seguro que querés eliminar a ${staff.displayName} de ${widget.categoria}?',
+          '¿Seguro que queres eliminar a ${staff.displayName} de ${widget.categoria}?',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -3219,10 +2691,10 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Cuerpo técnico eliminado')));
+    ).showSnackBar(const SnackBar(content: Text('Cuerpo tecnico eliminado')));
   }
 
-  /// Campo visual reutilizable para alta/edición de cuerpo técnico.
+  /// Campo visual reutilizable para alta/edicion de cuerpo tecnico.
   Widget _inputStaff(String label, TextEditingController controller) {
     return TextField(
       controller: controller,
@@ -3271,7 +2743,7 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
       ),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Cuerpo técnico'),
+        title: const Text('Cuerpo tecnico'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -3296,7 +2768,7 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
                 if (staff.isEmpty) {
                   return const Center(
                     child: Text(
-                      'No hay cuerpo técnico cargado',
+                      'No hay cuerpo tecnico cargado',
                       style: TextStyle(color: Colors.white70),
                     ),
                   );
@@ -3328,7 +2800,7 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                nombre.isNotEmpty ? nombre : 'Staff',
+                                fixTextoRoto(nombre).isNotEmpty ? nombre : 'Staff',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
