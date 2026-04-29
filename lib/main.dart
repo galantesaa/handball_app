@@ -5753,17 +5753,20 @@ class _FixtureScreenState extends State<FixtureScreen> {
     final String? escudoRival =
         partido['escudoRival'] as String? ?? _rivalShieldAssetByName(rival);
 
-    final int golesSF =
-        finalizadoV2?.golesSanFernando ??
-        (partido['golesSanFernando'] ?? 0) as int;
+    final int golesSF = finalizadoV2?.golesSanFernando ??
+    ((partido['golesSanFernando'] ?? 0) as int);
 
-    final int golesR =
-        finalizadoV2?.golesRival ?? (partido['golesRival'] ?? 0) as int;
+final int golesRival = finalizadoV2?.golesRival ??
+    ((partido['golesRival'] ?? 0) as int);
 
-    final String marcador = '$golesSF - $golesR';
+//final bool somosLocales = (partido['condicion'] ?? 'Local') == 'Local';
 
-    final bool gano = golesSF > golesR;
-    final bool empato = golesSF == golesR;
+final String marcador = somosLocales
+    ? '$golesSF - $golesRival'
+    : '$golesRival - $golesSF';
+
+final bool gano = golesSF > golesRival;
+final bool empato = golesSF == golesRival;
 
     final Color statusColor = estaFinalizadoV2
         ? empato
@@ -10536,279 +10539,285 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Partidos Jugados'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondohd.jpeg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
+  int toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  return Scaffold(
+    extendBodyBehindAppBar: true,
+    appBar: AppBar(
+      title: const Text('Partidos Jugados'),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    ),
+    body: Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/fondohd.jpeg',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
           ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                  child: Column(
-                    children: [
-                      TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            _busqueda = value;
-                            _aplicarFiltros();
-                          });
-                        },
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Buscar por rival',
-                          hintStyle: const TextStyle(color: Color(0xFFAAB4C3)),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: Color(0xFFAAB4C3),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFF0F1722).withOpacity(0.85),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
+        ),
+        Positioned.fill(
+          child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+        ),
+        SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                child: Column(
+                  children: [
+                    TextField(
+                      onChanged: (value) {
+                        setState(() {
+                          _busqueda = value;
+                          _aplicarFiltros();
+                        });
+                      },
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por rival',
+                        hintStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFFAAB4C3),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF0F1722).withOpacity(0.85),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown<String>(
-                              value: _categoriaSeleccionada,
-                              items: const ['Todas', 'Cadetes', 'Juveniles'],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _categoriaSeleccionada = value;
-                                  _aplicarFiltros();
-                                });
-                              },
-                            ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown<String>(
+                            value: _categoriaSeleccionada,
+                            items: const ['Todas', 'Cadetes', 'Juveniles'],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _categoriaSeleccionada = value;
+                                _aplicarFiltros();
+                              });
+                            },
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildDropdown<String>(
-                              value: _torneoSeleccionado,
-                              items: const ['Todos', 'Apertura', 'Clausura'],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _torneoSeleccionado = value;
-                                  _aplicarFiltros();
-                                });
-                              },
-                            ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildDropdown<String>(
+                            value: _torneoSeleccionado,
+                            items: const ['Todos', 'Apertura', 'Clausura'],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() {
+                                _torneoSeleccionado = value;
+                                _aplicarFiltros();
+                              });
+                            },
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: _filtrados.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No hay partidos cargados',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
-                            ),
+              ),
+              Expanded(
+                child: _filtrados.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No hay partidos cargados',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                          itemCount: _filtrados.length,
-                          itemBuilder: (context, index) {
-                            final partido = _filtrados[index];
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        itemCount: _filtrados.length,
+                        itemBuilder: (context, index) {
+                          final partido = _filtrados[index];
 
-                            final rival = (partido['rival'] ?? 'Rival')
-                                .toString();
-                            final escudo = _rivalShieldAsset(rival);
+                          final rival = (partido['rival'] ?? 'Rival').toString();
+                          final escudo = _rivalShieldAsset(rival);
 
-                            final golesSF =
-                                (partido['golesSanFernando'] ?? 0) as int;
-                            final golesR = (partido['golesRival'] ?? 0) as int;
+                          final golesSF = toInt(partido['golesSanFernando']);
+                          final golesRival = toInt(partido['golesRival']);
 
-                            final condicion = (partido['condicion'] ?? '')
-                                .toString();
-                            final esLocal = condicion == 'Local';
+                          final condicion =
+                              (partido['condicion'] ?? '').toString();
+                          final esLocal = condicion == 'Local';
 
-                            final resultadoTexto = '$golesSF - $golesR';
-                            final condicionTexto = esLocal
-                                ? 'Local'
-                                : 'Visitante';
+                          /// Si San Fernando fue local:
+                          /// marcador = SF - Rival
+                          /// Si San Fernando fue visitante:
+                          /// marcador = Rival - SF
+                          final resultadoTexto = esLocal
+                              ? '$golesSF - $golesRival'
+                              : '$golesRival - $golesSF';
 
-                            final gano = golesSF > golesR;
-                            final empato = golesSF == golesR;
+                          final condicionTexto =
+                              esLocal ? 'Local' : 'Visitante';
 
-                            final resultadoColor = empato
-                                ? const Color(0xFFC58B1D)
-                                : gano
-                                ? const Color(0xFF1E7D4F)
-                                : const Color(0xFF9F2D2D);
+                          final gano = golesSF > golesRival;
+                          final empato = golesSF == golesRival;
 
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ResumenPartidoFinalizadoScreen(
-                                          partido: partido,
-                                        ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF0F1722,
-                                  ).withOpacity(0.84),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.04),
+                          final resultadoColor = empato
+                              ? const Color(0xFFC58B1D)
+                              : gano
+                                  ? const Color(0xFF1E7D4F)
+                                  : const Color(0xFF9F2D2D);
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ResumenPartidoFinalizadoScreen(
+                                    partido: partido,
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 54,
-                                      height: 54,
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white,
-                                      ),
-                                      padding: const EdgeInsets.all(8),
-                                      child: Center(
-                                        child: escudo == null
-                                            ? const Icon(
-                                                Icons.sports_handball,
-                                                color: Color(0xFF1C2B44),
-                                                size: 22,
-                                              )
-                                            : Image.asset(
-                                                escudo,
-                                                fit: BoxFit.contain,
-                                              ),
-                                      ),
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0F1722)
+                                    .withOpacity(0.84),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.04),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 54,
+                                    height: 54,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            rival,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
+                                    padding: const EdgeInsets.all(8),
+                                    child: Center(
+                                      child: escudo == null
+                                          ? const Icon(
+                                              Icons.sports_handball,
+                                              color: Color(0xFF1C2B44),
+                                              size: 22,
+                                            )
+                                          : Image.asset(
+                                              escudo,
+                                              fit: BoxFit.contain,
                                             ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${partido['categoria']} · ${partido['torneo']} · $condicionTexto',
-                                            style: const TextStyle(
-                                              color: Color(0xFFAAB4C3),
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '${partido['fecha']} • ${partido['hora']}',
-                                            style: const TextStyle(
-                                              color: Color(0xFFAAB4C3),
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Column(
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.end,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          resultadoTexto,
+                                          rival,
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 15,
-                                            fontWeight: FontWeight.w800,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 9,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: resultadoColor.withOpacity(
-                                              0.18,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            empato
-                                                ? 'Empate'
-                                                : gano
-                                                ? 'Ganado'
-                                                : 'Perdido',
-                                            style: TextStyle(
-                                              color: resultadoColor,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        const Text(
-                                          'Ver resumen',
-                                          style: TextStyle(
-                                            color: Color(0xFF4F8CFF),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${partido['categoria']} · ${partido['torneo']} · $condicionTexto',
+                                          style: const TextStyle(
+                                            color: Color(0xFFAAB4C3),
                                             fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${partido['fecha']} • ${partido['hora']}',
+                                          style: const TextStyle(
+                                            color: Color(0xFFAAB4C3),
+                                            fontSize: 12,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        resultadoTexto,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 9,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              resultadoColor.withOpacity(0.18),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          empato
+                                              ? 'Empate'
+                                              : gano
+                                                  ? 'Ganado'
+                                                  : 'Perdido',
+                                          style: TextStyle(
+                                            color: resultadoColor,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      const Text(
+                                        'Ver resumen',
+                                        style: TextStyle(
+                                          color: Color(0xFF4F8CFF),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildDropdown<T>({
     required T value,
     required List<T> items,
