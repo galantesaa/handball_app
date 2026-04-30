@@ -1,9 +1,3 @@
-/// ===============================
-/// ===============================
-/// RESUMEN DEL PARTIDO FINALIZADO
-/// ===============================
-/// ===============================
-
 class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   final Map<String, dynamic> partido;
 
@@ -41,325 +35,19 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   int get _golesRivalV2 => partidoV2.golesRival;
 
   /// ===============================
-/// ESTADÍSTICAS POR ARQUERO
-/// Incluye:
-/// - atajadas
-/// - goles recibidos
-/// - palos
-/// - fuera
-/// - penales
-/// - contra directa arquero
-/// - periodos
-/// - zonas de arco
-/// - zonas de tiro
-/// ===============================
-List<Map<String, dynamic>> _estadisticasPorArquero() {
-  final Map<String, Map<String, dynamic>> acumulado = {};
+  /// ESTADÍSTICAS POR ARQUERO
+  /// Incluye:
+  /// - atajadas
+  /// - goles recibidos
+  /// - palos
+  /// - fuera
+  /// - penales
+  /// - contra directa arquero
+  /// - periodos
+  /// - zonas de arco
+  /// - zonas de tiro
+  /// ===============================
 
-  String keyPeriodo(String estado) {
-    switch (estado) {
-      case 'primer_tiempo':
-        return '1T';
-      case 'segundo_tiempo':
-        return '2T';
-      case 'primer_tiempo_alargue':
-        return '1TA';
-      case 'segundo_tiempo_alargue':
-        return '2TA';
-      case 'penales':
-        return 'Penales';
-      default:
-        return 'Otro';
-    }
-  }
-
-  int safeInt(dynamic value) {
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
-  }
-
-  Map<String, int> emptyZonaStats() {
-    return {
-      'atajadas': 0,
-      'golesRecibidos': 0,
-      'palos': 0,
-      'fuera': 0,
-      'contraDirecta': 0,
-    };
-  }
-
-  void inc(Map<String, dynamic> map, String key) {
-    map[key] = safeInt(map[key]) + 1;
-  }
-
-  void incZona(
-    Map<String, Map<String, int>> zonas,
-    String zona,
-    String key,
-  ) {
-    zonas.putIfAbsent(zona, emptyZonaStats);
-    zonas[zona]![key] = (zonas[zona]![key] ?? 0) + 1;
-  }
-
-  for (final e in _eventos) {
-    final map = Map<String, dynamic>.from(e as Map);
-
-    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
-    final resultado = (map['resultado'] ?? '').toString();
-    final modo = (map['modo'] ?? map['phase'] ?? '').toString();
-    final estado = (map['estadoPartido'] ?? '').toString();
-    final origen = (map['origenJugada'] ?? '').toString();
-    final zonaArco = (map['zonaArco'] ?? '').toString();
-    final zonaTiro = (map['zonaTiro'] ?? '').toString();
-    final actorId = (map['actorPrincipalId'] ?? '').toString();
-    final actorPrincipal = (map['actorPrincipal'] ?? '').toString();
-
-    final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
-    if (!esTiro) continue;
-
-    /// ===============================
-    /// CONTRA DIRECTA DEL ARQUERO
-    /// Importante:
-    /// No dependemos solo de origenJugada porque el evento puede llegar como:
-    /// modo: ataque
-    /// zonaTiro: Contra directa arquero
-    /// ===============================
-    final esContraDirectaArquero =
-        modo == 'ataque' && zonaTiro == 'Contra directa arquero';
-
-    final esDefensivoArquero = modo == 'defensa';
-
-    if (!esDefensivoArquero && !esContraDirectaArquero) continue;
-
-    String arquero = (map['arquero'] ?? '').toString().trim();
-
-    if (esContraDirectaArquero) {
-      if (actorId.isNotEmpty && actorId != 'null') {
-        arquero = actorId;
-      } else if (actorPrincipal.isNotEmpty && actorPrincipal != 'null') {
-        arquero = actorPrincipal;
-      }
-    }
-
-    if (arquero.isEmpty || arquero == 'null') {
-      arquero = 'Sin arquero';
-    }
-
-    acumulado.putIfAbsent(arquero, () {
-      return {
-        'arquero': arquero,
-        'atajadas': 0,
-        'golesRecibidos': 0,
-        'palos': 0,
-        'fuera': 0,
-        'tirosAlArco': 0,
-        'totalEventos': 0,
-        'penales': 0,
-        'penalesAtajados': 0,
-        'contraDirecta': 0,
-        'contraDirectaGol': 0,
-        'contraDirectaAtajada': 0,
-        'periodos': <String, Map<String, dynamic>>{},
-        'zonasArco': <String, Map<String, int>>{},
-        'zonasTiro': <String, Map<String, int>>{},
-      };
-    });
-
-    final item = acumulado[arquero]!;
-
-    inc(item, 'totalEventos');
-
-    /// ===============================
-    /// STATS DEFENSIVAS DEL ARQUERO
-    /// Solo defensa suma eficacia de arquero.
-    /// Contra directa NO suma como gol recibido.
-    /// ===============================
-    if (esDefensivoArquero) {
-      if (resultado == 'gol') {
-        inc(item, 'golesRecibidos');
-        inc(item, 'tirosAlArco');
-      }
-
-      if (resultado == 'atajado') {
-        inc(item, 'atajadas');
-        inc(item, 'tirosAlArco');
-      }
-
-      if (resultado == 'palo') {
-        inc(item, 'palos');
-      }
-
-      if (resultado == 'fuera' || resultado == 'desvio') {
-        inc(item, 'fuera');
-      }
-
-      if (tipo == 'penal' || tipo == 'penal_tanda') {
-        inc(item, 'penales');
-
-        if (resultado == 'atajado') {
-          inc(item, 'penalesAtajados');
-        }
-      }
-    }
-
-    /// ===============================
-    /// STATS OFENSIVAS DEL ARQUERO
-    /// Contra directa del arquero.
-    /// ===============================
-    if (esContraDirectaArquero) {
-      inc(item, 'contraDirecta');
-
-      if (resultado == 'gol') {
-        inc(item, 'contraDirectaGol');
-      }
-
-      if (resultado == 'atajado') {
-        inc(item, 'contraDirectaAtajada');
-      }
-    }
-
-    final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
-    final periodoKey = keyPeriodo(estado);
-
-    periodos.putIfAbsent(periodoKey, () {
-      return {
-        'atajadas': 0,
-        'golesRecibidos': 0,
-        'palos': 0,
-        'fuera': 0,
-        'penales': 0,
-        'penalesAtajados': 0,
-        'contraDirecta': 0,
-        'contraDirectaGol': 0,
-        'contraDirectaAtajada': 0,
-        'zonasArco': <String, Map<String, int>>{},
-      };
-    });
-
-    final periodo = periodos[periodoKey]!;
-
-    if (esDefensivoArquero) {
-      if (resultado == 'gol') {
-        inc(periodo, 'golesRecibidos');
-      }
-
-      if (resultado == 'atajado') {
-        inc(periodo, 'atajadas');
-      }
-
-      if (resultado == 'palo') {
-        inc(periodo, 'palos');
-      }
-
-      if (resultado == 'fuera' || resultado == 'desvio') {
-        inc(periodo, 'fuera');
-      }
-
-      if (tipo == 'penal' || tipo == 'penal_tanda') {
-        inc(periodo, 'penales');
-
-        if (resultado == 'atajado') {
-          inc(periodo, 'penalesAtajados');
-        }
-      }
-    }
-
-    if (esContraDirectaArquero) {
-      inc(periodo, 'contraDirecta');
-
-      if (resultado == 'gol') {
-        inc(periodo, 'contraDirectaGol');
-      }
-
-      if (resultado == 'atajado') {
-        inc(periodo, 'contraDirectaAtajada');
-      }
-    }
-
-    if (zonaArco.isNotEmpty && zonaArco != 'null') {
-      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
-      final zonasPeriodo =
-          periodo['zonasArco'] as Map<String, Map<String, int>>;
-
-      if (esDefensivoArquero) {
-        if (resultado == 'atajado') {
-          incZona(zonasArco, zonaArco, 'atajadas');
-          incZona(zonasPeriodo, zonaArco, 'atajadas');
-        }
-
-        if (resultado == 'gol') {
-          incZona(zonasArco, zonaArco, 'golesRecibidos');
-          incZona(zonasPeriodo, zonaArco, 'golesRecibidos');
-        }
-
-        if (resultado == 'palo') {
-          incZona(zonasArco, zonaArco, 'palos');
-          incZona(zonasPeriodo, zonaArco, 'palos');
-        }
-
-        if (resultado == 'fuera' || resultado == 'desvio') {
-          incZona(zonasArco, zonaArco, 'fuera');
-          incZona(zonasPeriodo, zonaArco, 'fuera');
-        }
-      }
-
-      if (esContraDirectaArquero) {
-        incZona(zonasArco, zonaArco, 'contraDirecta');
-        incZona(zonasPeriodo, zonaArco, 'contraDirecta');
-      }
-    }
-
-    if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
-      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
-
-      if (esDefensivoArquero) {
-        if (resultado == 'atajado') {
-          incZona(zonasTiro, zonaTiro, 'atajadas');
-        }
-
-        if (resultado == 'gol') {
-          incZona(zonasTiro, zonaTiro, 'golesRecibidos');
-        }
-
-        if (resultado == 'palo') {
-          incZona(zonasTiro, zonaTiro, 'palos');
-        }
-
-        if (resultado == 'fuera' || resultado == 'desvio') {
-          incZona(zonasTiro, zonaTiro, 'fuera');
-        }
-      }
-
-      if (esContraDirectaArquero) {
-        incZona(zonasTiro, zonaTiro, 'contraDirecta');
-      }
-    }
-  }
-
-  final lista = acumulado.values.map((item) {
-    final atajadas = safeInt(item['atajadas']);
-    final golesRecibidos = safeInt(item['golesRecibidos']);
-    final total = atajadas + golesRecibidos;
-
-    final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
-
-    return {
-      ...item,
-      'eficacia': eficacia,
-    };
-  }).toList();
-
-  lista.sort((a, b) {
-    final eficaciaA = (a['eficacia'] ?? 0.0) as double;
-    final eficaciaB = (b['eficacia'] ?? 0.0) as double;
-    return eficaciaB.compareTo(eficaciaA);
-  });
-
-  return lista;
-}
-  
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
       0,
@@ -458,39 +146,7 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
   String _rivalTexto() => (partido['rival'] ?? 'Rival').toString();
 
   String? _rivalShieldAsset() {
-    final rival = _rivalTexto().toLowerCase();
-
-    if (rival.contains('argentinos')) return 'assets/images/argentinos.png';
-    if (rival.contains('ferro')) return 'assets/images/ferro.png';
-    if (rival.contains('vélez') || rival.contains('velez')) {
-      return 'assets/images/velez.png';
-    }
-    if (rival.contains('campana')) return 'assets/images/campana.png';
-    if (rival.contains('river')) return 'assets/images/river.png';
-    if (rival.contains('dorrego')) return 'assets/images/dorrego.png';
-    if (rival.contains('ballester')) return 'assets/images/ballester.png';
-    if (rival.contains('s.a.g.a.b.') || rival.contains('sagab')) {
-      return 'assets/images/sagab.png';
-    }
-    if (rival.contains('quilmes')) return 'assets/images/quilmes.png';
-    if (rival.contains('lanús') || rival.contains('lanus')) {
-      return 'assets/images/lanus.png';
-    }
-    if (rival.contains('s.e.d.a.l.o.') || rival.contains('sedalo')) {
-      return 'assets/images/sedalo.png';
-    }
-    if (rival.contains('vicente lópez') || rival.contains('vicente lopez')) {
-      return 'assets/images/vicente_lopez.png';
-    }
-    if (rival.contains('estudiantes')) {
-      return 'assets/images/estudiantes_lp.png';
-    }
-    if (rival.contains('ward')) return 'assets/images/ward.png';
-    if (rival.contains('luján') || rival.contains('lujan')) {
-      return 'assets/images/nsl.png';
-    }
-
-    return null;
+    return rivalShieldAssetGlobal(_rivalTexto());
   }
 
   List<Map<String, dynamic>> _eventosImportantes() {
@@ -510,6 +166,99 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
         .toList();
 
     return items.reversed.take(5).toList();
+  }
+
+  List<Map<String, dynamic>> _estadisticasJugadoresCampo() {
+    final Map<String, Map<String, dynamic>> acumulado = {};
+
+    int safeInt(dynamic value) {
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    void inc(Map<String, dynamic> map, String key) {
+      map[key] = safeInt(map[key]) + 1;
+    }
+
+    String jugadorKey(Map<String, dynamic> e) {
+      final actorId = (e['actorPrincipalId'] ?? '').toString().trim();
+      if (actorId.isNotEmpty && actorId != 'null') return actorId;
+
+      final actor = (e['actorPrincipal'] ?? '').toString().trim();
+      if (actor.isNotEmpty && actor != 'null') return actor;
+
+      return 'Sin jugador';
+    }
+
+    for (final raw in _eventos) {
+      if (raw is! Map) continue;
+      final e = Map<String, dynamic>.from(raw);
+
+      final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
+      final resultado = (e['resultado'] ?? '').toString();
+      final modo = (e['modo'] ?? e['phase'] ?? '').toString();
+
+      final esAtaque = modo == 'ataque';
+      if (!esAtaque) continue;
+
+      final key = jugadorKey(e);
+      if (key == 'Sin jugador') continue;
+
+      acumulado.putIfAbsent(key, () {
+        return {
+          'jugador': key,
+          'goles': 0,
+          'tiros': 0,
+          'atajados': 0,
+          'fuera': 0,
+          'palos': 0,
+          'penales': 0,
+          'penalesGol': 0,
+          'perdidas': 0,
+          'recuperaciones': 0,
+        };
+      });
+
+      final item = acumulado[key]!;
+
+      final esTiro = tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (esTiro) {
+        inc(item, 'tiros');
+        if (resultado == 'gol') inc(item, 'goles');
+        if (resultado == 'atajado') inc(item, 'atajados');
+        if (resultado == 'palo') inc(item, 'palos');
+        if (resultado == 'fuera' || resultado == 'desvio') inc(item, 'fuera');
+        if (tipo == 'penal' || tipo == 'penal_tanda') {
+          inc(item, 'penales');
+          if (resultado == 'gol') inc(item, 'penalesGol');
+        }
+      }
+
+      if (tipo == 'perdida' || resultado == 'perdida') inc(item, 'perdidas');
+      if (tipo == 'recuperacion' || resultado == 'recuperacion')
+        inc(item, 'recuperaciones');
+    }
+
+    final lista = acumulado.values.map((item) {
+      final tiros = safeInt(item['tiros']);
+      final goles = safeInt(item['goles']);
+      final efectividad = tiros == 0 ? 0.0 : (goles / tiros) * 100;
+      return {...item, 'efectividad': efectividad};
+    }).toList();
+
+    lista.sort((a, b) {
+      final gb = safeInt(b['goles']);
+      final ga = safeInt(a['goles']);
+      if (gb != ga) return gb.compareTo(ga);
+      final eb = (b['efectividad'] as double?) ?? 0.0;
+      final ea = (a['efectividad'] as double?) ?? 0.0;
+      return eb.compareTo(ea);
+    });
+
+    return lista;
   }
 
   String _tituloEvento(Map<String, dynamic> e) {
@@ -535,14 +284,14 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
     }
 
     if (tipo == 'sancion') {
-      if (resultado == 'exclusion_2_min') return 'Exclusión 2 min';
+      if (resultado == 'exclusion_2_min') return 'Exclusion 2 min';
       if (resultado == 'tarjeta_amarilla') return 'Tarjeta amarilla';
       if (resultado == 'tarjeta_roja') return 'Tarjeta roja';
-      return 'Sanción';
+      return 'Sancion';
     }
 
-    if (tipo == 'perdida' && resultado == 'perdida') return 'Pérdida';
-    if (tipo == 'perdida' && resultado == 'recuperacion') return 'Recuperación';
+    if (tipo == 'perdida' && resultado == 'perdida') return 'Perdida';
+    if (tipo == 'perdida' && resultado == 'recuperacion') return 'Recuperacion';
 
     return tipo.isEmpty ? 'Evento' : tipo;
   }
@@ -587,16 +336,706 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
     );
   }
 
+  /// ===============================
+  /// ENTERO SEGURO
+  /// ===============================
+  int _int(dynamic item, String key) {
+    if (item is Map) {
+      final value = item[key];
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
+  /// ===============================
+  /// MAPA ANIDADO SEGURO
+  /// ===============================
+  Map<String, Map<String, int>> _nestedStats(dynamic raw) {
+    if (raw is Map) {
+      final result = <String, Map<String, int>>{};
+
+      raw.forEach((key, value) {
+        if (value is Map) {
+          final inner = <String, int>{};
+
+          value.forEach((k, v) {
+            if (v is int) {
+              inner[k.toString()] = v;
+            } else if (v is double) {
+              inner[k.toString()] = v.toInt();
+            } else if (v is String) {
+              inner[k.toString()] = int.tryParse(v) ?? 0;
+            }
+          });
+
+          result[key.toString()] = inner;
+        }
+      });
+
+      return result;
+    }
+
+    return {};
+  }
+
+  /// ===============================
+  /// NOMBRE DE ARQUERO
+  /// ===============================
+  String _nombreArquero(Map<String, dynamic> item) {
+    final raw = (item['arquero'] ?? '').toString();
+
+    final dorsalMatch = RegExp(r'^(\d+)').firstMatch(raw);
+    if (dorsalMatch != null) {
+      return nombreArqueroDesdeDorsal(
+        categoria: partidoV2.categoria,
+        dorsal: dorsalMatch.group(1)!,
+      );
+    }
+
+    if (raw.startsWith('sf_')) {
+      final encontrado = RosterRepository.rosterForCategory(
+        categoria: partidoV2.categoria,
+        temporada: '2026',
+        includeStaff: false,
+      ).where((p) => p.playerId == raw).toList();
+
+      if (encontrado.isNotEmpty) return encontrado.first.displayName;
+    }
+
+    return raw.isEmpty || raw == 'null' ? 'Sin arquero' : raw;
+  }
+
+  /// ===============================
+  /// ANÁLISIS DE ARQUERO
+  /// ===============================
+  Map<String, String> _analisisArquero(Map<String, dynamic> item) {
+    final zonasArco = _nestedStats(item['zonasArco']);
+    final periodos = _nestedStats(item['periodos']);
+
+    /// ===============================
+    /// MEJOR TRAMO (queda igual)
+    /// ===============================
+    String mejorTramo = 'Sin datos';
+    double mejorEficacia = -1;
+
+    periodos.forEach((key, data) {
+      final atajadas = data['atajadas'] ?? 0;
+      final goles = data['golesRecibidos'] ?? 0;
+      final total = atajadas + goles;
+
+      if (total == 0) return;
+
+      final eficacia = atajadas / total;
+
+      if (eficacia > mejorEficacia) {
+        mejorEficacia = eficacia;
+        mejorTramo = key;
+      }
+    });
+
+    /// ===============================
+    /// 🔥 NUEVA LÓGICA CORRECTA
+    /// ===============================
+
+    String mejorZona = '';
+    String peorZona = '';
+
+    double mejorEfZona = -1;
+    double peorEfZona = 999;
+
+    zonasArco.forEach((zona, data) {
+      final atajadas = data['atajadas'] ?? 0;
+      final goles = data['golesRecibidos'] ?? 0;
+      final total = atajadas + goles;
+
+      if (total == 0) return;
+
+      final eficacia = atajadas / total;
+
+      // 🟢 Mejor zona (mayor eficacia)
+      if (eficacia > mejorEfZona) {
+        mejorEfZona = eficacia;
+        mejorZona = zona;
+      }
+
+      // 🔴 Peor zona (menor eficacia)
+      if (eficacia < peorEfZona) {
+        peorEfZona = eficacia;
+        peorZona = zona;
+      }
+    });
+
+    String zonaMasAtacada = '';
+    int maxTiros = -1;
+
+    zonasArco.forEach((zona, data) {
+      final atajadas = data['atajadas'] ?? 0;
+      final goles = data['golesRecibidos'] ?? 0;
+      final total = atajadas + goles;
+
+      if (total > maxTiros) {
+        maxTiros = total;
+        zonaMasAtacada = zona;
+      }
+    });
+
+    /// ===============================
+    /// PENALES (igual)
+    /// ===============================
+    final penales = _int(item, 'penales');
+    final penalesAtajados = _int(item, 'penalesAtajados');
+
+    String penalesTxt = '';
+    if (penales > 0) {
+      final ef = (penalesAtajados / penales) * 100;
+      penalesTxt = '$penalesAtajados/$penales (${ef.toStringAsFixed(0)}%)';
+    }
+
+    return {
+      'mejorTramo': mejorTramo,
+      'peorZona': peorZona,
+      'mejorZona': mejorZona,
+      'penales': penalesTxt,
+      'zonaMasAtacada': zonaMasAtacada,
+    };
+  }
+
+  /// ===============================
+  /// TEXTO COMPARTIR WHATSAPP - PRO
+  /// Usa saltos reales, no imprime \n literal.
+  /// Mantiene jerarquía simple para WhatsApp y evita mini-mapas que se rompen.
+  /// ===============================
+  String _buildTextoCompartirResumen() {
+    final local = _nombreLocal;
+    final visitante = _nombreVisitante;
+    final resultado = '$local $_golesLocal - $_golesVisitante $visitante';
+
+    final fecha = (partido['fecha'] ?? '').toString();
+    final hora = (partido['hora'] ?? '').toString();
+    final categoria = (partido['categoria'] ?? '').toString();
+    final torneo = (partido['torneo'] ?? '').toString();
+    final condicion = _somosLocales ? 'Local' : 'Visitante';
+
+    final statsArqueros = _estadisticasPorArquero();
+    final lines = <String>[];
+
+    lines.add('🏐 *Handball SGS*');
+    lines.add('');
+    lines.add('🔥 *RESULTADO FINAL*');
+    lines.add('⚔️ $resultado');
+    lines.add('');
+    lines.add('📍 $categoria · $torneo');
+    lines.add('🗓️ $fecha · $hora');
+    lines.add(_somosLocales ? '🏠 $condicion' : '✈️ $condicion');
+    lines.add('');
+
+    if (statsArqueros.isNotEmpty) {
+      lines.add('🧤 *ARQUEROS*');
+      lines.add('');
+
+      for (final a in statsArqueros) {
+        final nombre = _nombreArquero(a);
+        final ef = (a['eficacia'] ?? 0.0) as double;
+        final atajadas = _int(a, 'atajadas');
+        final goles = _int(a, 'golesRecibidos');
+
+        if (atajadas == 0 && goles == 0) continue;
+
+        lines.add('   🧍 *$nombre*');
+        lines.add('   📊 Eficacia: ${ef.toStringAsFixed(1)}%');
+        lines.add('   🧱 Atajadas: $atajadas');
+        lines.add('   🎯 Goles recibidos: $goles');
+
+        final periodos = a['periodos'] as Map<String, dynamic>? ?? {};
+        final orden = ['1T', '2T', '1TA', '2TA', 'Penales', 'Otro'];
+        final keys = [
+          ...orden.where(periodos.containsKey),
+          ...periodos.keys.where((k) => !orden.contains(k)),
+        ];
+
+        for (final k in keys) {
+          final v = periodos[k];
+          final at = _int(v, 'atajadas');
+          final gl = _int(v, 'golesRecibidos');
+          if (at + gl == 0) continue;
+
+          final efp = (at / (at + gl)) * 100;
+          lines.add(
+            '      ⏱️ $k: ${efp.toStringAsFixed(1)}% · $at atajadas / $gl goles',
+          );
+
+          final penalesP = _int(v, 'penales');
+          final penalesAtP = _int(v, 'penalesAtajados');
+          if (penalesP > 0) {
+            lines.add('         🎯 Penales $k: $penalesAtP/$penalesP atajados');
+          }
+        }
+
+        final penales = _int(a, 'penales');
+        final penalesAt = _int(a, 'penalesAtajados');
+        if (penales > 0) {
+          lines.add('      🎯 Penales totales: $penalesAt/$penales atajados');
+        }
+
+        final contraGol = _int(a, 'contraDirectaGol');
+        final contraAt = _int(a, 'contraDirectaAtajada');
+        final contra = _int(a, 'contraDirecta');
+        if (contra > 0) {
+          final partes = <String>['      ⚡ Contra directa: $contra'];
+          if (contraGol > 0) partes.add('goles: $contraGol');
+          if (contraAt > 0) partes.add('atajadas rival: $contraAt');
+          lines.add(partes.join(' · '));
+        }
+
+        final analisis = _analisisArquero(a);
+        final zonaFuerte = _traducirZona(analisis['mejorZona'] ?? '');
+        final zonaDebil = _traducirZona(analisis['peorZona'] ?? '');
+
+        if (zonaFuerte.isNotEmpty) {
+          lines.add('      🟢 Zona fuerte: $zonaFuerte');
+        }
+        if (zonaDebil.isNotEmpty && zonaDebil != zonaFuerte) {
+          lines.add('      🔴 Zona débil: $zonaDebil');
+        }
+
+        lines.add('');
+      }
+    }
+
+    final amarillas =
+        _contarEventosResultado('tarjeta_amarilla') +
+        _contarEventosTipo('amarilla');
+    final exclusiones =
+        _contarEventosResultado('exclusion_2_min') +
+        _contarEventosTipo('dos_minutos');
+    final rojas =
+        _contarEventosResultado('tarjeta_roja') + _contarEventosTipo('roja');
+
+    if (amarillas + exclusiones + rojas > 0) {
+      lines.add('🚨 *SANCIONES*');
+      if (amarillas > 0) lines.add('   🟨 Amarillas: $amarillas');
+      if (exclusiones > 0) lines.add('   ⏱️ 2 min: $exclusiones');
+      if (rojas > 0) lines.add('   🟥 Rojas: $rojas');
+      lines.add('');
+    }
+
+    lines.add('📲 Generado con Handball SGS');
+    return lines.join('\n');
+  }
+
+  /// ===============================
+  /// COMPARTIR PLACA COMO IMAGEN PNG
+  /// Genera una placa simple con escudos y resultado.
+  /// ===============================
+  Future<void> _shareResumenComoImagen(BuildContext context) async {
+    try {
+      final bytes = await _crearPlacaResumenPng();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/resumen_handball_sgs.png');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: 'Resumen del partido · Handball SGS');
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo generar la placa: $e')),
+      );
+    }
+  }
+
+  Future<List<int>> _crearPlacaResumenPng() async {
+    const width = 1080.0;
+    const height = 1350.0;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final size = const Size(width, height);
+
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF05080D), Color(0xFF111A28), Color(0xFF05080D)],
+      ).createShader(Offset.zero & size);
+
+    canvas.drawRect(Offset.zero & size, bgPaint);
+
+    final cardPaint = Paint()
+      ..color = const Color(0xFF0F1722).withOpacity(0.94);
+    final card = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(55, 90, 970, 1160),
+      const Radius.circular(48),
+    );
+    canvas.drawRRect(card, cardPaint);
+
+    await _drawCenteredText(canvas, 'Handball SGS', 125, 48, FontWeight.w900);
+    await _drawCenteredText(
+      canvas,
+      '${partidoV2.categoria} · ${partidoV2.torneo}',
+      190,
+      30,
+      FontWeight.w700,
+      color: const Color(0xFFAAB4C3),
+    );
+    await _drawCenteredText(
+      canvas,
+      '${partidoV2.fecha} · ${partidoV2.hora}',
+      230,
+      28,
+      FontWeight.w600,
+      color: const Color(0xFFAAB4C3),
+    );
+
+    await _drawTeam(
+      canvas,
+      x: 125,
+      y: 315,
+      name: _nombreLocal,
+      asset: _somosLocales
+          ? 'assets/images/san_fernando.png'
+          : _rivalShieldAsset(),
+    );
+    await _drawTeam(
+      canvas,
+      x: 735,
+      y: 315,
+      name: _nombreVisitante,
+      asset: _somosLocales
+          ? _rivalShieldAsset()
+          : 'assets/images/san_fernando.png',
+    );
+
+    await _drawCenteredText(
+      canvas,
+      '$_golesLocal - $_golesVisitante',
+      430,
+      92,
+      FontWeight.w900,
+    );
+
+    final stats = _estadisticasPorArquero();
+    var y = 640.0;
+
+    if (stats.isNotEmpty) {
+      final mejor = stats.first;
+      final analisis = _analisisArquero(mejor);
+      final nombre = _nombreArquero(mejor);
+      final ef = ((mejor['eficacia'] ?? 0.0) as double).toStringAsFixed(1);
+      final atajadas = _int(mejor, 'atajadas');
+      final goles = _int(mejor, 'golesRecibidos');
+      final zonaFuerte = _traducirZona(analisis['mejorZona'] ?? '');
+      final zonaDebil = _traducirZona(analisis['peorZona'] ?? '');
+
+      await _drawCenteredText(
+        canvas,
+        '🧤 Arquero destacado',
+        y,
+        30,
+        FontWeight.w800,
+        color: const Color(0xFF66D196),
+      );
+      y += 45;
+      await _drawCenteredText(canvas, nombre, y, 34, FontWeight.w900);
+      y += 48;
+      await _drawCenteredText(
+        canvas,
+        'Eficacia $ef% · $atajadas atajadas · $goles goles',
+        y,
+        28,
+        FontWeight.w700,
+        color: const Color(0xFFDCE4EF),
+      );
+      y += 52;
+
+      final periodos = mejor['periodos'] as Map<String, dynamic>? ?? {};
+      final orden = ['1T', '2T', '1TA', '2TA', 'Penales'];
+      for (final key in orden) {
+        if (!periodos.containsKey(key)) continue;
+        final item = periodos[key];
+        final at = _int(item, 'atajadas');
+        final gl = _int(item, 'golesRecibidos');
+        if (at + gl == 0) continue;
+        final efp = ((at / (at + gl)) * 100).toStringAsFixed(1);
+        await _drawCenteredText(
+          canvas,
+          '⏱️ $key: $efp% · $at atajadas / $gl goles',
+          y,
+          26,
+          FontWeight.w700,
+          color: const Color(0xFFAAB4C3),
+        );
+        y += 38;
+      }
+
+      final penales = _int(mejor, 'penales');
+      final penalesAt = _int(mejor, 'penalesAtajados');
+      if (penales > 0) {
+        await _drawCenteredText(
+          canvas,
+          '🎯 Penales: $penalesAt/$penales atajados',
+          y,
+          26,
+          FontWeight.w800,
+          color: const Color(0xFFFFD166),
+        );
+        y += 42;
+      }
+
+      if (zonaFuerte.isNotEmpty) {
+        await _drawCenteredText(
+          canvas,
+          '🟢 Zona fuerte: $zonaFuerte',
+          y,
+          26,
+          FontWeight.w800,
+          color: const Color(0xFF66D196),
+        );
+        y += 38;
+      }
+      if (zonaDebil.isNotEmpty && zonaDebil != zonaFuerte) {
+        await _drawCenteredText(
+          canvas,
+          '🔴 Zona débil: $zonaDebil',
+          y,
+          26,
+          FontWeight.w800,
+          color: const Color(0xFFFF6B6B),
+        );
+        y += 38;
+      }
+    }
+
+    final amarillas =
+        _contarEventosResultado('tarjeta_amarilla') +
+        _contarEventosTipo('amarilla');
+    final exclusiones =
+        _contarEventosResultado('exclusion_2_min') +
+        _contarEventosTipo('dos_minutos');
+    final rojas =
+        _contarEventosResultado('tarjeta_roja') + _contarEventosTipo('roja');
+    if (amarillas + exclusiones + rojas > 0) {
+      y += 20;
+      final sanciones = <String>[];
+      if (amarillas > 0) sanciones.add('🟨 $amarillas');
+      if (exclusiones > 0) sanciones.add('⏱️ $exclusiones');
+      if (rojas > 0) sanciones.add('🟥 $rojas');
+      await _drawCenteredText(
+        canvas,
+        '🚨 Sanciones: ${sanciones.join(' · ')}',
+        y,
+        26,
+        FontWeight.w800,
+        color: const Color(0xFFFFD166),
+      );
+    }
+
+    await _drawCenteredText(
+      canvas,
+      'Generado con Handball SGS',
+      1200,
+      26,
+      FontWeight.w700,
+      color: const Color(0xFFAAB4C3),
+    );
+
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(width.toInt(), height.toInt());
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return byteData!.buffer.asUint8List();
+  }
+
+  Future<void> _drawTeam(
+    Canvas canvas, {
+    required double x,
+    required double y,
+    required String name,
+    required String? asset,
+  }) async {
+    final circlePaint = Paint()..color = Colors.white;
+    canvas.drawCircle(Offset(x + 110, y + 110), 92, circlePaint);
+
+    if (asset != null) {
+      try {
+        final data = await rootBundle.load(asset);
+        final codec = await ui.instantiateImageCodec(
+          data.buffer.asUint8List(),
+          targetWidth: 145,
+          targetHeight: 145,
+        );
+        final frame = await codec.getNextFrame();
+        canvas.drawImage(frame.image, Offset(x + 38, y + 38), Paint());
+      } catch (_) {
+        await _drawCenteredText(
+          canvas,
+          'SGS',
+          y + 95,
+          30,
+          FontWeight.w900,
+          xCenter: x + 110,
+          color: const Color(0xFF1C2B44),
+        );
+      }
+    }
+
+    await _drawCenteredText(
+      canvas,
+      name,
+      y + 250,
+      28,
+      FontWeight.w800,
+      xCenter: x + 110,
+      maxWidth: 260,
+    );
+  }
+
+  Future<void> _drawCenteredText(
+    Canvas canvas,
+    String text,
+    double y,
+    double fontSize,
+    FontWeight weight, {
+    Color color = Colors.white,
+    double xCenter = 540,
+    double maxWidth = 900,
+  }) async {
+    final span = TextSpan(
+      text: text,
+      style: TextStyle(color: color, fontSize: fontSize, fontWeight: weight),
+    );
+
+    final tp = TextPainter(
+      text: span,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+      maxLines: 2,
+      ellipsis: '…',
+    );
+
+    tp.layout(maxWidth: maxWidth);
+    tp.paint(canvas, Offset(xCenter - tp.width / 2, y));
+  }
+
+  String _traducirZona(String zona) {
+    switch (zona) {
+      case 'AI':
+        return 'Arriba izquierda';
+      case 'AC':
+        return 'Arriba centro';
+      case 'AD':
+        return 'Arriba derecha';
+      case 'CI':
+        return 'Medio izquierda';
+      case 'CC':
+        return 'Centro';
+      case 'CD':
+        return 'Medio derecha';
+      case 'BI':
+        return 'Abajo izquierda';
+      case 'BC':
+        return 'Abajo centro';
+      case 'BD':
+        return 'Abajo derecha';
+      default:
+        return '';
+    }
+  }
+
+  String _miniMapaZonaIndentado(String zona, String marker) {
+    final grid = [
+      ['⬜', '⬜', '⬜'],
+      ['⬜', '⬜', '⬜'],
+      ['⬜', '⬜', '⬜'],
+    ];
+
+    final pos = <String, List<int>>{
+      'AI': [0, 0],
+      'AC': [0, 1],
+      'AD': [0, 2],
+      'CI': [1, 0],
+      'CC': [1, 1],
+      'CD': [1, 2],
+      'BI': [2, 0],
+      'BC': [2, 1],
+      'BD': [2, 2],
+    };
+
+    if (zona.isNotEmpty && pos.containsKey(zona)) {
+      final p = pos[zona]!;
+      grid[p[0]][p[1]] = marker;
+    }
+
+    return grid.map((row) => '      ${row.join()}').join('\n') + '\n';
+  }
+
+  int _contarEventosTipo(String tipo) {
+    int count = 0;
+
+    for (final e in _eventos) {
+      final map = Map<String, dynamic>.from(e as Map);
+      if ((map['tipo'] ?? '').toString() == tipo) count++;
+    }
+
+    return count;
+  }
+
+  int _contarEventosResultado(String resultado) {
+    int count = 0;
+
+    for (final e in _eventos) {
+      final map = Map<String, dynamic>.from(e as Map);
+      if ((map['resultado'] ?? '').toString() == resultado) count++;
+    }
+
+    return count;
+  }
+
   @override
   Widget build(BuildContext context) {
     final eventosImportantes = _eventosImportantes();
     final estadisticasPorArquero = _estadisticasPorArquero();
+    final estadisticasPorJugador = _estadisticasJugadoresCampo();
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Resumen del partido'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.share_rounded),
+            color: const Color(0xFF0F1722),
+            onSelected: (value) async {
+              if (value == 'texto') {
+                Share.share(_buildTextoCompartirResumen());
+              }
+
+              if (value == 'imagen') {
+                await _shareResumenComoImagen(context);
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'texto',
+                child: Text(
+                  'Compartir texto',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'imagen',
+                child: Text(
+                  'Compartir placa',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -627,10 +1066,6 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
                   _buildHeaderCard(),
                   const SizedBox(height: 16),
                   _buildKpiGrid(),
-                  TextButton(
-                    onPressed: _debugPrintHistorial,
-                    child: const Text('DEBUG historial'),
-                  ),
 
                   /*const SizedBox(height: 16),
                   TextButton(
@@ -644,7 +1079,7 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
                         _buildInfoRow('Rival', partidoV2.rival),
                         _buildInfoRow('Fecha', partidoV2.fecha),
                         _buildInfoRow('Hora', partidoV2.hora),
-                        _buildInfoRow('Condición', _condicionTexto()),
+                        _buildInfoRow('Condicion', _condicionTexto()),
                       ],
                     ),
                   ),
@@ -692,6 +1127,48 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JugadoresPartidoScreen(
+                            estadisticasPorJugador: estadisticasPorJugador,
+                            categoria: partidoV2.categoria,
+                          ),
+                        ),
+                      );
+                    },
+                    child: _buildSectionCard(
+                      title: 'Jugadores de campo',
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                            'Jugadores con eventos',
+                            '${estadisticasPorJugador.length}',
+                          ),
+                          if (estadisticasPorJugador.isNotEmpty)
+                            _buildInfoRow(
+                              'Máximo goleador',
+                              '${estadisticasPorJugador.first['goles']} goles',
+                            ),
+                          const SizedBox(height: 8),
+                          const Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              'Ver detalle por jugador ›',
+                              style: TextStyle(
+                                color: Color(0xFFD7C2FF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   _buildSectionCard(
                     title: 'Ataque y juego',
                     child: Column(
@@ -702,7 +1179,7 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
                         _buildInfoRow('Tiros con gol', '$_tirosGol'),
                         _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
                         _buildInfoRow('Tiros fuera', '$_tirosFuera'),
-                        _buildInfoRow('Pérdidas', '$_perdidasV2'),
+                        _buildInfoRow('Perdidas', '$_perdidasV2'),
                         _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
                       ],
                     ),
@@ -935,7 +1412,7 @@ List<Map<String, dynamic>> _estadisticasPorArquero() {
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _buildKpiCard('Pérdidas', '$_perdidas')),
+            Expanded(child: _buildKpiCard('Perdidas', '$_perdidas')),
             const SizedBox(width: 10),
             Expanded(
               child: _buildKpiCard('Recuperaciones', '$_recuperaciones'),

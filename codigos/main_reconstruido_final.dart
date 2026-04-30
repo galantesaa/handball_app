@@ -3614,6 +3614,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 }
 
+
 /// ======================================================
 /// BLOQUES FINALES - RESUMEN + ARQUEROS + JUGADORES
 /// ======================================================
@@ -3629,13 +3630,17 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 /// - _estadisticasJugadoresCampo usa actorPrincipal visible y filtra fantasmas.
 /// ======================================================
 
+
 /// ======================================================
 /// 1) RESUMENPARTIDOFINALIZADOSCREEN COMPLETO
 /// ======================================================
 class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   final Map<String, dynamic> partido;
 
-  const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
+  const ResumenPartidoFinalizadoScreen({
+    super.key,
+    required this.partido,
+  });
 
   /// ===============================
   /// PARTIDO V2
@@ -3731,13 +3736,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
   String _fechaTexto() => (partido['fecha'] ?? partidoV2.fecha).toString();
   String _horaTexto() => (partido['hora'] ?? partidoV2.hora).toString();
-  String _condicionTexto() =>
-      (partido['condicion'] ?? partidoV2.condicion).toString();
+  String _condicionTexto() => (partido['condicion'] ?? partidoV2.condicion).toString();
   String _torneoTexto() => (partido['torneo'] ?? partidoV2.torneo).toString();
-  String _categoriaTexto() =>
-      (partido['categoria'] ?? partidoV2.categoria).toString();
-  String _rivalTexto() =>
-      fixTextoRoto((partido['rival'] ?? partidoV2.rival).toString());
+  String _categoriaTexto() => (partido['categoria'] ?? partidoV2.categoria).toString();
+  String _rivalTexto() => fixTextoRoto((partido['rival'] ?? partidoV2.rival).toString());
 
   String? _rivalShieldAsset() => rivalShieldAssetGlobal(_rivalTexto());
 
@@ -3946,8 +3948,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         if (resultado == 'gol') inc(periodo, 'golesRecibidos');
         if (resultado == 'atajado') inc(periodo, 'atajadas');
         if (resultado == 'palo') inc(periodo, 'palos');
-        if (resultado == 'fuera' || resultado == 'desvio')
-          inc(periodo, 'fuera');
+        if (resultado == 'fuera' || resultado == 'desvio') inc(periodo, 'fuera');
 
         if (tipo == 'penal' || tipo == 'penal_tanda') {
           inc(periodo, 'penales');
@@ -3999,8 +4000,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
         if (esDefensivoArquero) {
           if (resultado == 'atajado') incZona(zonasTiro, zonaTiro, 'atajadas');
-          if (resultado == 'gol')
-            incZona(zonasTiro, zonaTiro, 'golesRecibidos');
+          if (resultado == 'gol') incZona(zonasTiro, zonaTiro, 'golesRecibidos');
           if (resultado == 'palo') incZona(zonasTiro, zonaTiro, 'palos');
           if (resultado == 'fuera' || resultado == 'desvio') {
             incZona(zonasTiro, zonaTiro, 'fuera');
@@ -4013,23 +4013,20 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       }
     }
 
-    final lista = acumulado.values
-        .map((item) {
-          final atajadas = _safeInt(item['atajadas']);
-          final golesRecibidos = _safeInt(item['golesRecibidos']);
-          final total = atajadas + golesRecibidos;
-          final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+    final lista = acumulado.values.map((item) {
+      final atajadas = _safeInt(item['atajadas']);
+      final golesRecibidos = _safeInt(item['golesRecibidos']);
+      final total = atajadas + golesRecibidos;
+      final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
 
-          return {...item, 'eficacia': eficacia};
-        })
-        .where((item) {
-          final atajadas = _safeInt(item['atajadas']);
-          final goles = _safeInt(item['golesRecibidos']);
-          final penales = _safeInt(item['penales']);
-          final contra = _safeInt(item['contraDirecta']);
-          return atajadas + goles + penales + contra > 0;
-        })
-        .toList();
+      return {...item, 'eficacia': eficacia};
+    }).where((item) {
+      final atajadas = _safeInt(item['atajadas']);
+      final goles = _safeInt(item['golesRecibidos']);
+      final penales = _safeInt(item['penales']);
+      final contra = _safeInt(item['contraDirecta']);
+      return atajadas + goles + penales + contra > 0;
+    }).toList();
 
     lista.sort((a, b) {
       final eb = _safeDouble(b['eficacia']);
@@ -4037,8 +4034,8 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       final cmp = eb.compareTo(ea);
       if (cmp != 0) return cmp;
       return (a['arquero'] ?? '').toString().compareTo(
-        (b['arquero'] ?? '').toString(),
-      );
+            (b['arquero'] ?? '').toString(),
+          );
     });
 
     return lista;
@@ -4154,20 +4151,17 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       }
     }
 
-    final lista = acumulado.values
-        .map((item) {
-          final tiros = _safeInt(item['tiros']);
-          final goles = _safeInt(item['goles']);
-          final efectividad = tiros == 0 ? 0.0 : (goles / tiros) * 100;
-          return {...item, 'efectividad': efectividad};
-        })
-        .where((item) {
-          final tiros = _safeInt(item['tiros']);
-          final perdidas = _safeInt(item['perdidas']);
-          final recuperaciones = _safeInt(item['recuperaciones']);
-          return tiros + perdidas + recuperaciones > 0;
-        })
-        .toList();
+    final lista = acumulado.values.map((item) {
+      final tiros = _safeInt(item['tiros']);
+      final goles = _safeInt(item['goles']);
+      final efectividad = tiros == 0 ? 0.0 : (goles / tiros) * 100;
+      return {...item, 'efectividad': efectividad};
+    }).where((item) {
+      final tiros = _safeInt(item['tiros']);
+      final perdidas = _safeInt(item['perdidas']);
+      final recuperaciones = _safeInt(item['recuperaciones']);
+      return tiros + perdidas + recuperaciones > 0;
+    }).toList();
 
     lista.sort((a, b) {
       final gb = _safeInt(b['goles']);
@@ -4383,7 +4377,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     }
   }
 
-  /// ===============================
+/// ===============================
   /// HEADER CARD ESTILO PRO
   /// Inspirado en la card que mandaste:
   /// fecha/hora izquierda, equipos al centro, resultado a la derecha.
@@ -4538,9 +4532,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: _buildKpiCard('Atajadas', '$_atajadasDesdeArqueros'),
-            ),
+            Expanded(child: _buildKpiCard('Atajadas', '$_atajadasDesdeArqueros')),
           ],
         ),
         const SizedBox(height: 10),
@@ -4548,9 +4540,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           children: [
             Expanded(child: _buildKpiCard('Pérdidas', '$_perdidasV2')),
             const SizedBox(width: 10),
-            Expanded(
-              child: _buildKpiCard('Recuperaciones', '$_recuperacionesV2'),
-            ),
+            Expanded(child: _buildKpiCard('Recuperaciones', '$_recuperacionesV2')),
           ],
         ),
       ],
@@ -4663,16 +4653,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     lines.add('🏐 *Handball SGS*');
     lines.add('');
     lines.add('🔥 *Resultado final*');
-    lines.add(
-      '${fixTextoRoto(_nombreLocal)} $_golesLocal - $_golesVisitante ${fixTextoRoto(_nombreVisitante)}',
-    );
+    lines.add('${fixTextoRoto(_nombreLocal)} $_golesLocal - $_golesVisitante ${fixTextoRoto(_nombreVisitante)}');
     lines.add('');
-    lines.add(
-      '📍 ${fixTextoRoto(_categoriaTexto())} · ${fixTextoRoto(_torneoTexto())}',
-    );
-    lines.add(
-      '🗓️ ${fixTextoRoto(_fechaTexto())} · ${fixTextoRoto(_horaTexto())}',
-    );
+    lines.add('📍 ${fixTextoRoto(_categoriaTexto())} · ${fixTextoRoto(_torneoTexto())}');
+    lines.add('🗓️ ${fixTextoRoto(_fechaTexto())} · ${fixTextoRoto(_horaTexto())}');
     lines.add(_somosLocales ? '🏠 Local' : '✈️ Visitante');
     lines.add('');
 
@@ -4684,9 +4668,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         final goles = _int(a, 'golesRecibidos');
         final eficacia = _safeDouble(a['eficacia']);
         if (atajadas + goles == 0) continue;
-        lines.add(
-          '• $nombre: ${eficacia.toStringAsFixed(1)}% · $atajadas atajadas / $goles goles',
-        );
+        lines.add('• $nombre: ${eficacia.toStringAsFixed(1)}% · $atajadas atajadas / $goles goles');
       }
       lines.add('');
     }
@@ -4699,9 +4681,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         final tiros = _int(j, 'tiros');
         final efectividad = _safeDouble(j['efectividad']);
         if (goles + tiros == 0) continue;
-        lines.add(
-          '• $nombre: $goles goles / $tiros tiros · ${efectividad.toStringAsFixed(1)}%',
-        );
+        lines.add('• $nombre: $goles goles / $tiros tiros · ${efectividad.toStringAsFixed(1)}%');
       }
       lines.add('');
     }
@@ -4715,7 +4695,8 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     return lines.join('\n');
   }
 
-  ///
+
+/// 
 
   @override
   Widget build(BuildContext context) {
@@ -4884,10 +4865,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                     title: 'Disciplina',
                     child: Column(
                       children: [
-                        _buildInfoRow(
-                          'Exclusiones 2 min',
-                          '$_exclusiones2MinV2',
-                        ),
+                        _buildInfoRow('Exclusiones 2 min', '$_exclusiones2MinV2'),
                         _buildInfoRow('Tarjetas amarillas', '$_amarillasV2'),
                         _buildInfoRow('Tarjetas rojas', '$_rojasV2'),
                       ],
@@ -4915,14 +4893,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF182338,
-                                    ).withOpacity(0.75),
+                                    color: const Color(0xFF182338).withOpacity(0.75),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         _tituloEvento(e),
@@ -12153,6 +12128,8 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 /// ======================================================
 
 class ArquerosPartidoScreen extends StatelessWidget {
+  
+  
   final List<Map<String, dynamic>> estadisticasPorArquero;
   final String categoria;
 
@@ -12359,8 +12336,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
   Widget _buildComparacionArqueros(List<Map<String, dynamic>> data) {
     if (data.length < 2) return const SizedBox.shrink();
 
-    final ordenados = [...data]
-      ..sort((a, b) {
+    final ordenados = [...data]..sort((a, b) {
         final eb = _double(b, 'eficacia');
         final ea = _double(a, 'eficacia');
         return eb.compareTo(ea);
@@ -12536,8 +12512,8 @@ class ArquerosPartidoScreen extends StatelessWidget {
                         final analisis = _analisisArquero(item);
                         final colorNivel = _colorEficacia(eficacia);
 
-                        final mejorTramo = (analisis['mejorTramo'] ?? '')
-                            .toString();
+                        final mejorTramo =
+                            (analisis['mejorTramo'] ?? '').toString();
                         final mejorZona = _traducirZona(
                           (analisis['mejorZona'] ?? '').toString(),
                         );
@@ -12555,7 +12531,10 @@ class ArquerosPartidoScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => DetalleArqueroPartidoScreen(
-                                  stats: {...item, 'arqueroNombre': nombre},
+                                  stats: {
+                                    ...item,
+                                    'arqueroNombre': nombre,
+                                  },
                                 ),
                               ),
                             );
@@ -12587,9 +12566,8 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                       width: 54,
                                       height: 54,
                                       decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF182338,
-                                        ).withOpacity(0.95),
+                                        color: const Color(0xFF182338)
+                                            .withOpacity(0.95),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
                                           color: colorNivel.withOpacity(0.55),
@@ -12655,9 +12633,8 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                   child: LinearProgressIndicator(
                                     value: (eficacia / 100).clamp(0.0, 1.0),
                                     minHeight: 8,
-                                    backgroundColor: Colors.white.withOpacity(
-                                      0.10,
-                                    ),
+                                    backgroundColor:
+                                        Colors.white.withOpacity(0.10),
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       colorNivel,
                                     ),
@@ -12721,6 +12698,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
     );
   }
 }
+
 
 /// ===============================
 /// DETALLE ARQUERO PARTIDO
@@ -13417,10 +13395,7 @@ class JugadoresPartidoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = estadisticasPorJugador.where((j) {
-      return _int(j, 'tiros') +
-              _int(j, 'perdidas') +
-              _int(j, 'recuperaciones') >
-          0;
+      return _int(j, 'tiros') + _int(j, 'perdidas') + _int(j, 'recuperaciones') > 0;
     }).toList();
 
     return Scaffold(
@@ -13465,9 +13440,7 @@ class JugadoresPartidoScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF0F1722).withOpacity(0.88),
                           borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.06),
-                          ),
+                          border: Border.all(color: Colors.white.withOpacity(0.06)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -13478,13 +13451,9 @@ class JugadoresPartidoScreen extends StatelessWidget {
                                   width: 54,
                                   height: 54,
                                   decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF182338,
-                                    ).withOpacity(0.95),
+                                    color: const Color(0xFF182338).withOpacity(0.95),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: color.withOpacity(0.55),
-                                    ),
+                                    border: Border.all(color: color.withOpacity(0.55)),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -13500,10 +13469,7 @@ class JugadoresPartidoScreen extends StatelessWidget {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    nombre.replaceFirst(
-                                      RegExp(r'^\d+\s*·\s*'),
-                                      '',
-                                    ),
+                                    nombre.replaceFirst(RegExp(r'^\d+\s*·\s*'), ''),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 17,
@@ -13520,52 +13486,25 @@ class JugadoresPartidoScreen extends StatelessWidget {
                                 value: (efectividad / 100).clamp(0.0, 1.0),
                                 minHeight: 8,
                                 backgroundColor: Colors.white.withOpacity(0.10),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  color,
-                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(color),
                               ),
                             ),
                             const SizedBox(height: 16),
                             Row(
                               children: [
-                                Expanded(
-                                  child: _miniStat(
-                                    '${_int(item, 'goles')}',
-                                    'Goles',
-                                  ),
-                                ),
+                                Expanded(child: _miniStat('${_int(item, 'goles')}', 'Goles')),
                                 const SizedBox(width: 10),
-                                Expanded(
-                                  child: _miniStat(
-                                    '${_int(item, 'tiros')}',
-                                    'Tiros',
-                                  ),
-                                ),
+                                Expanded(child: _miniStat('${_int(item, 'tiros')}', 'Tiros')),
                                 const SizedBox(width: 10),
-                                Expanded(
-                                  child: _miniStat(
-                                    '${efectividad.toStringAsFixed(1)}%',
-                                    'Efectividad',
-                                  ),
-                                ),
+                                Expanded(child: _miniStat('${efectividad.toStringAsFixed(1)}%', 'Efectividad')),
                               ],
                             ),
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                Expanded(
-                                  child: _miniStat(
-                                    '${_int(item, 'perdidas')}',
-                                    'Pérdidas',
-                                  ),
-                                ),
+                                Expanded(child: _miniStat('${_int(item, 'perdidas')}', 'Pérdidas')),
                                 const SizedBox(width: 10),
-                                Expanded(
-                                  child: _miniStat(
-                                    '${_int(item, 'recuperaciones')}',
-                                    'Recuperaciones',
-                                  ),
-                                ),
+                                Expanded(child: _miniStat('${_int(item, 'recuperaciones')}', 'Recuperaciones')),
                               ],
                             ),
                           ],
@@ -13579,6 +13518,7 @@ class JugadoresPartidoScreen extends StatelessWidget {
     );
   }
 }
+
 
 /// ===============================
 /// HISToRICO DE ARQUEROS
