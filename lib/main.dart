@@ -11563,15 +11563,35 @@ class ArquerosPartidoScreen extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> get _visibles {
-    return estadisticasPorArquero.where((item) {
-      final atajadas = _int(item, 'atajadas');
-      final goles = _int(item, 'golesRecibidos');
-      final penales = _int(item, 'penales');
-      final contra = _int(item, 'contraDirecta');
-      return atajadas + goles + penales + contra > 0;
-    }).toList();
+  bool esArqueroValido(Map<String, dynamic> item) {
+    final raw = (item['arquero'] ?? '').toString().trim();
+    final nombre = (item['arqueroNombre'] ?? '').toString().trim();
+
+    final identidad = raw.isNotEmpty ? raw : nombre;
+    final normalizado = identidad.toLowerCase().trim();
+
+    if (normalizado.isEmpty) return false;
+    if (normalizado == 'null') return false;
+    if (normalizado == 'sin arquero') return false;
+    if (normalizado == 'cambio de contexto') return false;
+    if (normalizado.startsWith('sf_')) return false;
+    if (normalizado.contains('gen')) return false;
+
+    return true;
   }
 
+  return estadisticasPorArquero.where((item) {
+    if (!esArqueroValido(item)) return false;
+
+    final atajadas = _int(item, 'atajadas');
+    final goles = _int(item, 'golesRecibidos');
+    final penales = _int(item, 'penales');
+    final contra = _int(item, 'contraDirecta');
+
+    return atajadas + goles + penales + contra > 0;
+  }).toList();
+}  
+  
   String _nombreArquero(Map<String, dynamic> item) {
     final raw = (item['arquero'] ?? '').toString().trim();
 
