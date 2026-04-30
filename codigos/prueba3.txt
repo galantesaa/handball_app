@@ -1,172 +1,30 @@
-lib/main.dart:3760:30: Error: Method not found: '_eventosImportantes'.
-  final eventosImportantes = _eventosImportantes();
-                             ^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3761:34: Error: Method not found: '_estadisticasPorArquero'.
-  final estadisticasPorArquero = _estadisticasPorArquero();
-                                 ^^^^^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3762:34: Error: Method not found: '_estadisticasJugadoresCampo'.
-  final estadisticasPorJugador = _estadisticasJugadoresCampo();
-                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3790:35: Error: Undefined name 'partidoV2'.
-                  '${fixTextoRoto(partidoV2.categoria)} · ${fixTextoRoto(partidoV2.torneo)}',
-                                  ^^^^^^^^^
-lib/main.dart:3790:74: Error: Undefined name 'partidoV2'.
-                  '${fixTextoRoto(partidoV2.categoria)} · ${fixTextoRoto(partidoV2.torneo)}',
-                                                                         ^^^^^^^^^
-lib/main.dart:3797:17: Error: Method not found: '_buildHeaderCardPro'.
-                _buildHeaderCardPro(),
-                ^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3799:17: Error: Method not found: '_buildKpiGrid'.
-                _buildKpiGrid(),
-                ^^^^^^^^^^^^^
-lib/main.dart:3805:46: Error: Method not found: '_rivalTexto'.
-                      _buildInfoRow('Rival', _rivalTexto()),
-                                             ^^^^^^^^^^^
-lib/main.dart:3805:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Rival', _rivalTexto()),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3806:46: Error: Method not found: '_fechaTexto'.
-                      _buildInfoRow('Fecha', _fechaTexto()),
-                                             ^^^^^^^^^^^
-lib/main.dart:3806:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Fecha', _fechaTexto()),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3807:45: Error: Method not found: '_horaTexto'.
-                      _buildInfoRow('Hora', _horaTexto()),
-                                            ^^^^^^^^^^
-lib/main.dart:3807:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Hora', _horaTexto()),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3808:50: Error: Method not found: '_condicionTexto'.
-                      _buildInfoRow('Condición', _condicionTexto()),
-                                                 ^^^^^^^^^^^^^^^
-lib/main.dart:3808:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Condición', _condicionTexto()),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3801:17: Error: Method not found: '_buildSectionCard'.
-                _buildSectionCard(
-                ^^^^^^^^^^^^^^^^^
-lib/main.dart:3820:38: Error: Undefined name 'partidoV2'.
-                          categoria: partidoV2.categoria,
-                                     ^^^^^^^^^
-lib/main.dart:3831:30: Error: Undefined name '_eficaciaDesdeArqueros'.
-                          '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
-                             ^^^^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3829:25: Error: Method not found: '_buildInfoRow'.
-                        _buildInfoRow(
-                        ^^^^^^^^^^^^^
-lib/main.dart:3833:53: Error: Undefined name '_atajadasDesdeArqueros'.
-                        _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
-                                                    ^^^^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3833:25: Error: Method not found: '_buildInfoRow'.
-                        _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
-                        ^^^^^^^^^^^^^
-lib/main.dart:3836:29: Error: Undefined name '_golesRecibidosDesdeArqueros'.
-                          '$_golesRecibidosDesdeArqueros',
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3834:25: Error: Method not found: '_buildInfoRow'.
-                        _buildInfoRow(
-                        ^^^^^^^^^^^^^
-lib/main.dart:3838:62: Error: Undefined name '_penalesV2'.
-                        _buildInfoRow('Penales en contra', '$_penalesV2'),
-                                                             ^^^^^^^^^^
-lib/main.dart:3838:25: Error: Method not found: '_buildInfoRow'.
-                        _buildInfoRow('Penales en contra', '$_penalesV2'),
-                        ^^^^^^^^^^^^^
-lib/main.dart:3825:26: Error: Method not found: '_buildSectionCard'.
-                  child: _buildSectionCard(
-                         ^^^^^^^^^^^^^^^^^
-lib/main.dart:3863:38: Error: Undefined name 'partidoV2'.
-                          categoria: partidoV2.categoria,
-                                     ^^^^^^^^^
-lib/main.dart:3872:25: Error: Method not found: '_buildInfoRow'.
-                        _buildInfoRow(
-                        ^^^^^^^^^^^^^
-lib/main.dart:3877:27: Error: Method not found: '_buildInfoRow'.
-                          _buildInfoRow(
-                          ^^^^^^^^^^^^^
-lib/main.dart:3868:26: Error: Method not found: '_buildSectionCard'.
-                  child: _buildSectionCard(
-                         ^^^^^^^^^^^^^^^^^
-lib/main.dart:3902:56: Error: Undefined name '_golesSanFernandoV2'.
-                      _buildInfoRow('Goles a favor', '$_golesSanFernandoV2'),
-                                                       ^^^^^^^^^^^^^^^^^^^
-lib/main.dart:3902:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Goles a favor', '$_golesSanFernandoV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3903:58: Error: Undefined name '_golesRivalV2'.
-                      _buildInfoRow('Goles en contra', '$_golesRivalV2'),
-                                                         ^^^^^^^^^^^^^
-lib/main.dart:3903:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Goles en contra', '$_golesRivalV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3904:60: Error: Undefined name '_tirosTotales'.
-                      _buildInfoRow('Tiros registrados', '$_tirosTotales'),
-                                                           ^^^^^^^^^^^^^
-lib/main.dart:3904:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Tiros registrados', '$_tirosTotales'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3905:56: Error: Undefined name '_tirosGol'.
-                      _buildInfoRow('Tiros con gol', '$_tirosGol'),
-                                                       ^^^^^^^^^
-lib/main.dart:3905:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Tiros con gol', '$_tirosGol'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3906:57: Error: Undefined name '_tirosAtajados'.
-                      _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
-                                                        ^^^^^^^^^^^^^^
-lib/main.dart:3906:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3907:54: Error: Undefined name '_tirosFuera'.
-                      _buildInfoRow('Tiros fuera', '$_tirosFuera'),
-                                                     ^^^^^^^^^^^
-lib/main.dart:3907:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Tiros fuera', '$_tirosFuera'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3908:51: Error: Undefined name '_perdidasV2'.
-                      _buildInfoRow('Pérdidas', '$_perdidasV2'),
-                                                  ^^^^^^^^^^^
-lib/main.dart:3908:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Pérdidas', '$_perdidasV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3909:57: Error: Undefined name '_recuperacionesV2'.
-                      _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
-                                                        ^^^^^^^^^^^^^^^^^
-lib/main.dart:3909:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3898:17: Error: Method not found: '_buildSectionCard'.
-                _buildSectionCard(
-                ^^^^^^^^^^^^^^^^^
-lib/main.dart:3918:60: Error: Undefined name '_exclusiones2MinV2'.
-                      _buildInfoRow('Exclusiones 2 min', '$_exclusiones2MinV2'),
-                                                           ^^^^^^^^^^^^^^^^^^
-lib/main.dart:3918:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Exclusiones 2 min', '$_exclusiones2MinV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3919:61: Error: Undefined name '_amarillasV2'.
-                      _buildInfoRow('Tarjetas amarillas', '$_amarillasV2'),
-                                                            ^^^^^^^^^^^^
-lib/main.dart:3919:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Tarjetas amarillas', '$_amarillasV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3920:57: Error: Undefined name '_rojasV2'.
-                      _buildInfoRow('Tarjetas rojas', '$_rojasV2'),
-                                                        ^^^^^^^^
-lib/main.dart:3920:23: Error: Method not found: '_buildInfoRow'.
-                      _buildInfoRow('Tarjetas rojas', '$_rojasV2'),
-                      ^^^^^^^^^^^^^
-lib/main.dart:3914:17: Error: Method not found: '_buildSectionCard'.
-                _buildSectionCard(
-                ^^^^^^^^^^^^^^^^^
-lib/main.dart:3955:39: Error: Method not found: '_tituloEvento'.
-                                      _tituloEvento(e),
-                                      ^^^^^^^^^^^^^
-lib/main.dart:3964:39: Error: Method not found: '_subtituloEvento'.
-                                      _subtituloEvento(e),
-                                      ^^^^^^^^^^^^^^^^
-lib/main.dart:3925:17: Error: Method not found: '_buildSectionCard'.
-                _buildSectionCard(
-                ^^^^^^^^^^^^^^^^^
+lib/main.dart:4246:7: Error: No named parameter with the name 'escudoRivalOverride'.
+      escudoRivalOverride: escudoRival,
+      ^^^^^^^^^^^^^^^^^^^
+lib/models/match_model.dart:66:11: Context: Found this candidate, but the arguments don't match.
+  factory MatchModel.fromMap(
+          ^^^^^^^
+lib/main.dart:9028:31: Error: No named parameter with the name 'escudoRivalOverride'.
+                              escudoRivalOverride: escudo,
+                              ^^^^^^^^^^^^^^^^^^^
+lib/models/match_model.dart:66:11: Context: Found this candidate, but the arguments don't match.
+  factory MatchModel.fromMap(
+          ^^^^^^^
 Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildDebug'.
+> Process 'command 'C:\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 26s
+Running Gradle task 'assembleDebug'...                             26,5s
+Error: Gradle task assembleDebug failed with exit code 1
