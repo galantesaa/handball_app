@@ -15,7 +15,6 @@ import 'package:file_selector/file_selector.dart';
 import 'models/match_model.dart';
 import 'services/stats_service.dart';
 
-
 /// ===============================
 /// PUNTO DE ENTRADA
 /// ===============================
@@ -816,7 +815,38 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
   String get temporada => '2026';
 
   late Future<List<PlayerProfile>> _rosterFuture;
-  List<PlayerProfile> _roster = [];
+
+  List<PlayerProfile> _rosterPrincipal = [];
+  List<PlayerProfile> _rosterExtras = [];
+
+  final Map<String, String> _categoriaPorJugadorId = {};
+
+  List<String> get _ordenCategorias => const [
+    'Mini',
+    'Infantiles',
+    'Menores',
+    'Cadetes',
+    'Juveniles',
+    'Juniors',
+    'Mayores',
+  ];
+
+  List<String> get _categoriasInferioresHabilitadas {
+    final categoriaNormalizada = categoria.trim().toLowerCase();
+
+    final reglasConvocatoria = <String, List<String>>{
+      'cadetes': ['Menores'],
+      'juveniles': ['Cadetes'],
+      'juniors': ['Juveniles'],
+
+      /// Ligas / Mayores pueden usar dos categorías inferiores inmediatas.
+      'mayores': ['Juniors', 'Juveniles'],
+      'liga': ['Juniors', 'Juveniles'],
+      'primera': ['Juniors', 'Juveniles'],
+    };
+
+    return reglasConvocatoria[categoriaNormalizada] ?? [];
+  }
 
   Future<List<PlayerProfile>> _loadRoster() async {
     await RosterStorage.seedCategoryIfEmpty(
@@ -824,24 +854,59 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
       temporada: temporada,
     );
 
-    final roster = await RosterStorage.readRosterForCategory(
+    final principal = await RosterStorage.readRosterForCategory(
       categoria: categoria,
       temporada: temporada,
       includeStaff: false,
     );
 
-    _roster = roster;
+    final extras = <PlayerProfile>[];
 
-    if (convocadosIds.isEmpty) {
-      convocadosIds = roster
-          .where((p) => p.esArquero)
+    for (final cat in _categoriasInferioresHabilitadas) {
+      await RosterStorage.seedCategoryIfEmpty(
+        categoria: cat,
+        temporada: temporada,
+      );
+
+      final rosterCat = await RosterStorage.readRosterForCategory(
+        categoria: cat,
+        temporada: temporada,
+        includeStaff: false,
+      );
+
+      for (final jugador in rosterCat) {
+        extras.add(jugador);
+        _categoriaPorJugadorId[jugador.playerId] = cat;
+      }
+    }
+
+    for (final jugador in principal) {
+      _categoriaPorJugadorId[jugador.playerId] = categoria;
+    }
+
+    _rosterPrincipal = principal;
+    _rosterExtras = extras;
+
+    /// =====================================================
+    /// CONVOCATORIA DEFAULT PROFESIONAL
+    /// =====================================================
+    /// Por ahora la app trabaja principalmente con arqueros.
+    /// Entonces:
+    /// - Los arqueros quedan convocados por defecto.
+    /// - Los jugadores de campo aparecen disponibles, pero NO seleccionados.
+    /// - Si el usuario quiere usar un jugador de campo, lo selecciona manualmente.
+    /// =====================================================
+    if (convocadosIds.isEmpty && arquerosIds.isEmpty) {
+      final arquerosDefault = principal
+          .where((p) => p.esArquero && !p.esCuerpoTecnico)
           .map((p) => p.playerId)
           .toSet();
 
-      arquerosIds = {...convocadosIds};
+      convocadosIds = {...arquerosDefault};
+      arquerosIds = {...arquerosDefault};
     }
 
-    return roster;
+    return [...principal, ...extras];
   }
 
   @override
@@ -859,10 +924,18 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
   }
 
   List<PlayerProfile> get _titularesCategoria {
-    return _roster.where((p) => !p.esCuerpoTecnico).toList();
+    return _rosterPrincipal.where((p) => !p.esCuerpoTecnico).toList();
   }
 
-  List<PlayerProfile> get _cadetesExtras => [];
+  List<PlayerProfile> get _extrasDisponibles {
+    final idsPrincipales = _rosterPrincipal.map((p) => p.playerId).toSet();
+
+    return _rosterExtras
+        .where(
+          (p) => !p.esCuerpoTecnico && !idsPrincipales.contains(p.playerId),
+        )
+        .toList();
+  }
 
   void _toggleConvocado(PlayerProfile player, bool? selected) {
     setState(() {
@@ -891,18 +964,32 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
   }
 
   void _guardar() {
+    final todos = [..._rosterPrincipal, ..._rosterExtras];
+
+    /// Solo se guardan los jugadores realmente convocados.
+    /// Esto evita que el partido en vivo reciba todo el plantel completo.
+    final convocados = todos.where((p) {
+      return convocadosIds.contains(p.playerId);
+    }).toList();
+
     widget.partido['matchSquad'] = MatchSquadConfig(
       convocadosIds: convocadosIds,
       arquerosIds: arquerosIds,
     ).toMap();
 
-    /// Snapshot del plantel real usado para este
-    /// partido.
-    /// Permite que PartidoEnVivo encuentre
-    /// jugadores creados en storage
-    widget.partido['matchRosterSnapshot'] = _roster
-        .map((p) => p.toMap())
-        .toList();
+    /// Snapshot real del partido.
+    /// Incluye:
+    /// - arqueros convocados por defecto
+    /// - jugadores de campo solo si fueron seleccionados manualmente
+    /// - categoría de origen para refuerzos
+    widget.partido['matchRosterSnapshot'] = convocados.map((p) {
+      return {
+        ...p.toMap(),
+        'categoriaOrigen': _categoriaPorJugadorId[p.playerId] ?? categoria,
+        'convocado': true,
+        'arqueroPartido': arquerosIds.contains(p.playerId),
+      };
+    }).toList();
 
     Navigator.pop(context, widget.partido['matchSquad']);
   }
@@ -946,13 +1033,23 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
                         fontSize: 14,
                       ),
                     ),
-
                     const SizedBox(height: 18),
 
                     _buildSectionCard(
                       title: 'Convocados $categoria',
+                      subtitle: 'Plantel principal de la categoría',
                       players: _titularesCategoria,
                     ),
+
+                    if (_extrasDisponibles.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildSectionCard(
+                        title: 'Refuerzos habilitados',
+                        subtitle:
+                            'Jugadores de ${_categoriasInferioresHabilitadas.join(', ')}',
+                        players: _extrasDisponibles,
+                      ),
+                    ],
 
                     const SizedBox(height: 20),
 
@@ -990,6 +1087,7 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
 
   Widget _buildSectionCard({
     required String title,
+    required String subtitle,
     required List<PlayerProfile> players,
   }) {
     return Container(
@@ -1007,59 +1105,103 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          if (players.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No hay jugadores disponibles.',
+                style: TextStyle(color: Color(0xFFAAB4C3), fontSize: 13),
+              ),
+            ),
+
           ...players.map((p) {
             final convocado = convocadosIds.contains(p.playerId);
             final arquero = arquerosIds.contains(p.playerId);
+            final categoriaOrigen =
+                _categoriaPorJugadorId[p.playerId] ?? categoria;
 
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF182338).withOpacity(0.75),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: convocado
+                      ? const Color(0xFF4F8CFF).withOpacity(0.35)
+                      : Colors.white.withOpacity(0.03),
+                ),
               ),
               child: Column(
                 children: [
                   Row(
                     children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF101827),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            p.numeroPreferido ?? '-',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           p.displayName,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                       Checkbox(
-                        value: convocadosIds.contains(p.playerId),
+                        value: convocado,
                         onChanged: (value) => _toggleConvocado(p, value),
                       ),
                     ],
                   ),
-
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           p.esArquero
-                              ? 'Arquero disponible'
-                              : 'Jugador de campo',
+                              ? 'Arquero · $categoriaOrigen'
+                              : 'Jugador de campo · $categoriaOrigen',
                           style: const TextStyle(
                             color: Color(0xFFAAB4C3),
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       if (p.esArquero)
                         Switch(
-                          value: arquerosIds.contains(p.playerId),
+                          value: arquero,
                           onChanged: (value) => _toggleArquero(p, value),
                           activeColor: const Color(0xFFBDA7FF),
                         ),
@@ -3618,7 +3760,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 }
 
-
 /// ======================================================
 /// BLOQUES FINALES - RESUMEN + ARQUEROS + JUGADORES
 /// ======================================================
@@ -3633,7 +3774,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 /// - Se corrige para no usar actorPrincipalId como nombre visual.
 /// - _estadisticasJugadoresCampo usa actorPrincipal visible y filtra fantasmas.
 /// ======================================================
-
 
 /// ===============================
 /// ===============================
@@ -3686,228 +3826,229 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   /// al arquero propio.
   /// ===============================
   List<Map<String, dynamic>> _estadisticasPorArquero() {
-  final Map<String, Map<String, dynamic>> acumulado = {};
+    final Map<String, Map<String, dynamic>> acumulado = {};
 
-  /// ===============================
-  /// Normaliza el período del evento.
-  /// Soporta varias claves porque venimos migrando
-  /// desde Map legacy hacia modelo V2.
-  /// ===============================
-  String periodoDesdeEvento(Map<String, dynamic> map) {
-    final raw = (map['periodo'] ??
-            map['tiempo'] ??
-            map['tiempoPartido'] ??
-            map['estadoTiempo'] ??
-            map['estadoPartido'] ??
-            '')
-        .toString()
-        .trim()
-        .toLowerCase();
+    /// ===============================
+    /// Normaliza el período del evento.
+    /// Soporta varias claves porque venimos migrando
+    /// desde Map legacy hacia modelo V2.
+    /// ===============================
+    String periodoDesdeEvento(Map<String, dynamic> map) {
+      final raw =
+          (map['periodo'] ??
+                  map['tiempo'] ??
+                  map['tiempoPartido'] ??
+                  map['estadoTiempo'] ??
+                  map['estadoPartido'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
 
-    if (raw == '1t' || raw == 'primer_tiempo' || raw == 'primer tiempo') {
-      return '1T';
+      if (raw == '1t' || raw == 'primer_tiempo' || raw == 'primer tiempo') {
+        return '1T';
+      }
+
+      if (raw == '2t' || raw == 'segundo_tiempo' || raw == 'segundo tiempo') {
+        return '2T';
+      }
+
+      if (raw == '1ta' || raw == 'primer_tiempo_alargue') {
+        return '1TA';
+      }
+
+      if (raw == '2ta' || raw == 'segundo_tiempo_alargue') {
+        return '2TA';
+      }
+
+      if (raw == 'penales') {
+        return 'Penales';
+      }
+
+      return 'Global';
     }
 
-    if (raw == '2t' || raw == 'segundo_tiempo' || raw == 'segundo tiempo') {
-      return '2T';
-    }
-
-    if (raw == '1ta' || raw == 'primer_tiempo_alargue') {
-      return '1TA';
-    }
-
-    if (raw == '2ta' || raw == 'segundo_tiempo_alargue') {
-      return '2TA';
-    }
-
-    if (raw == 'penales') {
-      return 'Penales';
-    }
-
-    return 'Global';
-  }
-
-  /// ===============================
-  /// Crea estructura base para arquero.
-  /// ===============================
-  Map<String, dynamic> crearItem(String arquero) {
-    return {
-      'arquero': arquero,
-      'atajadas': 0,
-      'golesRecibidos': 0,
-      'palos': 0,
-      'fuera': 0,
-      'tirosAlArco': 0,
-      'totalEventos': 0,
-      'penales': 0,
-      'penalesAtajados': 0,
-      'contraDirecta': 0,
-      'periodos': <String, Map<String, int>>{},
-      'zonasArco': <String, Map<String, int>>{},
-      'zonasTiro': <String, Map<String, int>>{},
-    };
-  }
-
-  /// ===============================
-  /// Suma resultado en una estructura:
-  /// periodos / zonasArco / zonasTiro.
-  /// ===============================
-  void sumarEnMapa(
-    Map<String, Map<String, int>> destino,
-    String key,
-    String resultado,
-  ) {
-    if (key.trim().isEmpty || key == 'null') return;
-
-    destino.putIfAbsent(key, () {
+    /// ===============================
+    /// Crea estructura base para arquero.
+    /// ===============================
+    Map<String, dynamic> crearItem(String arquero) {
       return {
+        'arquero': arquero,
         'atajadas': 0,
         'golesRecibidos': 0,
         'palos': 0,
         'fuera': 0,
+        'tirosAlArco': 0,
+        'totalEventos': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'periodos': <String, Map<String, int>>{},
+        'zonasArco': <String, Map<String, int>>{},
+        'zonasTiro': <String, Map<String, int>>{},
       };
-    });
-
-    if (resultado == 'atajado') {
-      destino[key]!['atajadas'] = (destino[key]!['atajadas'] ?? 0) + 1;
     }
 
-    if (resultado == 'gol') {
-      destino[key]!['golesRecibidos'] =
-          (destino[key]!['golesRecibidos'] ?? 0) + 1;
-    }
+    /// ===============================
+    /// Suma resultado en una estructura:
+    /// periodos / zonasArco / zonasTiro.
+    /// ===============================
+    void sumarEnMapa(
+      Map<String, Map<String, int>> destino,
+      String key,
+      String resultado,
+    ) {
+      if (key.trim().isEmpty || key == 'null') return;
 
-    if (resultado == 'palo') {
-      destino[key]!['palos'] = (destino[key]!['palos'] ?? 0) + 1;
-    }
-
-    if (resultado == 'fuera' || resultado == 'desvio' || resultado == 'desvío') {
-      destino[key]!['fuera'] = (destino[key]!['fuera'] ?? 0) + 1;
-    }
-  }
-
-  for (final e in _eventos) {
-    if (e is! Map) continue;
-
-    final map = Map<String, dynamic>.from(e);
-
-    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
-    final resultado = (map['resultado'] ?? '').toString().trim();
-    final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
-
-    final zonaArco = (map['zonaArco'] ?? '').toString().trim();
-    final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
-    final origen = (map['origenJugada'] ?? '').toString().trim();
-    final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
-
-    final bool esTiro =
-        tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
-
-    if (!esTiro) continue;
-
-    final bool resultadoValido = resultado == 'atajado' ||
-        resultado == 'gol' ||
-        resultado == 'palo' ||
-        resultado == 'fuera' ||
-        resultado == 'desvio' ||
-        resultado == 'desvío';
-
-    if (!resultadoValido) continue;
-
-    final bool esDefensivoArquero = modo == 'defensa';
-
-    final bool esContraDirectaArquero = modo == 'ataque' &&
-        origen == 'contra' &&
-        zonaTiro == 'Contra directa arquero' &&
-        actorId.isNotEmpty;
-
-    if (!esDefensivoArquero && !esContraDirectaArquero) continue;
-
-    String arquero = (map['arquero'] ?? '').toString().trim();
-
-    if (esContraDirectaArquero) {
-      arquero = actorId;
-    }
-
-    if (arquero.isEmpty || arquero == 'null') {
-      arquero = 'Sin arquero';
-    }
-
-    acumulado.putIfAbsent(arquero, () => crearItem(arquero));
-
-    final item = acumulado[arquero]!;
-
-    item['totalEventos'] = (item['totalEventos'] as int) + 1;
-
-    if (resultado == 'atajado') {
-      item['atajadas'] = (item['atajadas'] as int) + 1;
-      item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
-    }
-
-    if (resultado == 'gol') {
-      item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
-      item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
-    }
-
-    if (resultado == 'palo') {
-      item['palos'] = (item['palos'] as int) + 1;
-    }
-
-    if (resultado == 'fuera' || resultado == 'desvio' || resultado == 'desvío') {
-      item['fuera'] = (item['fuera'] as int) + 1;
-    }
-
-    if (tipo == 'penal' || tipo == 'penal_tanda') {
-      item['penales'] = (item['penales'] as int) + 1;
+      destino.putIfAbsent(key, () {
+        return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
+      });
 
       if (resultado == 'atajado') {
-        item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        destino[key]!['atajadas'] = (destino[key]!['atajadas'] ?? 0) + 1;
+      }
+
+      if (resultado == 'gol') {
+        destino[key]!['golesRecibidos'] =
+            (destino[key]!['golesRecibidos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'palo') {
+        destino[key]!['palos'] = (destino[key]!['palos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        destino[key]!['fuera'] = (destino[key]!['fuera'] ?? 0) + 1;
       }
     }
 
-    if (esContraDirectaArquero) {
-      item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+    for (final e in _eventos) {
+      if (e is! Map) continue;
+
+      final map = Map<String, dynamic>.from(e);
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
+      final resultado = (map['resultado'] ?? '').toString().trim();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
+
+      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final origen = (map['origenJugada'] ?? '').toString().trim();
+      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+
+      final bool esTiro =
+          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (!esTiro) continue;
+
+      final bool resultadoValido =
+          resultado == 'atajado' ||
+          resultado == 'gol' ||
+          resultado == 'palo' ||
+          resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío';
+
+      if (!resultadoValido) continue;
+
+      final bool esDefensivoArquero = modo == 'defensa';
+
+      final bool esContraDirectaArquero =
+          modo == 'ataque' &&
+          origen == 'contra' &&
+          zonaTiro == 'Contra directa arquero' &&
+          actorId.isNotEmpty;
+
+      if (!esDefensivoArquero && !esContraDirectaArquero) continue;
+
+      String arquero = (map['arquero'] ?? '').toString().trim();
+
+      if (esContraDirectaArquero) {
+        arquero = actorId;
+      }
+
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
+
+      acumulado.putIfAbsent(arquero, () => crearItem(arquero));
+
+      final item = acumulado[arquero]!;
+
+      item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      if (resultado == 'atajado') {
+        item['atajadas'] = (item['atajadas'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        item['palos'] = (item['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        item['fuera'] = (item['fuera'] as int) + 1;
+      }
+
+      if (tipo == 'penal' || tipo == 'penal_tanda') {
+        item['penales'] = (item['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+      }
+
+      final periodos = item['periodos'] as Map<String, Map<String, int>>;
+      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+
+      sumarEnMapa(periodos, periodoDesdeEvento(map), resultado);
+      sumarEnMapa(zonasArco, zonaArco, resultado);
+      sumarEnMapa(zonasTiro, zonaTiro, resultado);
     }
 
-    final periodos = item['periodos'] as Map<String, Map<String, int>>;
-    final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
-    final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+    final lista = acumulado.values
+        .map((item) {
+          final atajadas = item['atajadas'] as int;
+          final golesRecibidos = item['golesRecibidos'] as int;
+          final total = atajadas + golesRecibidos;
+          final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
 
-    sumarEnMapa(periodos, periodoDesdeEvento(map), resultado);
-    sumarEnMapa(zonasArco, zonaArco, resultado);
-    sumarEnMapa(zonasTiro, zonaTiro, resultado);
+          return {...item, 'eficacia': eficacia};
+        })
+        .where((item) {
+          final atajadas = (item['atajadas'] ?? 0) as int;
+          final goles = (item['golesRecibidos'] ?? 0) as int;
+          final palos = (item['palos'] ?? 0) as int;
+          final fuera = (item['fuera'] ?? 0) as int;
+          final penales = (item['penales'] ?? 0) as int;
+          final contraDirecta = (item['contraDirecta'] ?? 0) as int;
+
+          return atajadas + goles + palos + fuera + penales + contraDirecta > 0;
+        })
+        .toList();
+
+    lista.sort((a, b) {
+      final efA = (a['eficacia'] ?? 0.0) as double;
+      final efB = (b['eficacia'] ?? 0.0) as double;
+      return efB.compareTo(efA);
+    });
+
+    return lista;
   }
-
-  final lista = acumulado.values.map((item) {
-    final atajadas = item['atajadas'] as int;
-    final golesRecibidos = item['golesRecibidos'] as int;
-    final total = atajadas + golesRecibidos;
-    final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
-
-    return {
-      ...item,
-      'eficacia': eficacia,
-    };
-  }).where((item) {
-    final atajadas = (item['atajadas'] ?? 0) as int;
-    final goles = (item['golesRecibidos'] ?? 0) as int;
-    final palos = (item['palos'] ?? 0) as int;
-    final fuera = (item['fuera'] ?? 0) as int;
-    final penales = (item['penales'] ?? 0) as int;
-    final contraDirecta = (item['contraDirecta'] ?? 0) as int;
-
-    return atajadas + goles + palos + fuera + penales + contraDirecta > 0;
-  }).toList();
-
-  lista.sort((a, b) {
-    final efA = (a['eficacia'] ?? 0.0) as double;
-    final efB = (b['eficacia'] ?? 0.0) as double;
-    return efB.compareTo(efA);
-  });
-
-  return lista;
-}
-
 
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
@@ -4209,22 +4350,19 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                             'Eficacia global',
                             '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
                           ),
-                          _buildInfoRow(
-                            'Atajadas',
-                            '$_atajadasDesdeArqueros',
-                          ),
+                          _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
                           _buildInfoRow(
                             'Goles recibidos',
                             '$_golesRecibidosDesdeArqueros',
                           ),
-                          _buildInfoRow(
-                            'Penales en contra',
-                            '$_penalesV2',
-                          ),
+                          _buildInfoRow('Penales en contra', '$_penalesV2'),
                           const SizedBox(height: 12),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                              horizontal: 16,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF182338).withOpacity(0.85),
                               borderRadius: BorderRadius.circular(16),
@@ -4590,7 +4728,6 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     );
   }
 }
-
 
 /// ===============================
 /// ===============================
@@ -5016,10 +5153,13 @@ class _FixtureScreenState extends State<FixtureScreen> {
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
     final identidad = buildNormalizedMatchIdentity(partido);
 
-    final PartidoModel? finalizadoV2 = _finalizadosV2.cast<PartidoModel?>().firstWhere(
-      (p) => p != null && buildNormalizedMatchIdentity(p.toMap()) == identidad,
-      orElse: () => null,
-    );
+    final PartidoModel? finalizadoV2 = _finalizadosV2
+        .cast<PartidoModel?>()
+        .firstWhere(
+          (p) =>
+              p != null && buildNormalizedMatchIdentity(p.toMap()) == identidad,
+          orElse: () => null,
+        );
 
     final bool estaFinalizadoV2 = finalizadoV2 != null;
 
@@ -5036,14 +5176,11 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     final String rival = fixTextoRoto(partidoVisual['rival'] ?? 'Rival');
     final String? escudoRival =
-        (partidoVisual['escudoRival'] as String?) ?? _rivalShieldAssetByName(rival);
+        (partidoVisual['escudoRival'] as String?) ??
+        _rivalShieldAssetByName(rival);
 
     final match = MatchModel.fromMap(
-      {
-        ...partidoVisual,
-        'rival': rival,
-        'escudoRival': escudoRival,
-      },
+      {...partidoVisual, 'rival': rival, 'escudoRival': escudoRival},
       finalizadoOverride: estaFinalizadoV2,
       escudoRivalOverride: escudoRival,
     );
@@ -9698,11 +9835,12 @@ class _HistorialScreenState extends State<HistorialScreen> {
       final categoria = (p['categoria'] ?? '').toString();
       final torneo = (p['torneo'] ?? '').toString();
 
-      final okCategoria = _categoriaSeleccionada == 'Todas' ||
+      final okCategoria =
+          _categoriaSeleccionada == 'Todas' ||
           categoria == _categoriaSeleccionada;
 
-      final okTorneo = _torneoSeleccionado == 'Todos' ||
-          torneo == _torneoSeleccionado;
+      final okTorneo =
+          _torneoSeleccionado == 'Todos' || torneo == _torneoSeleccionado;
 
       final okBusqueda = q.isEmpty || rival.contains(q);
 
@@ -9816,7 +9954,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
                           itemCount: _filtrados.length,
                           itemBuilder: (context, index) {
                             final partido = _filtrados[index];
-                            final rival = fixTextoRoto(partido['rival'] ?? 'Rival');
+                            final rival = fixTextoRoto(
+                              partido['rival'] ?? 'Rival',
+                            );
                             final escudo = _rivalShieldAsset(rival);
 
                             final match = MatchModel.fromMap(
@@ -9840,9 +9980,10 @@ class _HistorialScreenState extends State<HistorialScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => ResumenPartidoFinalizadoScreen(
-                                      partido: partido,
-                                    ),
+                                    builder: (_) =>
+                                        ResumenPartidoFinalizadoScreen(
+                                          partido: partido,
+                                        ),
                                   ),
                                 );
                               },
@@ -11535,8 +11676,6 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 /// ======================================================
 
 class ArquerosPartidoScreen extends StatelessWidget {
-  
-  
   final List<Map<String, dynamic>> estadisticasPorArquero;
   final String categoria;
 
@@ -11563,35 +11702,35 @@ class ArquerosPartidoScreen extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> get _visibles {
-  bool esArqueroValido(Map<String, dynamic> item) {
-    final raw = (item['arquero'] ?? '').toString().trim();
-    final nombre = (item['arqueroNombre'] ?? '').toString().trim();
+    bool esArqueroValido(Map<String, dynamic> item) {
+      final raw = (item['arquero'] ?? '').toString().trim();
+      final nombre = (item['arqueroNombre'] ?? '').toString().trim();
 
-    final identidad = raw.isNotEmpty ? raw : nombre;
-    final normalizado = identidad.toLowerCase().trim();
+      final identidad = raw.isNotEmpty ? raw : nombre;
+      final normalizado = identidad.toLowerCase().trim();
 
-    if (normalizado.isEmpty) return false;
-    if (normalizado == 'null') return false;
-    if (normalizado == 'sin arquero') return false;
-    if (normalizado == 'cambio de contexto') return false;
-    if (normalizado.startsWith('sf_')) return false;
-    if (normalizado.contains('gen')) return false;
+      if (normalizado.isEmpty) return false;
+      if (normalizado == 'null') return false;
+      if (normalizado == 'sin arquero') return false;
+      if (normalizado == 'cambio de contexto') return false;
+      if (normalizado.startsWith('sf_')) return false;
+      if (normalizado.contains('gen')) return false;
 
-    return true;
+      return true;
+    }
+
+    return estadisticasPorArquero.where((item) {
+      if (!esArqueroValido(item)) return false;
+
+      final atajadas = _int(item, 'atajadas');
+      final goles = _int(item, 'golesRecibidos');
+      final penales = _int(item, 'penales');
+      final contra = _int(item, 'contraDirecta');
+
+      return atajadas + goles + penales + contra > 0;
+    }).toList();
   }
 
-  return estadisticasPorArquero.where((item) {
-    if (!esArqueroValido(item)) return false;
-
-    final atajadas = _int(item, 'atajadas');
-    final goles = _int(item, 'golesRecibidos');
-    final penales = _int(item, 'penales');
-    final contra = _int(item, 'contraDirecta');
-
-    return atajadas + goles + penales + contra > 0;
-  }).toList();
-}  
-  
   String _nombreArquero(Map<String, dynamic> item) {
     final raw = (item['arquero'] ?? '').toString().trim();
 
@@ -11763,7 +11902,8 @@ class ArquerosPartidoScreen extends StatelessWidget {
   Widget _buildComparacionArqueros(List<Map<String, dynamic>> data) {
     if (data.length < 2) return const SizedBox.shrink();
 
-    final ordenados = [...data]..sort((a, b) {
+    final ordenados = [...data]
+      ..sort((a, b) {
         final eb = _double(b, 'eficacia');
         final ea = _double(a, 'eficacia');
         return eb.compareTo(ea);
@@ -11939,8 +12079,8 @@ class ArquerosPartidoScreen extends StatelessWidget {
                         final analisis = _analisisArquero(item);
                         final colorNivel = _colorEficacia(eficacia);
 
-                        final mejorTramo =
-                            (analisis['mejorTramo'] ?? '').toString();
+                        final mejorTramo = (analisis['mejorTramo'] ?? '')
+                            .toString();
                         final mejorZona = _traducirZona(
                           (analisis['mejorZona'] ?? '').toString(),
                         );
@@ -11958,10 +12098,7 @@ class ArquerosPartidoScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => DetalleArqueroPartidoScreen(
-                                  stats: {
-                                    ...item,
-                                    'arqueroNombre': nombre,
-                                  },
+                                  stats: {...item, 'arqueroNombre': nombre},
                                 ),
                               ),
                             );
@@ -11993,8 +12130,9 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                       width: 54,
                                       height: 54,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF182338)
-                                            .withOpacity(0.95),
+                                        color: const Color(
+                                          0xFF182338,
+                                        ).withOpacity(0.95),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
                                           color: colorNivel.withOpacity(0.55),
@@ -12060,8 +12198,9 @@ class ArquerosPartidoScreen extends StatelessWidget {
                                   child: LinearProgressIndicator(
                                     value: (eficacia / 100).clamp(0.0, 1.0),
                                     minHeight: 8,
-                                    backgroundColor:
-                                        Colors.white.withOpacity(0.10),
+                                    backgroundColor: Colors.white.withOpacity(
+                                      0.10,
+                                    ),
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       colorNivel,
                                     ),
@@ -12125,7 +12264,6 @@ class ArquerosPartidoScreen extends StatelessWidget {
     );
   }
 }
-
 
 /// ===============================
 /// DETALLE ARQUERO PARTIDO
@@ -12822,7 +12960,10 @@ class JugadoresPartidoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = estadisticasPorJugador.where((j) {
-      return _int(j, 'tiros') + _int(j, 'perdidas') + _int(j, 'recuperaciones') > 0;
+      return _int(j, 'tiros') +
+              _int(j, 'perdidas') +
+              _int(j, 'recuperaciones') >
+          0;
     }).toList();
 
     return Scaffold(
@@ -12867,7 +13008,9 @@ class JugadoresPartidoScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF0F1722).withOpacity(0.88),
                           borderRadius: BorderRadius.circular(22),
-                          border: Border.all(color: Colors.white.withOpacity(0.06)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.06),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -12878,9 +13021,13 @@ class JugadoresPartidoScreen extends StatelessWidget {
                                   width: 54,
                                   height: 54,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF182338).withOpacity(0.95),
+                                    color: const Color(
+                                      0xFF182338,
+                                    ).withOpacity(0.95),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: color.withOpacity(0.55)),
+                                    border: Border.all(
+                                      color: color.withOpacity(0.55),
+                                    ),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -12896,7 +13043,10 @@ class JugadoresPartidoScreen extends StatelessWidget {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    nombre.replaceFirst(RegExp(r'^\d+\s*·\s*'), ''),
+                                    nombre.replaceFirst(
+                                      RegExp(r'^\d+\s*·\s*'),
+                                      '',
+                                    ),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 17,
@@ -12913,25 +13063,52 @@ class JugadoresPartidoScreen extends StatelessWidget {
                                 value: (efectividad / 100).clamp(0.0, 1.0),
                                 minHeight: 8,
                                 backgroundColor: Colors.white.withOpacity(0.10),
-                                valueColor: AlwaysStoppedAnimation<Color>(color),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  color,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 16),
                             Row(
                               children: [
-                                Expanded(child: _miniStat('${_int(item, 'goles')}', 'Goles')),
+                                Expanded(
+                                  child: _miniStat(
+                                    '${_int(item, 'goles')}',
+                                    'Goles',
+                                  ),
+                                ),
                                 const SizedBox(width: 10),
-                                Expanded(child: _miniStat('${_int(item, 'tiros')}', 'Tiros')),
+                                Expanded(
+                                  child: _miniStat(
+                                    '${_int(item, 'tiros')}',
+                                    'Tiros',
+                                  ),
+                                ),
                                 const SizedBox(width: 10),
-                                Expanded(child: _miniStat('${efectividad.toStringAsFixed(1)}%', 'Efectividad')),
+                                Expanded(
+                                  child: _miniStat(
+                                    '${efectividad.toStringAsFixed(1)}%',
+                                    'Efectividad',
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                Expanded(child: _miniStat('${_int(item, 'perdidas')}', 'Pérdidas')),
+                                Expanded(
+                                  child: _miniStat(
+                                    '${_int(item, 'perdidas')}',
+                                    'Pérdidas',
+                                  ),
+                                ),
                                 const SizedBox(width: 10),
-                                Expanded(child: _miniStat('${_int(item, 'recuperaciones')}', 'Recuperaciones')),
+                                Expanded(
+                                  child: _miniStat(
+                                    '${_int(item, 'recuperaciones')}',
+                                    'Recuperaciones',
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -12945,7 +13122,6 @@ class JugadoresPartidoScreen extends StatelessWidget {
     );
   }
 }
-
 
 /// ===============================
 /// HISToRICO DE ARQUEROS
