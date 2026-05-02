@@ -1,0 +1,8 @@
+
+lib/main.dart:11120:31: Error: The method 'ArquerosScreen' isn't defined for the type
+'_PlantelScreenState'.
+ - '_PlantelScreenState' is from 'package:handball_app/main.dart' ('lib/main.dart').
+Try correcting the name to the name of an existing method, or defining a method named
+'ArquerosScreen'.
+                              ArquerosScreen(categoria: categoriaSeleccionada),
+                              ^^^^^^^^^^^^^^

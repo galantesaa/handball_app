@@ -2704,7 +2704,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   Future<void> _eliminarPartidosDePrueba() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final rawFinished = prefs.getString('finished_matches_history_v1');
+    int eliminados = 0;
+
+    final rawFinished = prefs.getString(_finishedMatchesStorageKey);
 
     if (rawFinished != null && rawFinished.isNotEmpty) {
       final decoded = jsonDecode(rawFinished) as List<dynamic>;
@@ -2714,11 +2716,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         return item['isReal'] == true;
       }).toList();
 
-      await prefs.setString(
-        'finished_matches_history_v1',
-        jsonEncode(soloReales),
-      );
+      eliminados = decoded.length - soloReales.length;
+
+      await prefs.setString(_finishedMatchesStorageKey, jsonEncode(soloReales));
     }
+
+    await prefs.remove(_partidosFinalizadosStorageKey);
 
     if (!mounted) return;
 
@@ -2731,8 +2734,35 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       _recalcularProximoYSiguientesDesdeBase();
     });
 
+    if (hayPartido && proximoPartido.isNotEmpty) {
+      await prefs.setString(
+        _proximoPartidoStorageKey,
+        jsonEncode(proximoPartido),
+      );
+    } else {
+      await prefs.remove(_proximoPartidoStorageKey);
+    }
+
+    await prefs.setString(
+      _siguientesPartidosStorageKey,
+      jsonEncode(siguientesPartidos),
+    );
+
+    await prefs.setString(
+      _partidosFinalizadosStorageKey,
+      jsonEncode(partidosFinalizados),
+    );
+
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Se eliminaron los partidos de prueba')),
+      SnackBar(
+        content: Text(
+          eliminados == 1
+              ? 'Se eliminó 1 partido de prueba'
+              : 'Se eliminaron $eliminados partidos de prueba',
+        ),
+      ),
     );
   }
 
@@ -3825,14 +3855,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   /// Ignora tiros en modo ataque, porque no pertenecen
   /// al arquero propio.
   /// ===============================
+
   List<Map<String, dynamic>> _estadisticasPorArquero() {
     final Map<String, Map<String, dynamic>> acumulado = {};
 
-    /// ===============================
-    /// Normaliza el período del evento.
-    /// Soporta varias claves porque venimos migrando
-    /// desde Map legacy hacia modelo V2.
-    /// ===============================
     String periodoDesdeEvento(Map<String, dynamic> map) {
       final raw =
           (map['periodo'] ??
@@ -3853,24 +3879,13 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         return '2T';
       }
 
-      if (raw == '1ta' || raw == 'primer_tiempo_alargue') {
-        return '1TA';
-      }
-
-      if (raw == '2ta' || raw == 'segundo_tiempo_alargue') {
-        return '2TA';
-      }
-
-      if (raw == 'penales') {
-        return 'Penales';
-      }
+      if (raw == '1ta' || raw == 'primer_tiempo_alargue') return '1TA';
+      if (raw == '2ta' || raw == 'segundo_tiempo_alargue') return '2TA';
+      if (raw == 'penales') return 'Penales';
 
       return 'Global';
     }
 
-    /// ===============================
-    /// Crea estructura base para arquero.
-    /// ===============================
     Map<String, dynamic> crearItem(String arquero) {
       return {
         'arquero': arquero,
@@ -3883,16 +3898,12 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         'penales': 0,
         'penalesAtajados': 0,
         'contraDirecta': 0,
-        'periodos': <String, Map<String, int>>{},
+        'periodos': <String, Map<String, dynamic>>{},
         'zonasArco': <String, Map<String, int>>{},
         'zonasTiro': <String, Map<String, int>>{},
       };
     }
 
-    /// ===============================
-    /// Suma resultado en una estructura:
-    /// periodos / zonasArco / zonasTiro.
-    /// ===============================
     void sumarEnMapa(
       Map<String, Map<String, int>> destino,
       String key,
@@ -3922,6 +3933,70 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           resultado == 'desvío') {
         destino[key]!['fuera'] = (destino[key]!['fuera'] ?? 0) + 1;
       }
+    }
+
+    void sumarPeriodo({
+      required Map<String, Map<String, dynamic>> periodos,
+      required String periodo,
+      required String resultado,
+      required String zonaArco,
+      required String zonaTiro,
+      required bool esPenal,
+      required bool esContraDirectaArquero,
+    }) {
+      periodos.putIfAbsent(periodo, () {
+        return {
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+          'penales': 0,
+          'penalesAtajados': 0,
+          'contraDirecta': 0,
+          'zonasArco': <String, Map<String, int>>{},
+          'zonasTiro': <String, Map<String, int>>{},
+        };
+      });
+
+      final data = periodos[periodo]!;
+
+      if (resultado == 'atajado') {
+        data['atajadas'] = (data['atajadas'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        data['golesRecibidos'] = (data['golesRecibidos'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        data['palos'] = (data['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        data['fuera'] = (data['fuera'] as int) + 1;
+      }
+
+      if (esPenal) {
+        data['penales'] = (data['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          data['penalesAtajados'] = (data['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
+      }
+
+      final zonasArcoPeriodo =
+          data['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiroPeriodo =
+          data['zonasTiro'] as Map<String, Map<String, int>>;
+
+      sumarEnMapa(zonasArcoPeriodo, zonaArco, resultado);
+      sumarEnMapa(zonasTiroPeriodo, zonaTiro, resultado);
     }
 
     for (final e in _eventos) {
@@ -3999,7 +4074,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         item['fuera'] = (item['fuera'] as int) + 1;
       }
 
-      if (tipo == 'penal' || tipo == 'penal_tanda') {
+      final bool esPenal = tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (esPenal) {
         item['penales'] = (item['penales'] as int) + 1;
 
         if (resultado == 'atajado') {
@@ -4011,13 +4088,24 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
       }
 
-      final periodos = item['periodos'] as Map<String, Map<String, int>>;
+      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
       final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
       final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
 
-      sumarEnMapa(periodos, periodoDesdeEvento(map), resultado);
+      final periodo = periodoDesdeEvento(map);
+
       sumarEnMapa(zonasArco, zonaArco, resultado);
       sumarEnMapa(zonasTiro, zonaTiro, resultado);
+
+      sumarPeriodo(
+        periodos: periodos,
+        periodo: periodo,
+        resultado: resultado,
+        zonaArco: zonaArco,
+        zonaTiro: zonaTiro,
+        esPenal: esPenal,
+        esContraDirectaArquero: esContraDirectaArquero,
+      );
     }
 
     final lista = acumulado.values
@@ -4493,6 +4581,59 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     );
   }
 
+  String _buildResumenCompartible() {
+    final local = _nombreLocal;
+    final visitante = _nombreVisitante;
+
+    final golesLocal = _golesLocal;
+    final golesVisitante = _golesVisitante;
+
+    final eficacia = _eficaciaDesdeArqueros;
+    final atajadas = _atajadasDesdeArqueros;
+    final golesRecibidos = _golesRecibidosDesdeArqueros;
+
+    final fecha = partidoV2.fecha;
+    final categoria = partidoV2.categoria;
+    final torneo = partidoV2.torneo;
+    final condicion = _condicionTexto();
+
+    final arqueros = _estadisticasPorArquero();
+
+    String arquerosDetalle = '';
+
+    if (arqueros.isNotEmpty) {
+      arquerosDetalle = '\n\n🧤 Arqueros:\n';
+
+      for (int i = 0; i < arqueros.length && i < 2; i++) {
+        final a = arqueros[i];
+
+        final nombre = (a['arqueroNombre'] ?? a['arquero'] ?? 'Arquero')
+            .toString();
+
+        final ef = (a['eficacia'] ?? 0.0) as double;
+        final at = (a['atajadas'] ?? 0) as int;
+        final gr = (a['golesRecibidos'] ?? 0) as int;
+
+        arquerosDetalle += '• $nombre → ${ef.toStringAsFixed(1)}% ($at/$gr)\n';
+      }
+    }
+
+    return '''
+🏆 $categoria · $torneo
+
+🤾 $local vs $visitante
+📍 $condicion
+📊 Resultado: $golesLocal - $golesVisitante
+
+🧤 Global:
+- Eficacia: ${eficacia.toStringAsFixed(1)}%
+- Atajadas: $atajadas
+- Goles: $golesRecibidos
+$arquerosDetalle
+📅 $fecha
+''';
+  }
+
   Widget _buildHeaderCard() {
     return Container(
       width: double.infinity,
@@ -4504,22 +4645,44 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C2B44).withOpacity(0.95),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Text(
-              'Finalizado',
-              style: TextStyle(
-                color: Color(0xFFDCE4EF),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+          /// 🔥 FILA SUPERIOR (estado + share)
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C2B44).withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  'Finalizado',
+                  style: TextStyle(
+                    color: Color(0xFFDCE4EF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-            ),
+
+              const Spacer(),
+
+              /// 🔥 BOTÓN SHARE
+              IconButton(
+                icon: const Icon(Icons.share, color: Colors.white),
+                onPressed: () {
+                  final texto = _buildResumenCompartible();
+                  Share.share(texto);
+                },
+              ),
+            ],
           ),
+
           const SizedBox(height: 18),
+
+          /// 🔥 SCOREBOARD
           Row(
             children: [
               Expanded(
@@ -6978,6 +7141,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   penalEnCurso = false;
                   mostrarContra = false;
                   origenJugadaActual = 'normal';
+                  mostrarSelectorLateralJugador = false;
 
                   if (estadoPartido == 'primer_tiempo' &&
                       modoInicioPrimerTiempo == null) {
@@ -7004,6 +7168,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                   penalEnCurso = false;
                   mostrarContra = false;
                   origenJugadaActual = 'normal';
+                  mostrarSelectorLateralJugador = false;
 
                   if (estadoPartido == 'primer_tiempo' &&
                       modoInicioPrimerTiempo == null) {
@@ -7600,6 +7765,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               if (_isPenaltyShootout()) {
                 setState(() {
                   zonaArco = label;
+                  mostrarSelectorLateralJugador = false;
                 });
                 _showPenaltyShootoutResultSheet();
                 return;
@@ -7608,6 +7774,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               if (penalEnCurso) {
                 setState(() {
                   zonaArco = label;
+                  mostrarSelectorLateralJugador = false;
                 });
                 _showNormalPenaltyResultSheet();
                 return;
@@ -7624,17 +7791,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
               setState(() {
                 zonaArco = zonaArco == label ? null : label;
+                mostrarSelectorLateralJugador = false;
               });
 
               if (zonaArco != null) {
-                if (_debeMostrarSelectorJugadorParaAtaque() &&
-                    !_esContraArqueroDirecta) {
-                  setState(() {
-                    mostrarSelectorLateralJugador = true;
-                  });
-                  return;
-                }
-
                 _showZoneActionSheet();
               }
             },
@@ -8912,18 +9072,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
         ? 'Contra directa arquero'
         : zonaTiro;
 
-    final String actor =
-        actorForzado ??
-        (esContraDirecta
-            ? _currentGoalkeeperActorName
-            : _resolvePrimaryActorForShot(
-                eventMode: modoAntesDelEvento,
-                allowGoalkeeperInAttack: true,
-              ));
-
+    /// En ataque, si hay jugadores de campo convocados,
+    /// el jugador se pide DESPUÉS de elegir el resultado.
     if (modoAntesDelEvento == 'ataque' &&
         !esContraDirecta &&
-        jugadorSeleccionado == null &&
         _jugadoresCampoConvocados.isNotEmpty) {
       _tiroPendienteResultado = resultado;
       _tiroPendienteModo = modoAntesDelEvento;
@@ -8933,10 +9085,22 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       _tiroPendientePrevState = prevState;
 
       setState(() {
+        jugadorSeleccionado = null;
+        jugadorSeleccionadoId = null;
         mostrarSelectorLateralJugador = true;
       });
+
       return;
     }
+
+    final String actor =
+        actorForzado ??
+        (esContraDirecta
+            ? _currentGoalkeeperActorName
+            : _resolvePrimaryActorForShot(
+                eventMode: modoAntesDelEvento,
+                allowGoalkeeperInAttack: true,
+              ));
 
     _registrarTiroNormalResuelto(
       resultado: resultado,
@@ -9042,14 +9206,19 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   void _seleccionarJugadorParaTiroPendiente(PlayerProfile jugador) {
     final dorsal = jugador.numeroPreferido ?? '-';
-    final nombre = jugador.nombreLista; // 🔥 CLAVE
+    final nombre = jugador.nombreLista;
     final actor = '$dorsal · $nombre';
 
     final resultado = _tiroPendienteResultado;
     final modoPendiente = _tiroPendienteModo;
     final prevState = _tiroPendientePrevState;
 
-    if (resultado == null || modoPendiente == null || prevState == null) return;
+    if (resultado == null || modoPendiente == null || prevState == null) {
+      setState(() {
+        mostrarSelectorLateralJugador = false;
+      });
+      return;
+    }
 
     jugadorSeleccionado = actor;
     jugadorSeleccionadoId = jugador.playerId;
@@ -9064,11 +9233,16 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       prevState: prevState,
     );
 
+    // 🔥 LIMPIEZA TOTAL
     _tiroPendienteResultado = null;
     _tiroPendienteModo = null;
     _tiroPendienteZonaTiro = null;
     _tiroPendienteZonaArco = null;
     _tiroPendientePrevState = null;
+
+    setState(() {
+      mostrarSelectorLateralJugador = false;
+    });
   }
 
   Widget _floatingOption(String text, VoidCallback onTap) {
@@ -9104,6 +9278,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       zonaArco = null;
       penalEnCurso = false;
       actorPenalActual = null;
+
+      mostrarSelectorLateralJugador = false; // 🔥 CLAVE
+
       if (!keepContra) {
         mostrarContra = false;
         origenJugadaActual = 'normal';
@@ -10755,6 +10932,12 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
 ///===============================
 ///===============================
 
+///===============================
+/// EQUIPOS
+/// gestion de jugadores, arqueros, cuerpo tecnico, categorías, convocados por partido, etc.
+///===============================
+///===============================
+
 /// ===============================
 /// EQUIPO 2.1
 /// Gestion deportiva del equipo.
@@ -10918,9 +11101,6 @@ class PlantelScreen extends StatefulWidget {
   @override
   State<PlantelScreen> createState() => _PlantelScreenState();
 }
-
-@override
-State<PlantelScreen> createState() => _PlantelScreenState();
 
 class _PlantelScreenState extends State<PlantelScreen> {
   late String categoriaSeleccionada;
@@ -12516,14 +12696,8 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
   Widget _buildArcoTabConPeriodos() {
     final periodosDisponibles = <String>[
       'Global',
-      ...[
-        '1T',
-        '2T',
-        '1TA',
-        '2TA',
-        'Penales',
-        'Otro',
-      ].where((p) => _zonasArcoPorPeriodo(p).isNotEmpty),
+      if (_zonasArcoPorPeriodo('1T').isNotEmpty) '1T',
+      if (_zonasArcoPorPeriodo('2T').isNotEmpty) '2T',
     ];
 
     return DefaultTabController(

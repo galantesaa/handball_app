@@ -1,0 +1,1080 @@
+class ResumenPartidoFinalizadoScreen extends StatelessWidget {
+  final Map<String, dynamic> partido;
+
+  /// ===============================
+  /// PARTIDO V2
+  /// Lectura paralela del resumen usando la base 2.0.
+  /// Por ahora solo se usa para leer datos sin cambiar la pantalla.
+  /// ===============================
+  PartidoModel get partidoV2 => PartidoModel.fromMap(partido);
+
+  /// ===============================
+  /// ESTADÍSTICAS DESDE MODELO 2.0
+  /// Lectura paralela del resumen usando PartidoModel.
+  /// ===============================
+  double get _eficaciaArqueroV2 => partidoV2.eficaciaArquero;
+
+  int get _atajadasV2 => partidoV2.atajadas;
+
+  int get _golesRecibidosV2 => partidoV2.golesRecibidos;
+
+  int get _penalesV2 => partidoV2.penales;
+
+  int get _perdidasV2 => partidoV2.perdidas;
+
+  int get _recuperacionesV2 => partidoV2.recuperaciones;
+
+  int get _exclusiones2MinV2 => partidoV2.exclusiones2Min;
+
+  int get _amarillasV2 => partidoV2.amarillas;
+
+  int get _rojasV2 => partidoV2.rojas;
+
+  int get _golesSanFernandoV2 => partidoV2.golesSanFernando;
+
+  int get _golesRivalV2 => partidoV2.golesRival;
+
+  /// ===============================
+  /// STATS POR ARQUERO
+  /// Solo toma tiros defensivos del rival:
+  /// - atajado
+  /// - gol
+  /// Ignora tiros en modo ataque, porque no pertenecen
+  /// al arquero propio.
+  /// ===============================
+
+  List<Map<String, dynamic>> _estadisticasPorArquero() {
+    final Map<String, Map<String, dynamic>> acumulado = {};
+
+    String periodoDesdeEvento(Map<String, dynamic> map) {
+      final raw =
+          (map['periodo'] ??
+                  map['tiempo'] ??
+                  map['tiempoPartido'] ??
+                  map['estadoTiempo'] ??
+                  map['estadoPartido'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+      if (raw == '1t' || raw == 'primer_tiempo' || raw == 'primer tiempo') {
+        return '1T';
+      }
+
+      if (raw == '2t' || raw == 'segundo_tiempo' || raw == 'segundo tiempo') {
+        return '2T';
+      }
+
+      if (raw == '1ta' || raw == 'primer_tiempo_alargue') return '1TA';
+      if (raw == '2ta' || raw == 'segundo_tiempo_alargue') return '2TA';
+      if (raw == 'penales') return 'Penales';
+
+      return 'Global';
+    }
+
+    Map<String, dynamic> crearItem(String arquero) {
+      return {
+        'arquero': arquero,
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
+        'tirosAlArco': 0,
+        'totalEventos': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'periodos': <String, Map<String, dynamic>>{},
+        'zonasArco': <String, Map<String, int>>{},
+        'zonasTiro': <String, Map<String, int>>{},
+      };
+    }
+
+    void sumarEnMapa(
+      Map<String, Map<String, int>> destino,
+      String key,
+      String resultado,
+    ) {
+      if (key.trim().isEmpty || key == 'null') return;
+
+      destino.putIfAbsent(key, () {
+        return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
+      });
+
+      if (resultado == 'atajado') {
+        destino[key]!['atajadas'] = (destino[key]!['atajadas'] ?? 0) + 1;
+      }
+
+      if (resultado == 'gol') {
+        destino[key]!['golesRecibidos'] =
+            (destino[key]!['golesRecibidos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'palo') {
+        destino[key]!['palos'] = (destino[key]!['palos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        destino[key]!['fuera'] = (destino[key]!['fuera'] ?? 0) + 1;
+      }
+    }
+
+    void sumarPeriodo({
+      required Map<String, Map<String, dynamic>> periodos,
+      required String periodo,
+      required String resultado,
+      required String zonaArco,
+      required String zonaTiro,
+      required bool esPenal,
+      required bool esContraDirectaArquero,
+    }) {
+      periodos.putIfAbsent(periodo, () {
+        return {
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+          'penales': 0,
+          'penalesAtajados': 0,
+          'contraDirecta': 0,
+          'zonasArco': <String, Map<String, int>>{},
+          'zonasTiro': <String, Map<String, int>>{},
+        };
+      });
+
+      final data = periodos[periodo]!;
+
+      if (resultado == 'atajado') {
+        data['atajadas'] = (data['atajadas'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        data['golesRecibidos'] = (data['golesRecibidos'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        data['palos'] = (data['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        data['fuera'] = (data['fuera'] as int) + 1;
+      }
+
+      if (esPenal) {
+        data['penales'] = (data['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          data['penalesAtajados'] = (data['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
+      }
+
+      final zonasArcoPeriodo =
+          data['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiroPeriodo =
+          data['zonasTiro'] as Map<String, Map<String, int>>;
+
+      sumarEnMapa(zonasArcoPeriodo, zonaArco, resultado);
+      sumarEnMapa(zonasTiroPeriodo, zonaTiro, resultado);
+    }
+
+    for (final e in _eventos) {
+      if (e is! Map) continue;
+
+      final map = Map<String, dynamic>.from(e);
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
+      final resultado = (map['resultado'] ?? '').toString().trim();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
+
+      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final origen = (map['origenJugada'] ?? '').toString().trim();
+      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+
+      final bool esTiro =
+          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (!esTiro) continue;
+
+      final bool resultadoValido =
+          resultado == 'atajado' ||
+          resultado == 'gol' ||
+          resultado == 'palo' ||
+          resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío';
+
+      if (!resultadoValido) continue;
+
+      final bool esDefensivoArquero = modo == 'defensa';
+
+      final bool esContraDirectaArquero =
+          modo == 'ataque' &&
+          origen == 'contra' &&
+          zonaTiro == 'Contra directa arquero' &&
+          actorId.isNotEmpty;
+
+      if (!esDefensivoArquero && !esContraDirectaArquero) continue;
+
+      String arquero = (map['arquero'] ?? '').toString().trim();
+
+      if (esContraDirectaArquero) {
+        arquero = actorId;
+      }
+
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
+
+      acumulado.putIfAbsent(arquero, () => crearItem(arquero));
+
+      final item = acumulado[arquero]!;
+
+      item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      if (resultado == 'atajado') {
+        item['atajadas'] = (item['atajadas'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        item['palos'] = (item['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        item['fuera'] = (item['fuera'] as int) + 1;
+      }
+
+      final bool esPenal = tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (esPenal) {
+        item['penales'] = (item['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+      }
+
+      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
+      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+
+      final periodo = periodoDesdeEvento(map);
+
+      sumarEnMapa(zonasArco, zonaArco, resultado);
+      sumarEnMapa(zonasTiro, zonaTiro, resultado);
+
+      sumarPeriodo(
+        periodos: periodos,
+        periodo: periodo,
+        resultado: resultado,
+        zonaArco: zonaArco,
+        zonaTiro: zonaTiro,
+        esPenal: esPenal,
+        esContraDirectaArquero: esContraDirectaArquero,
+      );
+    }
+
+    final lista = acumulado.values
+        .map((item) {
+          final atajadas = item['atajadas'] as int;
+          final golesRecibidos = item['golesRecibidos'] as int;
+          final total = atajadas + golesRecibidos;
+          final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+          return {...item, 'eficacia': eficacia};
+        })
+        .where((item) {
+          final atajadas = (item['atajadas'] ?? 0) as int;
+          final goles = (item['golesRecibidos'] ?? 0) as int;
+          final palos = (item['palos'] ?? 0) as int;
+          final fuera = (item['fuera'] ?? 0) as int;
+          final penales = (item['penales'] ?? 0) as int;
+          final contraDirecta = (item['contraDirecta'] ?? 0) as int;
+
+          return atajadas + goles + palos + fuera + penales + contraDirecta > 0;
+        })
+        .toList();
+
+    lista.sort((a, b) {
+      final efA = (a['eficacia'] ?? 0.0) as double;
+      final efB = (b['eficacia'] ?? 0.0) as double;
+      return efB.compareTo(efA);
+    });
+
+    return lista;
+  }
+
+  int get _atajadasDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['atajadas'] ?? 0) as int),
+    );
+  }
+
+  int get _golesRecibidosDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['golesRecibidos'] ?? 0) as int),
+    );
+  }
+
+  double get _eficaciaDesdeArqueros {
+    final atajadas = _atajadasDesdeArqueros;
+    final goles = _golesRecibidosDesdeArqueros;
+    final total = atajadas + goles;
+    if (total == 0) return 0;
+    return (atajadas / total) * 100;
+  }
+
+  const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
+
+  bool get _somosLocales => (partido['condicion'] ?? 'Local') == 'Local';
+
+  String get _nombreLocal =>
+      _somosLocales ? 'San Fernando' : (partido['rival'] ?? 'Rival').toString();
+
+  String get _nombreVisitante =>
+      _somosLocales ? (partido['rival'] ?? 'Rival').toString() : 'San Fernando';
+
+  int get _golesSanFernando => (partido['golesSanFernando'] ?? 0) as int;
+  int get _golesRival => (partido['golesRival'] ?? 0) as int;
+
+  int get _golesLocal => _somosLocales ? _golesSanFernando : _golesRival;
+  int get _golesVisitante => _somosLocales ? _golesRival : _golesSanFernando;
+
+  int get _atajadas => (partido['atajadas'] ?? 0) as int;
+  int get _golesRecibidos => (partido['golesRecibidos'] ?? _golesRival) as int;
+  int get _penales => (partido['penales'] ?? 0) as int;
+  int get _perdidas => (partido['perdidas'] ?? 0) as int;
+  int get _recuperaciones => (partido['recuperaciones'] ?? 0) as int;
+  int get _exclusiones2Min => (partido['exclusiones2Min'] ?? 0) as int;
+  int get _amarillas => (partido['amarillas'] ?? 0) as int;
+  int get _rojas => (partido['rojas'] ?? 0) as int;
+
+  List<dynamic> get _eventos =>
+      (partido['eventos'] as List<dynamic>? ?? const []);
+
+  double get _eficaciaArquero {
+    final total = _atajadas + _golesRecibidos;
+    if (total == 0) return 0;
+    return (_atajadas / total) * 100;
+  }
+
+  int get _golesAFavor => _golesSanFernando;
+
+  int get _golesEnContra => _golesRival;
+
+  int get _tirosTotales {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      return tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+    }).length;
+  }
+
+  int get _tirosGol {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      return (map['resultado'] ?? '').toString() == 'gol';
+    }).length;
+  }
+
+  int get _tirosAtajados {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      return (map['resultado'] ?? '').toString() == 'atajado';
+    }).length;
+  }
+
+  int get _tirosFuera {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final r = (map['resultado'] ?? '').toString();
+      return r == 'fuera' || r == 'desvio';
+    }).length;
+  }
+
+  String _fechaTexto() => (partido['fecha'] ?? '-').toString();
+  String _horaTexto() => (partido['hora'] ?? '-').toString();
+  String _condicionTexto() => (partido['condicion'] ?? '-').toString();
+  String _torneoTexto() => (partido['torneo'] ?? '-').toString();
+  String _categoriaTexto() => (partido['categoria'] ?? '-').toString();
+  String _rivalTexto() => (partido['rival'] ?? 'Rival').toString();
+
+  String? _rivalShieldAsset() {
+    final rival = _rivalTexto().toLowerCase();
+
+    if (rival.contains('argentinos')) return 'assets/images/argentinos.png';
+    if (rival.contains('ferro')) return 'assets/images/ferro.png';
+    if (rival.contains('vélez') || rival.contains('velez')) {
+      return 'assets/images/velez.png';
+    }
+    if (rival.contains('campana')) return 'assets/images/campana.png';
+    if (rival.contains('river')) return 'assets/images/river.png';
+    if (rival.contains('dorrego')) return 'assets/images/dorrego.png';
+    if (rival.contains('ballester')) return 'assets/images/ballester.png';
+    if (rival.contains('s.a.g.a.b.') || rival.contains('sagab')) {
+      return 'assets/images/sagab.png';
+    }
+    if (rival.contains('quilmes')) return 'assets/images/quilmes.png';
+    if (rival.contains('lanús') || rival.contains('lanus')) {
+      return 'assets/images/lanus.png';
+    }
+    if (rival.contains('s.e.d.a.l.o.') || rival.contains('sedalo')) {
+      return 'assets/images/sedalo.png';
+    }
+    if (rival.contains('vicente lópez') || rival.contains('vicente lopez')) {
+      return 'assets/images/vicente_lopez.png';
+    }
+    if (rival.contains('estudiantes')) {
+      return 'assets/images/estudiantes_lp.png';
+    }
+    if (rival.contains('ward')) return 'assets/images/ward.png';
+    if (rival.contains('luján') || rival.contains('lujan')) {
+      return 'assets/images/nsl.png';
+    }
+
+    return null;
+  }
+
+  List<Map<String, dynamic>> _eventosImportantes() {
+    final items = _eventos
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .where((map) {
+          final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+          final resultado = (map['resultado'] ?? '').toString();
+
+          if (tipo == 'sancion') return true;
+          if (tipo == 'penal' || tipo == 'penal_tanda') return true;
+          if (resultado == 'gol' || resultado == 'atajado') return true;
+          if (tipo == 'perdida' || tipo == 'recuperacion') return true;
+
+          return false;
+        })
+        .toList();
+
+    return items.reversed.take(5).toList();
+  }
+
+  String _tituloEvento(Map<String, dynamic> e) {
+    final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
+    final resultado = (e['resultado'] ?? '').toString();
+
+    if (tipo == 'tiro' && resultado == 'gol') return 'Gol';
+    if (tipo == 'tiro' && resultado == 'atajado') return 'Atajada';
+    if (tipo == 'tiro' && (resultado == 'fuera' || resultado == 'desvio')) {
+      return 'Tiro fuera';
+    }
+
+    if (tipo == 'penal' && resultado == 'gol') return 'Gol de penal';
+    if (tipo == 'penal' && resultado == 'atajado') return 'Penal atajado';
+    if (tipo == 'penal' && resultado == 'fuera') return 'Penal fuera';
+
+    if (tipo == 'penal_tanda' && resultado == 'gol') return 'Gol en penales';
+    if (tipo == 'penal_tanda' && resultado == 'atajado') {
+      return 'Atajado en penales';
+    }
+    if (tipo == 'penal_tanda' && resultado == 'fuera') {
+      return 'Errado en penales';
+    }
+
+    if (tipo == 'sancion') {
+      if (resultado == 'exclusion_2_min') return 'Exclusión 2 min';
+      if (resultado == 'tarjeta_amarilla') return 'Tarjeta amarilla';
+      if (resultado == 'tarjeta_roja') return 'Tarjeta roja';
+      return 'Sanción';
+    }
+
+    if (tipo == 'perdida' && resultado == 'perdida') return 'Pérdida';
+    if (tipo == 'perdida' && resultado == 'recuperacion') return 'Recuperación';
+
+    return tipo.isEmpty ? 'Evento' : tipo;
+  }
+
+  String _subtituloEvento(Map<String, dynamic> e) {
+    final actorRaw = (e['actorPrincipal'] ?? '-').toString();
+
+    final actor = _normalizarActorEvento(actorRaw);
+    final zonaTiro = (e['zonaTiro'] ?? '').toString();
+    final zonaArco = (e['zonaArco'] ?? '').toString();
+
+    final partes = <String>[actor];
+
+    if (zonaTiro.isNotEmpty && zonaTiro != 'null') {
+      partes.add(zonaTiro);
+    }
+    if (zonaArco.isNotEmpty && zonaArco != 'null') {
+      partes.add(zonaArco);
+    }
+
+    return partes.join(' · ');
+  }
+
+  String _normalizarActorEvento(String actorRaw) {
+    final actor = actorRaw.trim();
+
+    if (actor.isEmpty || actor == '-' || actor == 'null') {
+      return '-';
+    }
+
+    final dorsalMatch = RegExp(r'^(\d+)').firstMatch(actor);
+
+    if (dorsalMatch == null) {
+      return actor;
+    }
+
+    final dorsal = dorsalMatch.group(1)!;
+
+    return nombreJugadorDesdeDorsal(
+      categoria: partidoV2.categoria,
+      dorsal: dorsal,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eventosImportantes = _eventosImportantes();
+    final estadisticasPorArquero = _estadisticasPorArquero();
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Resumen del partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${partidoV2.categoria} · ${partidoV2.torneo}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFD4DCE7),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildHeaderCard(),
+                  const SizedBox(height: 16),
+                  _buildKpiGrid(),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Datos del partido',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Rival', partidoV2.rival),
+                        _buildInfoRow('Fecha', partidoV2.fecha),
+                        _buildInfoRow('Hora', partidoV2.hora),
+                        _buildInfoRow('Condición', _condicionTexto()),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArquerosPartidoScreen(
+                            estadisticasPorArquero: estadisticasPorArquero,
+                            categoria: partidoV2.categoria,
+                          ),
+                        ),
+                      );
+                    },
+                    child: _buildSectionCard(
+                      title: 'Arqueros del partido',
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                            'Eficacia global',
+                            '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
+                          ),
+                          _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
+                          _buildInfoRow(
+                            'Goles recibidos',
+                            '$_golesRecibidosDesdeArqueros',
+                          ),
+                          _buildInfoRow('Penales en contra', '$_penalesV2'),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF182338).withOpacity(0.85),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.06),
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.sports_handball_rounded,
+                                  color: Color(0xFF4F8CFF),
+                                  size: 22,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Ver análisis completo de arqueros',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white70,
+                                  size: 26,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Ataque y juego',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Goles a favor', '$_golesSanFernandoV2'),
+                        _buildInfoRow('Goles en contra', '$_golesRivalV2'),
+                        _buildInfoRow('Tiros registrados', '$_tirosTotales'),
+                        _buildInfoRow('Tiros con gol', '$_tirosGol'),
+                        _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
+                        _buildInfoRow('Tiros fuera', '$_tirosFuera'),
+                        _buildInfoRow('Pérdidas', '$_perdidasV2'),
+                        _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Disciplina',
+                    child: Column(
+                      children: [
+                        _buildInfoRow(
+                          'Exclusiones 2 min',
+                          '$_exclusiones2MinV2',
+                        ),
+                        _buildInfoRow('Tarjetas amarillas', '$_amarillasV2'),
+                        _buildInfoRow('Tarjetas rojas', '$_rojasV2'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Momentos importantes',
+                    child: eventosImportantes.isEmpty
+                        ? const Text(
+                            'No hay eventos destacados para mostrar.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 13,
+                            ),
+                          )
+                        : Column(
+                            children: eventosImportantes.map((e) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF182338,
+                                    ).withOpacity(0.75),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _tituloEvento(e),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _subtituloEvento(e),
+                                        style: const TextStyle(
+                                          color: Color(0xFFAAB4C3),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _buildResumenCompartible() {
+    final local = _nombreLocal;
+    final visitante = _nombreVisitante;
+
+    final golesLocal = _golesLocal;
+    final golesVisitante = _golesVisitante;
+
+    final eficacia = _eficaciaDesdeArqueros;
+    final atajadas = _atajadasDesdeArqueros;
+    final golesRecibidos = _golesRecibidosDesdeArqueros;
+
+    final fecha = partidoV2.fecha;
+    final categoria = partidoV2.categoria;
+    final torneo = partidoV2.torneo;
+    final condicion = _condicionTexto();
+
+    final arqueros = _estadisticasPorArquero();
+
+    String arquerosDetalle = '';
+
+    if (arqueros.isNotEmpty) {
+      arquerosDetalle = '\n\n🧤 Arqueros:\n';
+
+      for (int i = 0; i < arqueros.length && i < 2; i++) {
+        final a = arqueros[i];
+
+        final nombre = (a['arqueroNombre'] ?? a['arquero'] ?? 'Arquero')
+            .toString();
+
+        final ef = (a['eficacia'] ?? 0.0) as double;
+        final at = (a['atajadas'] ?? 0) as int;
+        final gr = (a['golesRecibidos'] ?? 0) as int;
+
+        arquerosDetalle += '• $nombre → ${ef.toStringAsFixed(1)}% ($at/$gr)\n';
+      }
+    }
+
+    return '''
+🏆 $categoria · $torneo
+
+🤾 $local vs $visitante
+📍 $condicion
+📊 Resultado: $golesLocal - $golesVisitante
+
+🧤 Global:
+- Eficacia: ${eficacia.toStringAsFixed(1)}%
+- Atajadas: $atajadas
+- Goles: $golesRecibidos
+$arquerosDetalle
+📅 $fecha
+''';
+  }
+
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        children: [
+          /// 🔥 FILA SUPERIOR (estado + share)
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C2B44).withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  'Finalizado',
+                  style: TextStyle(
+                    color: Color(0xFFDCE4EF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              /// 🔥 BOTÓN SHARE
+              IconButton(
+                icon: const Icon(Icons.share, color: Colors.white),
+                onPressed: () {
+                  final texto = _buildResumenCompartible();
+                  Share.share(texto);
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          /// 🔥 SCOREBOARD
+          Row(
+            children: [
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: _nombreLocal,
+                  assetPath: _somosLocales
+                      ? 'assets/images/san_fernando.png'
+                      : _rivalShieldAsset(),
+                  condicion: 'Local',
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '$_golesLocal - $_golesVisitante',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: _nombreVisitante,
+                  assetPath: _somosLocales
+                      ? _rivalShieldAsset()
+                      : 'assets/images/san_fernando.png',
+                  condicion: 'Visitante',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiGrid() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildKpiCard(
+                'Eficacia',
+                '${_eficaciaArquero.toStringAsFixed(1)}%',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: _buildKpiCard('Atajadas', '$_atajadas')),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _buildKpiCard('Pérdidas', '$_perdidas')),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildKpiCard('Recuperaciones', '$_recuperaciones'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKpiCard(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamSide({
+    required String nombre,
+    required String condicion,
+    String? assetPath,
+  }) {
+    return Column(
+      children: [
+        Text(
+          condicion,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 62,
+          height: 62,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Center(
+            child: assetPath == null
+                ? const Icon(
+                    Icons.sports_handball,
+                    color: Color(0xFF1C2B44),
+                    size: 24,
+                  )
+                : Image.asset(assetPath, fit: BoxFit.contain),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          nombre,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

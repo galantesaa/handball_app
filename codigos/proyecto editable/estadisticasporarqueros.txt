@@ -1,0 +1,366 @@
+/// ===============================
+  /// STATS POR ARQUERO
+  /// Solo toma tiros defensivos del rival:
+  /// - atajado
+  /// - gol
+  /// Ignora tiros en modo ataque, porque no pertenecen
+  /// al arquero propio.
+  /// ===============================
+  List<Map<String, dynamic>> _estadisticasPorArquero() {
+    final Map<String, Map<String, dynamic>> acumulado = {};
+
+    /// ===============================
+    /// Normaliza el período del evento.
+    /// Soporta varias claves porque venimos migrando
+    /// desde Map legacy hacia modelo V2.
+    /// ===============================
+    String periodoDesdeEvento(Map<String, dynamic> map) {
+      final raw =
+          (map['periodo'] ??
+                  map['tiempo'] ??
+                  map['tiempoPartido'] ??
+                  map['estadoTiempo'] ??
+                  map['estadoPartido'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+      if (raw == '1t' || raw == 'primer_tiempo' || raw == 'primer tiempo') {
+        return '1T';
+      }
+
+      if (raw == '2t' || raw == 'segundo_tiempo' || raw == 'segundo tiempo') {
+        return '2T';
+      }
+
+      if (raw == '1ta' || raw == 'primer_tiempo_alargue') {
+        return '1TA';
+      }
+
+      if (raw == '2ta' || raw == 'segundo_tiempo_alargue') {
+        return '2TA';
+      }
+
+      if (raw == 'penales') {
+        return 'Penales';
+      }
+
+      return 'Global';
+    }
+
+    /// ===============================
+    /// Crea estructura base para arquero.
+    /// ===============================
+    Map<String, dynamic> crearItem(String arquero) {
+      return {
+        'arquero': arquero,
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
+        'tirosAlArco': 0,
+        'totalEventos': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'periodos': <String, Map<String, int>>{},
+        'zonasArco': <String, Map<String, int>>{},
+        'zonasTiro': <String, Map<String, int>>{},
+      };
+    }
+
+    /// ===============================
+    /// Suma resultado en una estructura:
+    /// periodos / zonasArco / zonasTiro.
+    /// ===============================
+    void sumarEnMapa(
+      Map<String, Map<String, int>> destino,
+      String key,
+      String resultado,
+    ) {
+      if (key.trim().isEmpty || key == 'null') return;
+
+      destino.putIfAbsent(key, () {
+        return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
+      });
+
+      if (resultado == 'atajado') {
+        destino[key]!['atajadas'] = (destino[key]!['atajadas'] ?? 0) + 1;
+      }
+
+      if (resultado == 'gol') {
+        destino[key]!['golesRecibidos'] =
+            (destino[key]!['golesRecibidos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'palo') {
+        destino[key]!['palos'] = (destino[key]!['palos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        destino[key]!['fuera'] = (destino[key]!['fuera'] ?? 0) + 1;
+      }
+    }
+
+    for (final e in _eventos) {
+      if (e is! Map) continue;
+
+      final map = Map<String, dynamic>.from(e);
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
+      final resultado = (map['resultado'] ?? '').toString().trim();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
+
+      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final origen = (map['origenJugada'] ?? '').toString().trim();
+      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+
+      final bool esTiro =
+          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (!esTiro) continue;
+
+      final bool resultadoValido =
+          resultado == 'atajado' ||
+          resultado == 'gol' ||
+          resultado == 'palo' ||
+          resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío';
+
+      if (!resultadoValido) continue;
+
+      final bool esDefensivoArquero = modo == 'defensa';
+
+      final bool esContraDirectaArquero =
+          modo == 'ataque' &&
+          origen == 'contra' &&
+          zonaTiro == 'Contra directa arquero' &&
+          actorId.isNotEmpty;
+
+      if (!esDefensivoArquero && !esContraDirectaArquero) continue;
+
+      String arquero = (map['arquero'] ?? '').toString().trim();
+
+      if (esContraDirectaArquero) {
+        arquero = actorId;
+      }
+
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
+
+      acumulado.putIfAbsent(arquero, () => crearItem(arquero));
+
+      final item = acumulado[arquero]!;
+
+      item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      if (resultado == 'atajado') {
+        item['atajadas'] = (item['atajadas'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        item['palos'] = (item['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        item['fuera'] = (item['fuera'] as int) + 1;
+      }
+
+      if (tipo == 'penal' || tipo == 'penal_tanda') {
+        item['penales'] = (item['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+      }
+
+      final periodos = item['periodos'] as Map<String, Map<String, int>>;
+      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+
+      sumarEnMapa(periodos, periodoDesdeEvento(map), resultado);
+      sumarEnMapa(zonasArco, zonaArco, resultado);
+      sumarEnMapa(zonasTiro, zonaTiro, resultado);
+    }
+
+    final lista = acumulado.values
+        .map((item) {
+          final atajadas = item['atajadas'] as int;
+          final golesRecibidos = item['golesRecibidos'] as int;
+          final total = atajadas + golesRecibidos;
+          final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+          return {...item, 'eficacia': eficacia};
+        })
+        .where((item) {
+          final atajadas = (item['atajadas'] ?? 0) as int;
+          final goles = (item['golesRecibidos'] ?? 0) as int;
+          final palos = (item['palos'] ?? 0) as int;
+          final fuera = (item['fuera'] ?? 0) as int;
+          final penales = (item['penales'] ?? 0) as int;
+          final contraDirecta = (item['contraDirecta'] ?? 0) as int;
+
+          return atajadas + goles + palos + fuera + penales + contraDirecta > 0;
+        })
+        .toList();
+
+    lista.sort((a, b) {
+      final efA = (a['eficacia'] ?? 0.0) as double;
+      final efB = (b['eficacia'] ?? 0.0) as double;
+      return efB.compareTo(efA);
+    });
+
+    return lista;
+  }
+
+  int get _atajadasDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['atajadas'] ?? 0) as int),
+    );
+  }
+
+  int get _golesRecibidosDesdeArqueros {
+    return _estadisticasPorArquero().fold(
+      0,
+      (acc, item) => acc + ((item['golesRecibidos'] ?? 0) as int),
+    );
+  }
+
+  double get _eficaciaDesdeArqueros {
+    final atajadas = _atajadasDesdeArqueros;
+    final goles = _golesRecibidosDesdeArqueros;
+    final total = atajadas + goles;
+    if (total == 0) return 0;
+    return (atajadas / total) * 100;
+  }
+
+  const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
+
+  bool get _somosLocales => (partido['condicion'] ?? 'Local') == 'Local';
+
+  String get _nombreLocal =>
+      _somosLocales ? 'San Fernando' : (partido['rival'] ?? 'Rival').toString();
+
+  String get _nombreVisitante =>
+      _somosLocales ? (partido['rival'] ?? 'Rival').toString() : 'San Fernando';
+
+  int get _golesSanFernando => (partido['golesSanFernando'] ?? 0) as int;
+  int get _golesRival => (partido['golesRival'] ?? 0) as int;
+
+  int get _golesLocal => _somosLocales ? _golesSanFernando : _golesRival;
+  int get _golesVisitante => _somosLocales ? _golesRival : _golesSanFernando;
+
+  int get _atajadas => (partido['atajadas'] ?? 0) as int;
+  int get _golesRecibidos => (partido['golesRecibidos'] ?? _golesRival) as int;
+  int get _penales => (partido['penales'] ?? 0) as int;
+  int get _perdidas => (partido['perdidas'] ?? 0) as int;
+  int get _recuperaciones => (partido['recuperaciones'] ?? 0) as int;
+  int get _exclusiones2Min => (partido['exclusiones2Min'] ?? 0) as int;
+  int get _amarillas => (partido['amarillas'] ?? 0) as int;
+  int get _rojas => (partido['rojas'] ?? 0) as int;
+
+  List<dynamic> get _eventos =>
+      (partido['eventos'] as List<dynamic>? ?? const []);
+
+  double get _eficaciaArquero {
+    final total = _atajadas + _golesRecibidos;
+    if (total == 0) return 0;
+    return (_atajadas / total) * 100;
+  }
+
+  int get _golesAFavor => _golesSanFernando;
+
+  int get _golesEnContra => _golesRival;
+
+  int get _tirosTotales {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      return tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+    }).length;
+  }
+
+  int get _tirosGol {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      return (map['resultado'] ?? '').toString() == 'gol';
+    }).length;
+  }
+
+  int get _tirosAtajados {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      return (map['resultado'] ?? '').toString() == 'atajado';
+    }).length;
+  }
+
+  int get _tirosFuera {
+    return _eventos.where((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      final r = (map['resultado'] ?? '').toString();
+      return r == 'fuera' || r == 'desvio';
+    }).length;
+  }
+
+  String _fechaTexto() => (partido['fecha'] ?? '-').toString();
+  String _horaTexto() => (partido['hora'] ?? '-').toString();
+  String _condicionTexto() => (partido['condicion'] ?? '-').toString();
+  String _torneoTexto() => (partido['torneo'] ?? '-').toString();
+  String _categoriaTexto() => (partido['categoria'] ?? '-').toString();
+  String _rivalTexto() => (partido['rival'] ?? 'Rival').toString();
+
+  String? _rivalShieldAsset() {
+    final rival = _rivalTexto().toLowerCase();
+
+    if (rival.contains('argentinos')) return 'assets/images/argentinos.png';
+    if (rival.contains('ferro')) return 'assets/images/ferro.png';
+    if (rival.contains('vélez') || rival.contains('velez')) {
+      return 'assets/images/velez.png';
+    }
+    if (rival.contains('campana')) return 'assets/images/campana.png';
+    if (rival.contains('river')) return 'assets/images/river.png';
+    if (rival.contains('dorrego')) return 'assets/images/dorrego.png';
+    if (rival.contains('ballester')) return 'assets/images/ballester.png';
+    if (rival.contains('s.a.g.a.b.') || rival.contains('sagab')) {
+      return 'assets/images/sagab.png';
+    }
+    if (rival.contains('quilmes')) return 'assets/images/quilmes.png';
+    if (rival.contains('lanús') || rival.contains('lanus')) {
+      return 'assets/images/lanus.png';
+    }
+    if (rival.contains('s.e.d.a.l.o.') || rival.contains('sedalo')) {
+      return 'assets/images/sedalo.png';
+    }
+    if (rival.contains('vicente lópez') || rival.contains('vicente lopez')) {
+      return 'assets/images/vicente_lopez.png';
+    }
+    if (rival.contains('estudiantes')) {
+      return 'assets/images/estudiantes_lp.png';
+    }
+    if (rival.contains('ward')) return 'assets/images/ward.png';
+    if (rival.contains('luján') || rival.contains('lujan')) {
+      return 'assets/images/nsl.png';
+    }
+
+    return null;
+  }
+

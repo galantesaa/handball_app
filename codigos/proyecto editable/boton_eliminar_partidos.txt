@@ -1,0 +1,69 @@
+Future<void> _eliminarPartidosDePrueba() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final rawFinished = prefs.getString('finished_matches_history_v1');
+
+    if (rawFinished != null && rawFinished.isNotEmpty) {
+      final decoded = jsonDecode(rawFinished) as List<dynamic>;
+
+      final soloReales = decoded.where((item) {
+        if (item is! Map) return false;
+        return item['isReal'] == true;
+      }).toList();
+
+      await prefs.setString(
+        'finished_matches_history_v1',
+        jsonEncode(soloReales),
+      );
+    }
+
+    if (!mounted) return;
+
+    await _loadEstadoRealV2();
+    await _loadFixtureState();
+
+    if (!mounted) return;
+
+    setState(() {
+      _recalcularProximoYSiguientesDesdeBase();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Se eliminaron los partidos de prueba')),
+    );
+  }
+
+  Future<void> _confirmarEliminarPartidosDePrueba() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar partidos de prueba',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Se van a borrar solo los partidos que no esten marcados como reales. Los partidos finalizados reales se conservarán.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      await _eliminarPartidosDePrueba();
+    }
+  }
+

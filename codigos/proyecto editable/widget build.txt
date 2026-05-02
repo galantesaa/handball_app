@@ -1,0 +1,451 @@
+@override
+  Widget build(BuildContext context) {
+    final eventosImportantes = _eventosImportantes();
+    final estadisticasPorArquero = _estadisticasPorArquero();
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Resumen del partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${partidoV2.categoria} · ${partidoV2.torneo}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFD4DCE7),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildHeaderCard(),
+                  const SizedBox(height: 16),
+                  _buildKpiGrid(),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Datos del partido',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Rival', partidoV2.rival),
+                        _buildInfoRow('Fecha', partidoV2.fecha),
+                        _buildInfoRow('Hora', partidoV2.hora),
+                        _buildInfoRow('Condición', _condicionTexto()),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArquerosPartidoScreen(
+                            estadisticasPorArquero: estadisticasPorArquero,
+                            categoria: partidoV2.categoria,
+                          ),
+                        ),
+                      );
+                    },
+                    child: _buildSectionCard(
+                      title: 'Arqueros del partido',
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                            'Eficacia global',
+                            '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
+                          ),
+                          _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
+                          _buildInfoRow(
+                            'Goles recibidos',
+                            '$_golesRecibidosDesdeArqueros',
+                          ),
+                          _buildInfoRow('Penales en contra', '$_penalesV2'),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF182338).withOpacity(0.85),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.06),
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.sports_handball_rounded,
+                                  color: Color(0xFF4F8CFF),
+                                  size: 22,
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Ver análisis completo de arqueros',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white70,
+                                  size: 26,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Ataque y juego',
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Goles a favor', '$_golesSanFernandoV2'),
+                        _buildInfoRow('Goles en contra', '$_golesRivalV2'),
+                        _buildInfoRow('Tiros registrados', '$_tirosTotales'),
+                        _buildInfoRow('Tiros con gol', '$_tirosGol'),
+                        _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
+                        _buildInfoRow('Tiros fuera', '$_tirosFuera'),
+                        _buildInfoRow('Pérdidas', '$_perdidasV2'),
+                        _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Disciplina',
+                    child: Column(
+                      children: [
+                        _buildInfoRow(
+                          'Exclusiones 2 min',
+                          '$_exclusiones2MinV2',
+                        ),
+                        _buildInfoRow('Tarjetas amarillas', '$_amarillasV2'),
+                        _buildInfoRow('Tarjetas rojas', '$_rojasV2'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Momentos importantes',
+                    child: eventosImportantes.isEmpty
+                        ? const Text(
+                            'No hay eventos destacados para mostrar.',
+                            style: TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 13,
+                            ),
+                          )
+                        : Column(
+                            children: eventosImportantes.map((e) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF182338,
+                                    ).withOpacity(0.75),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _tituloEvento(e),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _subtituloEvento(e),
+                                        style: const TextStyle(
+                                          color: Color(0xFFAAB4C3),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C2B44).withOpacity(0.95),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              'Finalizado',
+              style: TextStyle(
+                color: Color(0xFFDCE4EF),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: _nombreLocal,
+                  assetPath: _somosLocales
+                      ? 'assets/images/san_fernando.png'
+                      : _rivalShieldAsset(),
+                  condicion: 'Local',
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '$_golesLocal - $_golesVisitante',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _buildTeamSide(
+                  nombre: _nombreVisitante,
+                  assetPath: _somosLocales
+                      ? _rivalShieldAsset()
+                      : 'assets/images/san_fernando.png',
+                  condicion: 'Visitante',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiGrid() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildKpiCard(
+                'Eficacia',
+                '${_eficaciaArquero.toStringAsFixed(1)}%',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: _buildKpiCard('Atajadas', '$_atajadas')),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _buildKpiCard('Pérdidas', '$_perdidas')),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildKpiCard('Recuperaciones', '$_recuperaciones'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKpiCard(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamSide({
+    required String nombre,
+    required String condicion,
+    String? assetPath,
+  }) {
+    return Column(
+      children: [
+        Text(
+          condicion,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 62,
+          height: 62,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Center(
+            child: assetPath == null
+                ? const Icon(
+                    Icons.sports_handball,
+                    color: Color(0xFF1C2B44),
+                    size: 24,
+                  )
+                : Image.asset(assetPath, fit: BoxFit.contain),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          nombre,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

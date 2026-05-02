@@ -1,0 +1,281 @@
+List<Map<String, dynamic>> _estadisticasPorArquero() {
+    final Map<String, Map<String, dynamic>> acumulado = {};
+
+    String periodoDesdeEvento(Map<String, dynamic> map) {
+      final raw =
+          (map['periodo'] ??
+                  map['tiempo'] ??
+                  map['tiempoPartido'] ??
+                  map['estadoTiempo'] ??
+                  map['estadoPartido'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+      if (raw == '1t' || raw == 'primer_tiempo' || raw == 'primer tiempo') {
+        return '1T';
+      }
+
+      if (raw == '2t' || raw == 'segundo_tiempo' || raw == 'segundo tiempo') {
+        return '2T';
+      }
+
+      if (raw == '1ta' || raw == 'primer_tiempo_alargue') return '1TA';
+      if (raw == '2ta' || raw == 'segundo_tiempo_alargue') return '2TA';
+      if (raw == 'penales') return 'Penales';
+
+      return 'Global';
+    }
+
+    Map<String, dynamic> crearItem(String arquero) {
+      return {
+        'arquero': arquero,
+        'atajadas': 0,
+        'golesRecibidos': 0,
+        'palos': 0,
+        'fuera': 0,
+        'tirosAlArco': 0,
+        'totalEventos': 0,
+        'penales': 0,
+        'penalesAtajados': 0,
+        'contraDirecta': 0,
+        'periodos': <String, Map<String, dynamic>>{},
+        'zonasArco': <String, Map<String, int>>{},
+        'zonasTiro': <String, Map<String, int>>{},
+      };
+    }
+
+    void sumarEnMapa(
+      Map<String, Map<String, int>> destino,
+      String key,
+      String resultado,
+    ) {
+      if (key.trim().isEmpty || key == 'null') return;
+
+      destino.putIfAbsent(key, () {
+        return {'atajadas': 0, 'golesRecibidos': 0, 'palos': 0, 'fuera': 0};
+      });
+
+      if (resultado == 'atajado') {
+        destino[key]!['atajadas'] = (destino[key]!['atajadas'] ?? 0) + 1;
+      }
+
+      if (resultado == 'gol') {
+        destino[key]!['golesRecibidos'] =
+            (destino[key]!['golesRecibidos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'palo') {
+        destino[key]!['palos'] = (destino[key]!['palos'] ?? 0) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        destino[key]!['fuera'] = (destino[key]!['fuera'] ?? 0) + 1;
+      }
+    }
+
+    void sumarPeriodo({
+      required Map<String, Map<String, dynamic>> periodos,
+      required String periodo,
+      required String resultado,
+      required String zonaArco,
+      required String zonaTiro,
+      required bool esPenal,
+      required bool esContraDirectaArquero,
+    }) {
+      periodos.putIfAbsent(periodo, () {
+        return {
+          'atajadas': 0,
+          'golesRecibidos': 0,
+          'palos': 0,
+          'fuera': 0,
+          'penales': 0,
+          'penalesAtajados': 0,
+          'contraDirecta': 0,
+          'zonasArco': <String, Map<String, int>>{},
+          'zonasTiro': <String, Map<String, int>>{},
+        };
+      });
+
+      final data = periodos[periodo]!;
+
+      if (resultado == 'atajado') {
+        data['atajadas'] = (data['atajadas'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        data['golesRecibidos'] = (data['golesRecibidos'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        data['palos'] = (data['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        data['fuera'] = (data['fuera'] as int) + 1;
+      }
+
+      if (esPenal) {
+        data['penales'] = (data['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          data['penalesAtajados'] = (data['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
+      }
+
+      final zonasArcoPeriodo =
+          data['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiroPeriodo =
+          data['zonasTiro'] as Map<String, Map<String, int>>;
+
+      sumarEnMapa(zonasArcoPeriodo, zonaArco, resultado);
+      sumarEnMapa(zonasTiroPeriodo, zonaTiro, resultado);
+    }
+
+    for (final e in _eventos) {
+      if (e is! Map) continue;
+
+      final map = Map<String, dynamic>.from(e);
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
+      final resultado = (map['resultado'] ?? '').toString().trim();
+      final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
+
+      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final origen = (map['origenJugada'] ?? '').toString().trim();
+      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+
+      final bool esTiro =
+          tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (!esTiro) continue;
+
+      final bool resultadoValido =
+          resultado == 'atajado' ||
+          resultado == 'gol' ||
+          resultado == 'palo' ||
+          resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío';
+
+      if (!resultadoValido) continue;
+
+      final bool esDefensivoArquero = modo == 'defensa';
+
+      final bool esContraDirectaArquero =
+          modo == 'ataque' &&
+          origen == 'contra' &&
+          zonaTiro == 'Contra directa arquero' &&
+          actorId.isNotEmpty;
+
+      if (!esDefensivoArquero && !esContraDirectaArquero) continue;
+
+      String arquero = (map['arquero'] ?? '').toString().trim();
+
+      if (esContraDirectaArquero) {
+        arquero = actorId;
+      }
+
+      if (arquero.isEmpty || arquero == 'null') {
+        arquero = 'Sin arquero';
+      }
+
+      acumulado.putIfAbsent(arquero, () => crearItem(arquero));
+
+      final item = acumulado[arquero]!;
+
+      item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      if (resultado == 'atajado') {
+        item['atajadas'] = (item['atajadas'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'gol') {
+        item['golesRecibidos'] = (item['golesRecibidos'] as int) + 1;
+        item['tirosAlArco'] = (item['tirosAlArco'] as int) + 1;
+      }
+
+      if (resultado == 'palo') {
+        item['palos'] = (item['palos'] as int) + 1;
+      }
+
+      if (resultado == 'fuera' ||
+          resultado == 'desvio' ||
+          resultado == 'desvío') {
+        item['fuera'] = (item['fuera'] as int) + 1;
+      }
+
+      final bool esPenal = tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (esPenal) {
+        item['penales'] = (item['penales'] as int) + 1;
+
+        if (resultado == 'atajado') {
+          item['penalesAtajados'] = (item['penalesAtajados'] as int) + 1;
+        }
+      }
+
+      if (esContraDirectaArquero) {
+        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+      }
+
+      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
+      final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
+      final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
+
+      final periodo = periodoDesdeEvento(map);
+
+      sumarEnMapa(zonasArco, zonaArco, resultado);
+      sumarEnMapa(zonasTiro, zonaTiro, resultado);
+
+      sumarPeriodo(
+        periodos: periodos,
+        periodo: periodo,
+        resultado: resultado,
+        zonaArco: zonaArco,
+        zonaTiro: zonaTiro,
+        esPenal: esPenal,
+        esContraDirectaArquero: esContraDirectaArquero,
+      );
+    }
+
+    final lista = acumulado.values
+        .map((item) {
+          final atajadas = item['atajadas'] as int;
+          final golesRecibidos = item['golesRecibidos'] as int;
+          final total = atajadas + golesRecibidos;
+          final eficacia = total == 0 ? 0.0 : (atajadas / total) * 100;
+
+          return {...item, 'eficacia': eficacia};
+        })
+        .where((item) {
+          final atajadas = (item['atajadas'] ?? 0) as int;
+          final goles = (item['golesRecibidos'] ?? 0) as int;
+          final palos = (item['palos'] ?? 0) as int;
+          final fuera = (item['fuera'] ?? 0) as int;
+          final penales = (item['penales'] ?? 0) as int;
+          final contraDirecta = (item['contraDirecta'] ?? 0) as int;
+
+          return atajadas + goles + palos + fuera + penales + contraDirecta > 0;
+        })
+        .toList();
+
+    lista.sort((a, b) {
+      final efA = (a['eficacia'] ?? 0.0) as double;
+      final efB = (b['eficacia'] ?? 0.0) as double;
+      return efB.compareTo(efA);
+    });
+
+    return lista;
+  }
