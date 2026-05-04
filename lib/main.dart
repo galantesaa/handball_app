@@ -4477,6 +4477,17 @@ const SizedBox(height: 14),
 
 
   Widget _buildShareCompactStat(String label, String value) {
+  double? numericValue;
+
+  if (label == 'Eficacia' && value.contains('%')) {
+    final cleanValue = value.replaceAll('%', '').trim();
+    numericValue = double.tryParse(cleanValue);
+  }
+
+  final valueColor = numericValue == null
+      ? Colors.white
+      : _colorEficacia(numericValue);
+
   return Expanded(
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -4485,13 +4496,14 @@ const SizedBox(height: 14),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: valueColor,
               fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
@@ -4512,7 +4524,7 @@ const SizedBox(height: 14),
     ),
   );
 }
-
+  
   Widget _buildShareInfoPanel({
   required String title,
   required Map<String, String> rows,
@@ -5611,10 +5623,17 @@ const SizedBox(height: 14),
       child: _buildShareGoalkeepersAnalysisCard(context),
     );
 
+    final heatmapFile = await _captureShareCardAsFile(
+      context: context,
+      fileName: 'heatmap_arqueros',
+      child: _buildShareGoalkeepersHeatmapCard(context),
+    );
+
     await Share.shareXFiles(
       [
         XFile(resumenFile.path),
         XFile(arquerosFile.path),
+        XFile(heatmapFile.path),
       ],
       text: 'Resumen del partido - ${partidoV2.categoria} ${partidoV2.torneo}',
     );
@@ -5630,6 +5649,7 @@ const SizedBox(height: 14),
     );
   }
 }
+
 
 
   Color _shareIntensityColor(int value, int maxValue) {
@@ -5971,6 +5991,223 @@ $arquerosDetalle
 📅 $fecha
 ''';
   }
+
+  Widget _buildShareGoalkeepersHeatmapCard(BuildContext context) {
+  final arqueros = _estadisticasPorArquero();
+
+  return Material(
+    color: Colors.transparent,
+    child: Container(
+      width: 390,
+      height: 693,
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF070D17),
+            Color(0xFF101827),
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'MAPA DE ARQUEROS',
+            style: TextStyle(
+              color: Color(0xFF8FA3BF),
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${partidoV2.categoria} · ${partidoV2.torneo}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          if (arqueros.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'No hay datos de arqueros para generar heatmap.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFFAAB4C3),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Column(
+                children: [
+                  _buildShareHeatmapPanel(
+                    arquero: arqueros.first,
+                    destacado: true,
+                  ),
+                  if (arqueros.length > 1) ...[
+                    const SizedBox(height: 14),
+                    _buildShareHeatmapPanel(
+                      arquero: arqueros[1],
+                      destacado: false,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+          Text(
+            '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+            style: const TextStyle(
+              color: Color(0xFF8FA3BF),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _buildShareHeatmapPanel({
+  required Map<String, dynamic> arquero,
+  required bool destacado,
+}) {
+  final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
+      .toString();
+
+  final zonas = _zonasArcoDetalle(arquero);
+
+  final eficacia = (arquero['eficacia'] ?? 0.0) as double;
+  final atajadas = (arquero['atajadas'] ?? 0) as int;
+  final goles = (arquero['golesRecibidos'] ?? 0) as int;
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF111A28),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(
+        color: destacado
+            ? const Color(0xFF22C55E).withOpacity(0.55)
+            : Colors.white.withOpacity(0.06),
+        width: destacado ? 1.6 : 1,
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                nombre,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Text(
+              '${eficacia.toStringAsFixed(1)}%',
+              style: TextStyle(
+                color: _colorEficacia(eficacia),
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$atajadas atajadas · $goles goles recibidos',
+          style: const TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: destacado ? 190 : 145,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _GoalkeeperBlurHeatmapPainter(zonas: zonas),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Row(
+          children: [
+            _HeatLegendDot(color: Color(0xFF22C55E), text: 'Atajadas'),
+            SizedBox(width: 14),
+            _HeatLegendDot(color: Color(0xFFEF4444), text: 'Goles'),
+            Spacer(),
+            Text(
+              'Más brillo = mayor volumen',
+              style: TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+  Map<String, _GoalZoneHeatData> _zonasArcoDetalle(
+  Map<String, dynamic> arquero,
+) {
+  final zonas = <String, _GoalZoneHeatData>{
+    'AI': const _GoalZoneHeatData(),
+    'AC': const _GoalZoneHeatData(),
+    'AD': const _GoalZoneHeatData(),
+    'CI': const _GoalZoneHeatData(),
+    'CC': const _GoalZoneHeatData(),
+    'CD': const _GoalZoneHeatData(),
+    'BI': const _GoalZoneHeatData(),
+    'BC': const _GoalZoneHeatData(),
+    'BD': const _GoalZoneHeatData(),
+  };
+
+  final raw = arquero['zonasArco'];
+
+  if (raw is! Map) return zonas;
+
+  raw.forEach((key, value) {
+    if (value is! Map) return;
+
+    final zona = key.toString();
+
+    if (!zonas.containsKey(zona)) return;
+
+    zonas[zona] = _GoalZoneHeatData(
+      atajadas: (value['atajadas'] ?? 0) as int,
+      goles: (value['golesRecibidos'] ?? 0) as int,
+      palos: (value['palos'] ?? 0) as int,
+      fuera: (value['fuera'] ?? 0) as int,
+    );
+  });
+
+  return zonas;
+}
 
   Widget _buildShareImageCard(BuildContext context) {
     final arqueros = _estadisticasPorArquero();
@@ -6589,6 +6826,333 @@ class _ShareTeamStatRow {
     required this.left,
     required this.right,
   });
+}
+
+class _GoalZoneHeatData {
+  final int atajadas;
+  final int goles;
+  final int palos;
+  final int fuera;
+
+  const _GoalZoneHeatData({
+    this.atajadas = 0,
+    this.goles = 0,
+    this.palos = 0,
+    this.fuera = 0,
+  });
+
+  int get total => atajadas + goles + palos + fuera;
+}
+
+class _HeatLegendDot extends StatelessWidget {
+  final Color color;
+  final String text;
+
+  const _HeatLegendDot({
+    required this.color,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GoalkeeperBlurHeatmapPainter extends CustomPainter {
+  final Map<String, _GoalZoneHeatData> zonas;
+
+  Rect _zoneRect(String zone, Size size) {
+  final left = size.width * 0.08;
+  final top = size.height * 0.14;
+  final goalWidth = size.width * 0.84;
+  final goalHeight = size.height * 0.70;
+
+  final cellWidth = goalWidth / 3;
+  final cellHeight = goalHeight / 3;
+
+  final index = _orderedZones.indexOf(zone);
+  if (index < 0) {
+    return Rect.fromLTWH(left, top, cellWidth, cellHeight);
+  }
+
+  final row = index ~/ 3;
+  final col = index % 3;
+
+  return Rect.fromLTWH(
+    left + (cellWidth * col),
+    top + (cellHeight * row),
+    cellWidth,
+    cellHeight,
+  );
+}
+
+  const _GoalkeeperBlurHeatmapPainter({
+    required this.zonas,
+  });
+
+  static const List<String> _orderedZones = [
+    'AI',
+    'AC',
+    'AD',
+    'CI',
+    'CC',
+    'CD',
+    'BI',
+    'BC',
+    'BD',
+  ];
+
+  Offset _zoneCenter(String zone, Size size) {
+    final left = size.width * 0.08;
+    final top = size.height * 0.14;
+    final goalWidth = size.width * 0.84;
+    final goalHeight = size.height * 0.70;
+
+    final positions = <String, Offset>{
+      'AI': Offset(left + goalWidth * 0.18, top + goalHeight * 0.18),
+      'AC': Offset(left + goalWidth * 0.50, top + goalHeight * 0.18),
+      'AD': Offset(left + goalWidth * 0.82, top + goalHeight * 0.18),
+      'CI': Offset(left + goalWidth * 0.18, top + goalHeight * 0.50),
+      'CC': Offset(left + goalWidth * 0.50, top + goalHeight * 0.50),
+      'CD': Offset(left + goalWidth * 0.82, top + goalHeight * 0.50),
+      'BI': Offset(left + goalWidth * 0.18, top + goalHeight * 0.82),
+      'BC': Offset(left + goalWidth * 0.50, top + goalHeight * 0.82),
+      'BD': Offset(left + goalWidth * 0.82, top + goalHeight * 0.82),
+    };
+
+    return positions[zone] ?? Offset(size.width / 2, size.height / 2);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+  final maxGoles = zonas.values.fold<int>(
+    0,
+    (max, data) => data.goles > max ? data.goles : max,
+  );
+
+  final maxAtajadas = zonas.values.fold<int>(
+    0,
+    (max, data) => data.atajadas > max ? data.atajadas : max,
+  );
+
+  final goalRect = Rect.fromLTWH(
+    size.width * 0.08,
+    size.height * 0.14,
+    size.width * 0.84,
+    size.height * 0.70,
+  );
+
+  final bgPaint = Paint()
+    ..color = const Color(0xFF07101B)
+    ..style = PaintingStyle.fill;
+
+  final borderPaint = Paint()
+    ..color = Colors.white.withOpacity(0.22)
+    ..strokeWidth = 2
+    ..style = PaintingStyle.stroke;
+
+  final netPaint = Paint()
+    ..color = Colors.white.withOpacity(0.07)
+    ..strokeWidth = 1;
+
+  final rounded = RRect.fromRectAndRadius(
+    goalRect,
+    const Radius.circular(18),
+  );
+
+  canvas.drawRRect(rounded, bgPaint);
+  canvas.drawRRect(rounded, borderPaint);
+
+  for (int i = 1; i <= 2; i++) {
+    final x = goalRect.left + goalRect.width * (i / 3);
+    canvas.drawLine(
+      Offset(x, goalRect.top),
+      Offset(x, goalRect.bottom),
+      netPaint,
+    );
+
+    final y = goalRect.top + goalRect.height * (i / 3);
+    canvas.drawLine(
+      Offset(goalRect.left, y),
+      Offset(goalRect.right, y),
+      netPaint,
+    );
+  }
+
+  final maxValue = zonas.values.fold<int>(
+    0,
+    (max, data) => data.total > max ? data.total : max,
+  );
+
+  if (maxValue <= 0) {
+    _drawEmptyText(canvas, size);
+    return;
+  }
+
+  for (final zone in _orderedZones) {
+    final data = zonas[zone] ?? const _GoalZoneHeatData();
+    final center = _zoneCenter(zone, size);
+    final zoneRect = _zoneRect(zone, size);
+
+    _drawZoneHeat(
+      canvas: canvas,
+      zoneRect: zoneRect,
+      atajadas: data.atajadas,
+      goles: data.goles,
+      maxValue: maxValue,
+    );
+    
+    if (data.total >= 2) {
+      final label = data.goles > data.atajadas
+          ? 'G${data.goles}'
+          : 'A${data.atajadas}';
+
+      _drawZoneValue(
+        canvas: canvas,
+        center: center,
+        text: label,
+      );
+    }
+  }
+}
+
+  void _drawZoneHeat({
+  required Canvas canvas,
+  required Rect zoneRect,
+  required int atajadas,
+  required int goles,
+  required int maxValue,
+}) {
+  final total = atajadas + goles;
+  if (total == 0 || maxValue <= 0) return;
+
+  final rand = Random(zoneRect.hashCode);
+  final intensity = (total / maxValue).clamp(0.22, 0.90);
+
+  final points = total.clamp(2, 8).toInt();
+
+  for (int i = 0; i < points; i++) {
+    final isSave = rand.nextDouble() < (atajadas / total);
+
+    final center = Offset(
+      zoneRect.center.dx + (rand.nextDouble() - 0.5) * zoneRect.width * 0.42,
+      zoneRect.center.dy + (rand.nextDouble() - 0.5) * zoneRect.height * 0.42,
+    );
+
+    final color = isSave
+        ? const Color(0xFF22C55E)
+        : const Color(0xFFEF4444);
+
+    final radius = zoneRect.width * (0.34 + intensity * 0.28);
+
+    final paint = Paint()
+      ..shader = ui.Gradient.radial(
+        center,
+        radius,
+        [
+          color.withOpacity(0.18),
+          color.withOpacity(0.10),
+          color.withOpacity(0.045),
+          color.withOpacity(0.0),
+        ],
+        const [0.0, 0.38, 0.72, 1.0],
+      )
+      ..blendMode = BlendMode.srcOver
+      ..maskFilter = const MaskFilter.blur(
+        BlurStyle.normal,
+        8,
+      );
+
+    canvas.drawCircle(center, radius, paint);
+  }
+}
+
+  void _drawZoneValue({
+  required Canvas canvas,
+  required Offset center,
+  required String text,
+}) {
+  final textPainter = TextPainter(
+    text: TextSpan(
+      text: text,
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.75),
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  final bgRect = Rect.fromCenter(
+    center: center,
+    width: textPainter.width + 10,
+    height: textPainter.height + 6,
+  );
+
+  final paint = Paint()
+    ..color = Colors.black.withOpacity(0.35);
+
+  final rRect = RRect.fromRectAndRadius(bgRect, const Radius.circular(6));
+
+  canvas.drawRRect(rRect, paint);
+
+  textPainter.paint(
+    canvas,
+    Offset(
+      center.dx - textPainter.width / 2,
+      center.dy - textPainter.height / 2,
+    ),
+  );
+}
+  
+  void _drawEmptyText(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'Sin tiros registrados',
+        style: TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    textPainter.paint(
+      canvas,
+      Offset(
+        size.width / 2 - textPainter.width / 2,
+        size.height / 2 - textPainter.height / 2,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoalkeeperBlurHeatmapPainter oldDelegate) {
+    return oldDelegate.zonas != zonas;
+  }
 }
 
 /// ===============================
