@@ -4191,15 +4191,29 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          _buildShareInfoPanel(
-            title: 'Datos del partido',
-            rows: {
-              'Rival': partidoV2.rival,
-              'Fecha': partidoV2.fecha,
-              'Hora': partidoV2.hora,
-              'Condición': partidoV2.condicion,
-            },
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111A28),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              'Fecha: ${partidoV2.fecha} · Hora: ${partidoV2.hora} · Condición: ${partidoV2.condicion}',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFDCE4EF),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
+
+const SizedBox(height: 12),
+
+const SizedBox(height: 14),
 
           const SizedBox(height: 14),
 
