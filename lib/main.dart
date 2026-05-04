@@ -4273,7 +4273,7 @@ const SizedBox(height: 14),
                 right: '-',
               ),
               _ShareTeamStatRow(
-                label: 'Penales en contra',
+                label: 'Penales rival',
                 left: '-',
                 right: _penalesV2.toString(),
               ),
@@ -4341,12 +4341,16 @@ const SizedBox(height: 14),
 
           const SizedBox(height: 14),
 
-          ...arqueros.take(2).map((arquero) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildShareGoalkeeperDetailPanel(arquero),
-            );
-          }),
+          if (arqueros.isNotEmpty)
+            _buildShareGoalkeeperDetailPanel(arqueros.first),
+
+          const SizedBox(height: 12),
+
+          if (arqueros.length > 1)
+            _buildShareGoalkeeperCompactPanel(
+              arqueros[1],
+              esMejor: false,
+            ),
 
           const Spacer(),
 
@@ -4355,6 +4359,151 @@ const SizedBox(height: 14),
             style: const TextStyle(
               color: Color(0xFF8FA3BF),
               fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _buildShareGoalkeeperCompactPanel(
+  Map<String, dynamic> arquero, {
+  required bool esMejor,
+}) {
+  final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
+      .toString();
+
+  final eficacia = (arquero['eficacia'] ?? 0.0) as double;
+  final atajadas = (arquero['atajadas'] ?? 0) as int;
+  final goles = (arquero['golesRecibidos'] ?? 0) as int;
+  final penales = (arquero['penales'] ?? 0) as int;
+  final penalesAtajados = (arquero['penalesAtajados'] ?? 0) as int;
+
+  Color colorNivel;
+  String nivel;
+
+  if (esMejor) {
+    colorNivel = Colors.green;
+    nivel = 'TOP';
+  } else if (eficacia >= 45) {
+    colorNivel = Colors.green;
+    nivel = 'ALTO';
+  } else if (eficacia >= 30) {
+    colorNivel = Colors.orange;
+    nivel = 'MEDIO';
+  } else {
+    colorNivel = Colors.red;
+    nivel = 'BAJO';
+  }
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: colorNivel.withOpacity(esMejor ? 0.65 : 0.40),
+        width: esMejor ? 2 : 1.2,
+      ),
+      boxShadow: esMejor
+          ? [
+              BoxShadow(
+                color: colorNivel.withOpacity(0.22),
+                blurRadius: 14,
+                spreadRadius: 1,
+              ),
+            ]
+          : null,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                nombre,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorNivel.withOpacity(0.20),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                nivel,
+                style: TextStyle(
+                  color: colorNivel,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildShareCompactStat(
+              'Eficacia',
+              '${eficacia.toStringAsFixed(1)}%',
+            ),
+            const SizedBox(width: 6),
+            _buildShareCompactStat('Atajadas', '$atajadas'),
+            const SizedBox(width: 6),
+            _buildShareCompactStat('Goles', '$goles'),
+            const SizedBox(width: 6),
+            _buildShareCompactStat(
+              'Penales',
+              '$penalesAtajados/$penales',
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+
+  Widget _buildShareCompactStat(String label, String value) {
+  return Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 8,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -4536,22 +4685,54 @@ const SizedBox(height: 14),
     width: double.infinity,
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: const Color(0xFF111A28),
-      borderRadius: BorderRadius.circular(20),
-    ),
+          color: const Color(0xFF111A28),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF22C55E).withOpacity(0.65),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF22C55E).withOpacity(0.18),
+              blurRadius: 16,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          nombre,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
+        Row(
+  children: [
+    Expanded(
+      child: Text(
+        nombre,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.w900,
         ),
+      ),
+    ),
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF22C55E).withOpacity(0.18),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text(
+        'TOP',
+        style: TextStyle(
+          color: Color(0xFF22C55E),
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ),
+  ],
+),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -4575,6 +4756,7 @@ const SizedBox(height: 14),
     ),
   );
 }
+
 
   int _tirosPorModo(String modoObjetivo) {
   return _eventos.where((e) {
@@ -5277,7 +5459,7 @@ const SizedBox(height: 14),
                             'Goles recibidos',
                             '$_golesRecibidosDesdeArqueros',
                           ),
-                          _buildInfoRow('Penales en contra', '$_penalesV2'),
+                          _buildInfoRow('Penales rival', '$_penalesV2'),
                           const SizedBox(height: 12),
                           Container(
                             width: double.infinity,
