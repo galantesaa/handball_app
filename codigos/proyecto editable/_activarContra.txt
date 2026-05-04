@@ -1,0 +1,26 @@
+void _activarContra() {
+    final Map<String, dynamic> prevState = _captureStateSnapshot();
+
+    setState(() {
+      if (contraDebeCambiarModo) {
+        modo = modo == 'ataque' ? 'defensa' : 'ataque';
+      }
+      mostrarContra = false;
+      zonaTiro = null;
+      zonaArco = null;
+      jugadorSeleccionado = null;
+      jugadorSeleccionadoId = null;
+      origenJugadaActual = 'contra';
+      contraDebeCambiarModo = true;
+    });
+
+    _registrarEvento(
+      tipo: 'contra',
+      resultado: 'inicio_contra',
+      actorPrincipal: 'Cambio de contexto',
+      detalle: 'Se activa contragolpe',
+      subtipo: 'inicio_contra',
+      mantieneContexto: false,
+      prevState: prevState,
+    );
+  }

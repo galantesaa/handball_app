@@ -1,0 +1,65 @@
+_ShareMatchTeamStats _buildShareStatsForMode(String modo) {
+  int tiros = 0;
+  int tirosConGol = 0;
+  int tirosAtajados = 0;
+  int tirosFuera = 0;
+  int tirosAlPalo = 0;
+  int penales = 0;
+  int penalesConvertidos = 0;
+  int penalesErrados = 0;
+  int perdidas = 0;
+  int recuperaciones = 0;
+
+  for (final raw in _eventos) {
+    if (raw is! Map) continue;
+
+    final e = Map<String, dynamic>.from(raw);
+    final eventModo = (e['modo'] ?? '').toString();
+    final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
+    final resultado = (e['resultado'] ?? '').toString();
+
+    if (eventModo != modo) continue;
+
+    final esTiro = tipo == 'tiro';
+    final esPenal = tipo == 'penal' || tipo == 'penal_tanda';
+
+    if (esTiro || esPenal) {
+      tiros++;
+
+      if (resultado == 'gol') tirosConGol++;
+      if (resultado == 'atajado') tirosAtajados++;
+      if (resultado == 'fuera') tirosFuera++;
+      if (resultado == 'palo') tirosAlPalo++;
+
+      if (esPenal) {
+        penales++;
+        if (resultado == 'gol') {
+          penalesConvertidos++;
+        } else {
+          penalesErrados++;
+        }
+      }
+    }
+
+    if (tipo == 'perdida') {
+      if (modo == 'ataque') {
+        perdidas++;
+      } else {
+        recuperaciones++;
+      }
+    }
+  }
+
+  return _ShareMatchTeamStats(
+    tiros: tiros,
+    tirosConGol: tirosConGol,
+    tirosAtajados: tirosAtajados,
+    tirosFuera: tirosFuera,
+    tirosAlPalo: tirosAlPalo,
+    penales: penales,
+    penalesConvertidos: penalesConvertidos,
+    penalesErrados: penalesErrados,
+    perdidas: perdidas,
+    recuperaciones: recuperaciones,
+  );
+}
