@@ -69,6 +69,7 @@ class EventoModel {
   final String tipo;
   final String? resultado;
   final String? actorPrincipal;
+  final String? actorPrincipalId;
   final String? actorSecundario;
   final String? zonaTiro;
   final String? zonaArco;
@@ -88,6 +89,7 @@ class EventoModel {
     this.origenJugada,
     this.resultado,
     this.actorPrincipal,
+    this.actorPrincipalId,
     this.actorSecundario,
     this.zonaTiro,
     this.zonaArco,
@@ -96,7 +98,7 @@ class EventoModel {
     this.arquero,
     this.prevState,
   });
-  
+
   factory EventoModel.fromMap(Map<String, dynamic> map) {
     return EventoModel(
       id: (map['id'] as int?) ?? 0,
@@ -107,6 +109,7 @@ class EventoModel {
       tipo: (map['tipo'] ?? '').toString(),
       resultado: map['resultado']?.toString(),
       actorPrincipal: map['actorPrincipal']?.toString(),
+      actorPrincipalId: map['actorPrincipalId']?.toString(),
       actorSecundario: map['actorSecundario']?.toString(),
       zonaTiro: map['zonaTiro']?.toString(),
       zonaArco: map['zonaArco']?.toString(),
@@ -120,7 +123,7 @@ class EventoModel {
     );
   }
 
-    Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'timestamp': timestamp,
@@ -130,6 +133,7 @@ class EventoModel {
       'tipo': tipo,
       'resultado': resultado,
       'actorPrincipal': actorPrincipal,
+      'actorPrincipalId': actorPrincipalId,
       'actorSecundario': actorSecundario,
       'zonaTiro': zonaTiro,
       'zonaArco': zonaArco,
@@ -243,12 +247,11 @@ class PartidoModel {
       recuperaciones: (map['recuperaciones'] as int?) ?? 0,
       penalesConvertidosSanFernando:
           (map['penalesConvertidosSanFernando'] as int?) ?? 0,
-      penalesConvertidosRival:
-          (map['penalesConvertidosRival'] as int?) ?? 0,
+      penalesConvertidosRival: (map['penalesConvertidosRival'] as int?) ?? 0,
       modoActual: map['modoActual']?.toString(),
       modoInicioPrimerTiempo: map['modoInicioPrimerTiempo']?.toString(),
-      modoInicioPrimerTiempoAlargue:
-          map['modoInicioPrimerTiempoAlargue']?.toString(),
+      modoInicioPrimerTiempoAlargue: map['modoInicioPrimerTiempoAlargue']
+          ?.toString(),
       currentGoalkeeperNumber: map['currentGoalkeeperNumber']?.toString(),
       escudoRival: map['escudoRival']?.toString(),
       archivedAt: map['archivedAt']?.toString(),

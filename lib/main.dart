@@ -1452,7 +1452,7 @@ class _HomeScreenState extends State<HomeScreen> {
             case 'Partidos jugados':
               return const HistorialScreen();
             case 'Estadísticas':
-              return const EstadisticasScreen();
+              return EstadisticasScreen(categoria: categoriaSeleccionada);
             case 'Equipo':
               return EquiposScreen(
                 categoriaInicial: categoriaSeleccionada,
@@ -3859,6 +3859,40 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   List<Map<String, dynamic>> _estadisticasPorArquero() {
     final Map<String, Map<String, dynamic>> acumulado = {};
 
+    PlayerProfile? arqueroDesdePlayerId(String? playerId) {
+      final id = (playerId ?? '').trim();
+      if (id.isEmpty || id == 'null') return null;
+
+      for (final p in RosterRepository.players) {
+        if (p.playerId == id && p.esArquero) return p;
+      }
+
+      return null;
+    }
+
+    PlayerProfile? arqueroDesdeDorsal(String? dorsal) {
+      final value = (dorsal ?? '').trim();
+      if (value.isEmpty || value == 'null') return null;
+
+      final arqueros = RosterRepository.goalkeepersForCategory(
+        categoria: partidoV2.categoria,
+        temporada: '2026',
+      );
+
+      for (final p in arqueros) {
+        if ((p.numeroPreferido ?? '').trim() == value) return p;
+      }
+
+      return null;
+    }
+
+    PlayerProfile? resolverArquero(Map<String, dynamic> map) {
+      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+      final arqueroRaw = (map['arquero'] ?? '').toString().trim();
+
+      return arqueroDesdePlayerId(actorId) ?? arqueroDesdeDorsal(arqueroRaw);
+    }
+
     String periodoDesdeEvento(Map<String, dynamic> map) {
       final raw =
           (map['periodo'] ??
@@ -3886,9 +3920,12 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       return 'Global';
     }
 
-    Map<String, dynamic> crearItem(String arquero) {
+    Map<String, dynamic> crearItem(PlayerProfile arquero) {
       return {
-        'arquero': arquero,
+        'arquero': arquero.playerId,
+        'arqueroId': arquero.playerId,
+        'arqueroNombre': arquero.displayName,
+        'arqueroDorsal': arquero.numeroPreferido ?? '-',
         'atajadas': 0,
         'golesRecibidos': 0,
         'palos': 0,
@@ -3960,6 +3997,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       final data = periodos[periodo]!;
 
+      if (esContraDirectaArquero) {
+        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
+        return;
+      }
+
       if (resultado == 'atajado') {
         data['atajadas'] = (data['atajadas'] as int) + 1;
       }
@@ -3986,10 +4028,6 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         }
       }
 
-      if (esContraDirectaArquero) {
-        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
-      }
-
       final zonasArcoPeriodo =
           data['zonasArco'] as Map<String, Map<String, int>>;
       final zonasTiroPeriodo =
@@ -4006,12 +4044,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
       final resultado = (map['resultado'] ?? '').toString().trim();
-      final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
-
-      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
-      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final modoEvento = (map['modo'] ?? map['phase'] ?? '').toString().trim();
       final origen = (map['origenJugada'] ?? '').toString().trim();
-      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
 
       final bool esTiro =
           tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
@@ -4028,31 +4064,42 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       if (!resultadoValido) continue;
 
-      final bool esDefensivoArquero = modo == 'defensa';
-
       final bool esContraDirectaArquero =
-          modo == 'ataque' &&
+          modoEvento == 'ataque' &&
           origen == 'contra' &&
-          zonaTiro == 'Contra directa arquero' &&
-          actorId.isNotEmpty;
+          zonaTiro == 'Contra directa arquero';
+
+      final bool esDefensivoArquero = modoEvento == 'defensa';
 
       if (!esDefensivoArquero && !esContraDirectaArquero) continue;
 
-      String arquero = (map['arquero'] ?? '').toString().trim();
+      final arquero = resolverArquero(map);
+      if (arquero == null) continue;
 
-      if (esContraDirectaArquero) {
-        arquero = actorId;
-      }
+      acumulado.putIfAbsent(arquero.playerId, () => crearItem(arquero));
 
-      if (arquero.isEmpty || arquero == 'null') {
-        arquero = 'Sin arquero';
-      }
-
-      acumulado.putIfAbsent(arquero, () => crearItem(arquero));
-
-      final item = acumulado[arquero]!;
+      final item = acumulado[arquero.playerId]!;
 
       item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
+      final periodo = periodoDesdeEvento(map);
+
+      if (esContraDirectaArquero) {
+        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+
+        sumarPeriodo(
+          periodos: periodos,
+          periodo: periodo,
+          resultado: resultado,
+          zonaArco: zonaArco,
+          zonaTiro: zonaTiro,
+          esPenal: false,
+          esContraDirectaArquero: true,
+        );
+
+        continue;
+      }
 
       if (resultado == 'atajado') {
         item['atajadas'] = (item['atajadas'] as int) + 1;
@@ -4084,15 +4131,8 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         }
       }
 
-      if (esContraDirectaArquero) {
-        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
-      }
-
-      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
       final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
       final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
-
-      final periodo = periodoDesdeEvento(map);
 
       sumarEnMapa(zonasArco, zonaArco, resultado);
       sumarEnMapa(zonasTiro, zonaTiro, resultado);
@@ -4104,7 +4144,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         zonaArco: zonaArco,
         zonaTiro: zonaTiro,
         esPenal: esPenal,
-        esContraDirectaArquero: esContraDirectaArquero,
+        esContraDirectaArquero: false,
       );
     }
 
@@ -9937,6 +9977,28 @@ class _HistorialScreenState extends State<HistorialScreen> {
   String _torneoSeleccionado = 'Todos';
   String _busqueda = '';
 
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim()) ?? 0;
+    return 0;
+  }
+
+  DateTime _parseFechaPartido(dynamic value) {
+    final raw = (value ?? '').toString().trim();
+
+    final parts = raw.split('/');
+    if (parts.length != 2) return DateTime(2000);
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+
+    if (day == null || month == null) return DateTime(2000);
+
+    return DateTime(2026, month, day);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -9986,13 +10048,28 @@ class _HistorialScreenState extends State<HistorialScreen> {
       }
 
       items.sort((a, b) {
-        final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
-        final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+        final fechaNumeroA = _toInt(a['fechaNumero']);
+        final fechaNumeroB = _toInt(b['fechaNumero']);
 
-        if (aDate == null && bDate == null) return 0;
-        if (aDate == null) return 1;
-        if (bDate == null) return -1;
-        return bDate.compareTo(aDate);
+        if (fechaNumeroA != fechaNumeroB) {
+          return fechaNumeroB.compareTo(fechaNumeroA);
+        }
+
+        final fechaA = _parseFechaPartido(a['fecha']);
+        final fechaB = _parseFechaPartido(b['fecha']);
+
+        if (fechaA != fechaB) {
+          return fechaB.compareTo(fechaA);
+        }
+
+        final archivedA = DateTime.tryParse((a['archivedAt'] ?? '').toString());
+        final archivedB = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+
+        if (archivedA == null && archivedB == null) return 0;
+        if (archivedA == null) return 1;
+        if (archivedB == null) return -1;
+
+        return archivedB.compareTo(archivedA);
       });
     }
 
@@ -10570,7 +10647,9 @@ class _ExtremeZonePainter extends CustomPainter {
 ///===============================
 
 class EstadisticasScreen extends StatefulWidget {
-  const EstadisticasScreen({super.key});
+  final String categoria;
+
+  const EstadisticasScreen({super.key, required this.categoria});
 
   @override
   State<EstadisticasScreen> createState() => _EstadisticasScreenState();
@@ -10605,6 +10684,12 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
         (map['partido'] as Map?)?.cast<String, dynamic>() ??
             <String, dynamic>{},
       );
+
+      final categoriaPartido = (base['categoria'] ?? '').toString().trim();
+
+      if (categoriaPartido != widget.categoria) {
+        continue;
+      }
 
       partidos.add({
         ...base,
@@ -11886,14 +11971,13 @@ class ArquerosPartidoScreen extends StatelessWidget {
       final raw = (item['arquero'] ?? '').toString().trim();
       final nombre = (item['arqueroNombre'] ?? '').toString().trim();
 
-      final identidad = raw.isNotEmpty ? raw : nombre;
+      final identidad = nombre.isNotEmpty ? nombre : raw;
       final normalizado = identidad.toLowerCase().trim();
 
       if (normalizado.isEmpty) return false;
       if (normalizado == 'null') return false;
       if (normalizado == 'sin arquero') return false;
       if (normalizado == 'cambio de contexto') return false;
-      if (normalizado.startsWith('sf_')) return false;
       if (normalizado.contains('gen')) return false;
 
       return true;
@@ -11912,13 +11996,14 @@ class ArquerosPartidoScreen extends StatelessWidget {
   }
 
   String _nombreArquero(Map<String, dynamic> item) {
+    final nombre = (item['arqueroNombre'] ?? '').toString().trim();
+    if (nombre.isNotEmpty && nombre != 'null') {
+      return fixTextoRoto(nombre);
+    }
+
     final raw = (item['arquero'] ?? '').toString().trim();
 
-    if (raw.isEmpty ||
-        raw == 'null' ||
-        raw == 'Sin arquero' ||
-        raw.startsWith('sf_') ||
-        raw == 'Cambio de contexto') {
+    if (raw.isEmpty || raw == 'null' || raw == 'Sin arquero') {
       return 'Sin arquero';
     }
 
@@ -11930,16 +12015,18 @@ class ArquerosPartidoScreen extends StatelessWidget {
       );
     }
 
-    final nombre = (item['arqueroNombre'] ?? '').toString().trim();
-    if (nombre.isNotEmpty) return fixTextoRoto(nombre);
-
     return fixTextoRoto(raw);
   }
 
   String _dorsalArquero(Map<String, dynamic> item) {
+    final dorsal = (item['arqueroDorsal'] ?? '').toString().trim();
+    if (dorsal.isNotEmpty && dorsal != 'null') return dorsal;
+
     final raw = (item['arquero'] ?? '').toString().trim();
     final dorsalMatch = RegExp(r'^(\d+)').firstMatch(raw);
+
     if (dorsalMatch != null) return dorsalMatch.group(1)!;
+
     return '-';
   }
 
