@@ -4212,344 +4212,503 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   Widget _buildShareMatchOverviewCard(BuildContext context) {
-    final sanFernandoStats = _buildShareStatsForMode('ataque');
-    final rivalStats = _buildShareStatsForMode('defensa');
+  final sanFernandoStats = _buildShareStatsForMode('ataque');
+  final rivalStats = _buildShareStatsForMode('defensa');
 
-    Widget statRow(
-      String label,
-      String left,
-      String right, {
-      String? leftSub,
-      String? rightSub,
-    }) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    left,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      decoration: TextDecoration.none,
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  if (leftSub != null)
-                    Text(
-                      leftSub,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        decoration: TextDecoration.none,
-                        color: Color(0xFF8FA3BF),
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: 95,
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  decoration: TextDecoration.none,
-                  color: Color(0xFFAAB4C3),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    right,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      decoration: TextDecoration.none,
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  if (rightSub != null)
-                    Text(
-                      rightSub,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        decoration: TextDecoration.none,
-                        color: Color(0xFF8FA3BF),
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
+  double safeEfficiency(int goals, int shots) {
+    if (shots <= 0) return 0;
+    return (goals * 100) / shots;
+  }
+
+  final double sfEficacia = safeEfficiency(
+    sanFernandoStats.tirosConGol,
+    sanFernandoStats.tiros,
+  );
+
+  final double rivalEficacia = safeEfficiency(
+    rivalStats.tirosConGol,
+    rivalStats.tiros,
+  );
+
+  Color valueColor({
+    required double leftValue,
+    required double rightValue,
+    required bool isLeft,
+    required String compareMode,
+  }) {
+    if (compareMode == 'neutral' || leftValue == rightValue) {
+      return Colors.white;
     }
 
-    Widget compactUnifiedPanel() {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111A28),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Analisis del partido',
-              style: TextStyle(
-                decoration: TextDecoration.none,
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+    final bool leftIsBetter = compareMode == 'higher'
+        ? leftValue > rightValue
+        : leftValue < rightValue;
+
+    if (isLeft) {
+      return leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+    }
+
+    return !leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+  }
+
+  String buildInsight() {
+    final List<String> insights = [];
+
+    if (sfEficacia > rivalEficacia) {
+      insights.add('San Fernando fue más eficaz en ataque');
+    } else if (rivalEficacia > sfEficacia) {
+      insights.add('${partidoV2.rival} fue más eficaz en ataque');
+    }
+
+    if (sanFernandoStats.recuperaciones > rivalStats.recuperaciones) {
+      insights.add('mejor recuperación defensiva de San Fernando');
+    } else if (rivalStats.recuperaciones > sanFernandoStats.recuperaciones) {
+      insights.add('mejor recuperación defensiva de ${partidoV2.rival}');
+    }
+
+    if (sanFernandoStats.perdidasNoForzadas >
+        rivalStats.perdidasNoForzadas) {
+      insights.add('San Fernando debe reducir pérdidas no forzadas');
+    } else if (rivalStats.perdidasNoForzadas >
+        sanFernandoStats.perdidasNoForzadas) {
+      insights.add('${partidoV2.rival} perdió más balones sin presión');
+    }
+
+    if (insights.isEmpty) {
+      return 'Partido equilibrado, definido por detalles de eficacia y control.';
+    }
+
+    return insights.take(2).join(' · ');
+  }
+
+  Widget statRow(
+    String label,
+    String left,
+    String right, {
+    String? leftSub,
+    String? rightSub,
+    double? leftValue,
+    double? rightValue,
+    String compareMode = 'neutral',
+  }) {
+    final double resolvedLeftValue =
+        leftValue ?? double.tryParse(left.replaceAll('%', '')) ?? 0;
+    final double resolvedRightValue =
+        rightValue ?? double.tryParse(right.replaceAll('%', '')) ?? 0;
+
+    final Color leftColor = valueColor(
+      leftValue: resolvedLeftValue,
+      rightValue: resolvedRightValue,
+      isLeft: true,
+      compareMode: compareMode,
+    );
+
+    final Color rightColor = valueColor(
+      leftValue: resolvedLeftValue,
+      rightValue: resolvedRightValue,
+      isLeft: false,
+      compareMode: compareMode,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Expanded(
-                  child: Text(
-                    'San Fernando',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      decoration: TextDecoration.none,
-                      color: Color(0xFF8FA3BF),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
+                Text(
+                  left,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    decoration: TextDecoration.none,
+                    color: leftColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(width: 95),
-                Expanded(
-                  child: Text(
-                    partidoV2.rival,
+                if (leftSub != null)
+                  Text(
+                    leftSub,
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       decoration: TextDecoration.none,
                       color: Color(0xFF8FA3BF),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 7),
-
-            statRow(
-              'Tiros',
-              sanFernandoStats.tiros.toString(),
-              rivalStats.tiros.toString(),
-            ),
-            statRow(
-              'Atajados',
-              sanFernandoStats.tirosAtajados.toString(),
-              rivalStats.tirosAtajados.toString(),
-            ),
-            statRow(
-              'Fuera',
-              sanFernandoStats.tirosFuera.toString(),
-              rivalStats.tirosFuera.toString(),
-            ),
-            statRow(
-              'Palo',
-              sanFernandoStats.tirosAlPalo.toString(),
-              rivalStats.tirosAlPalo.toString(),
-            ),
-            const Divider(color: Color(0x223FFFFFF), height: 18, thickness: 1),
-            statRow(
-                'Robos',
-                sanFernandoStats.recuperaciones.toString(),
-                rivalStats.recuperaciones.toString(),
-              ),
-              statRow(
-                'Pérd. no forzada',
-                sanFernandoStats.perdidasNoForzadas.toString(),
-                rivalStats.perdidasNoForzadas.toString(),
-              ),
-
-            const Divider(color: Color(0x223FFFFFF), height: 18, thickness: 1),
-
-            const Text(
-              'Penales y disciplina',
-              style: TextStyle(
+          ),
+          SizedBox(
+            width: 95,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
                 decoration: TextDecoration.none,
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
+                color: Color(0xFFAAB4C3),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
               ),
-            ),
-            const SizedBox(height: 6),
-
-            statRow(
-              'Penales',
-              sanFernandoStats.penales.toString(),
-              rivalStats.penales.toString(),
-            ),
-            statRow(
-              'Convert.',
-              sanFernandoStats.penalesConvertidos.toString(),
-              rivalStats.penalesConvertidos.toString(),
-            ),
-            statRow(
-              'Errados',
-              sanFernandoStats.penalesErrados.toString(),
-              rivalStats.penalesErrados.toString(),
-            ),
-            const Divider(color: Color(0x223FFFFFF), height: 18, thickness: 1),
-
-            statRow('2 min', _exclusiones2MinV2.toString(), '0'),
-            statRow('Amarillas', _amarillasV2.toString(), '0'),
-            statRow('Rojas', _rojasV2.toString(), '0'),
-          ],
-        ),
-      );
-    }
-
-    return Material(
-      color: Colors.transparent,
-      child: DefaultTextStyle(
-        style: const TextStyle(
-          decoration: TextDecoration.none,
-          color: Colors.white,
-          fontSize: 12,
-        ),
-        child: Container(
-          width: 390,
-          height: 693,
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF070D17), Color(0xFF101827)],
             ),
           ),
-          child: Column(
-            children: [
-              const Text(
-                'HANDBALL SGS',
-                style: TextStyle(
-                  decoration: TextDecoration.none,
-                  color: Color(0xFF8FA3BF),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2.4,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${partidoV2.categoria} · ${partidoV2.torneo}',
-                style: const TextStyle(
-                  decoration: TextDecoration.none,
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildShareTeam(
-                      nombre: _nombreLocal,
-                      assetPath: _somosLocales
-                          ? 'assets/images/san_fernando.png'
-                          : _rivalShieldAsset(),
-                    ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  right,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    decoration: TextDecoration.none,
+                    color: rightColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
                   ),
+                ),
+                if (rightSub != null)
                   Text(
-                    '$_golesLocal - $_golesVisitante',
+                    rightSub,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       decoration: TextDecoration.none,
-                      color: Colors.white,
-                      fontSize: 39,
-                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF8FA3BF),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Expanded(
-                    child: _buildShareTeam(
-                      nombre: _nombreVisitante,
-                      assetPath: _somosLocales
-                          ? _rivalShieldAsset()
-                          : 'assets/images/san_fernando.png',
-                    ),
-                  ),
-                ],
-              ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              const SizedBox(height: 14),
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111A28),
-                  borderRadius: BorderRadius.circular(14),
-                ),
+  Widget compactUnifiedPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Análisis del partido',
+            style: TextStyle(
+              decoration: TextDecoration.none,
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Expanded(
                 child: Text(
-                  'Fecha: ${partidoV2.fecha} · Hora: ${partidoV2.hora} · Condición: ${partidoV2.condicion}',
+                  'San Fernando',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 95),
+              Expanded(
+                child: Text(
+                  partidoV2.rival,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     decoration: TextDecoration.none,
-                    color: Color(0xFFDCE4EF),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              compactUnifiedPanel(),
-
-              const Spacer(),
-
-              Text(
-                '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
-                style: const TextStyle(
-                  decoration: TextDecoration.none,
-                  color: Color(0xFF8FA3BF),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 6),
+
+          statRow(
+            'Tiros',
+            sanFernandoStats.tiros.toString(),
+            rivalStats.tiros.toString(),
+            compareMode: 'neutral',
+          ),
+          statRow(
+            'Eficacia',
+            '${sfEficacia.toStringAsFixed(1)}%',
+            '${rivalEficacia.toStringAsFixed(1)}%',
+            leftValue: sfEficacia,
+            rightValue: rivalEficacia,
+            compareMode: 'higher',
+          ),
+          statRow(
+            'Atajados',
+            sanFernandoStats.tirosAtajados.toString(),
+            rivalStats.tirosAtajados.toString(),
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Fuera',
+            sanFernandoStats.tirosFuera.toString(),
+            rivalStats.tirosFuera.toString(),
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Palo',
+            sanFernandoStats.tirosAlPalo.toString(),
+            rivalStats.tirosAlPalo.toString(),
+            compareMode: 'lower',
+          ),
+
+          const Divider(
+            color: Color(0x223FFFFFF),
+            height: 16,
+            thickness: 1,
+          ),
+
+          statRow(
+            'Robos',
+            sanFernandoStats.recuperaciones.toString(),
+            rivalStats.recuperaciones.toString(),
+            compareMode: 'higher',
+          ),
+          statRow(
+            'Pérd. no forzada',
+            sanFernandoStats.perdidasNoForzadas.toString(),
+            rivalStats.perdidasNoForzadas.toString(),
+            compareMode: 'lower',
+          ),
+
+          const Divider(
+            color: Color(0x223FFFFFF),
+            height: 16,
+            thickness: 1,
+          ),
+
+          const Text(
+            'Penales y disciplina',
+            style: TextStyle(
+              decoration: TextDecoration.none,
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+
+          statRow(
+            'Penales',
+            sanFernandoStats.penales.toString(),
+            rivalStats.penales.toString(),
+            compareMode: 'neutral',
+          ),
+          statRow(
+            'Convert.',
+            sanFernandoStats.penalesConvertidos.toString(),
+            rivalStats.penalesConvertidos.toString(),
+            compareMode: 'higher',
+          ),
+          statRow(
+            'Errados',
+            sanFernandoStats.penalesErrados.toString(),
+            rivalStats.penalesErrados.toString(),
+            compareMode: 'lower',
+          ),
+
+          const Divider(
+            color: Color(0x223FFFFFF),
+            height: 16,
+            thickness: 1,
+          ),
+
+          statRow(
+            '2 min',
+            _exclusiones2MinV2.toString(),
+            '0',
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Amarillas',
+            _amarillasV2.toString(),
+            '0',
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Rojas',
+            _rojasV2.toString(),
+            '0',
+            compareMode: 'lower',
+          ),
+
+          const SizedBox(height: 7),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFF172235),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              buildInsight(),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFFE4EAF3),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  return Material(
+    color: Colors.transparent,
+    child: DefaultTextStyle(
+      style: const TextStyle(
+        decoration: TextDecoration.none,
+        color: Colors.white,
+        fontSize: 12,
+      ),
+      child: Container(
+        width: 390,
+        height: 693,
+        padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF070D17), Color(0xFF101827)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'HANDBALL SGS',
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${partidoV2.categoria} · ${partidoV2.torneo}',
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildShareTeam(
+                    nombre: _nombreLocal,
+                    assetPath: _somosLocales
+                        ? 'assets/images/san_fernando.png'
+                        : _rivalShieldAsset(),
+                  ),
+                ),
+                Text(
+                  '$_golesLocal - $_golesVisitante',
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Colors.white,
+                    fontSize: 39,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Expanded(
+                  child: _buildShareTeam(
+                    nombre: _nombreVisitante,
+                    assetPath: _somosLocales
+                        ? _rivalShieldAsset()
+                        : 'assets/images/san_fernando.png',
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111A28),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                'Fecha: ${partidoV2.fecha} · Hora: ${partidoV2.hora} · Condición: ${partidoV2.condicion}',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Color(0xFFDCE4EF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            compactUnifiedPanel(),
+
+            const Spacer(),
+
+            Text(
+              '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF8FA3BF),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
   Widget _buildShareGoalkeepersAnalysisCard(BuildContext context) {
     final arqueros = _estadisticasPorArquero();
