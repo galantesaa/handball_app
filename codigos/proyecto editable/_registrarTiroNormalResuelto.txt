@@ -1,0 +1,80 @@
+void _registrarTiroNormalResuelto({
+    required String resultado,
+    required String modoAntesDelEvento,
+    required String actor,
+    required String? zonaTiroEvento,
+    required String? zonaArcoEvento,
+    required bool mantieneContexto,
+    required Map<String, dynamic> prevState,
+  }) {
+    final bool esContraDirectaArquero =
+        modoAntesDelEvento == 'ataque' &&
+        origenJugadaActual == 'contra' &&
+        zonaTiroEvento == 'Contra directa arquero';
+
+    setState(() {
+      if (resultado == 'gol') {
+        if (modoAntesDelEvento == 'ataque') {
+          golesSanFernando++;
+          modo = 'defensa';
+        } else {
+          golesRival++;
+          golesRecibidos++;
+          modo = 'ataque';
+        }
+
+        mostrarContra = false;
+        contraDebeCambiarModo = true;
+      }
+
+      if (resultado == 'atajado') {
+        if (modoAntesDelEvento == 'defensa') {
+          atajadas++;
+        }
+
+        mostrarContra = true;
+        contraDebeCambiarModo = true;
+      }
+
+      if (resultado == 'palo') {
+        mostrarContra = true;
+        contraDebeCambiarModo = true;
+      }
+
+      if (resultado == 'fuera') {
+        if (modoAntesDelEvento == 'ataque') {
+          modo = 'defensa';
+          mostrarContra = false;
+        } else {
+          modo = 'ataque';
+          mostrarContra = true;
+          contraDebeCambiarModo = false;
+        }
+      }
+
+      mostrarSelectorLateralJugador = false;
+    });
+
+    _registrarEvento(
+      tipo: 'tiro',
+      resultado: resultado,
+      actorPrincipal: actor,
+      actorPrincipalId: esContraDirectaArquero
+          ? _getCurrentGoalkeeperProfile()?.playerId
+          : modoAntesDelEvento == 'ataque'
+          ? jugadorSeleccionadoId
+          : _getCurrentGoalkeeperProfile()?.playerId,
+      zonaTiroValor: zonaTiroEvento,
+      zonaArcoValor: zonaArcoEvento,
+      mantieneContexto: mantieneContexto,
+      prevState: prevState,
+      modoEvento: modoAntesDelEvento,
+      esContraDirectaArquero: esContraDirectaArquero,
+    );
+    _clearSelection(
+      keepContra:
+          resultado == 'atajado' ||
+          resultado == 'palo' ||
+          modoAntesDelEvento == 'defensa',
+    );
+  }

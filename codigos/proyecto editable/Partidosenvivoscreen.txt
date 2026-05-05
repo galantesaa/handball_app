@@ -1,3 +1,9 @@
+// ===============================
+/// ===============================
+/// PARTIDO EN VIVO
+/// ===============================
+/// ===============================
+
 class PartidoEnVivoScreen extends StatefulWidget {
   final Map<String, dynamic> partido;
 
@@ -1413,8 +1419,6 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   /// ===============================
   bool get _esContraArqueroDirecta {
     return origenJugadaActual == 'contra' &&
-        modo == 'ataque' &&
-        zonaTiro == null &&
         _getCurrentGoalkeeperProfile() != null;
   }
 
@@ -1577,16 +1581,28 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     bool? mantieneContexto,
     Map<String, dynamic>? prevState,
     String? modoEvento,
+    bool esContraDirectaArquero = false,
   }) {
     _contadorEventoId++;
 
     final now = DateTime.now();
+    final eventMode = modoEvento ?? modo;
+
+    final goalkeeper = _getCurrentGoalkeeperProfile();
+
+    final bool debeAsociarArquero =
+        eventMode == 'defensa' || esContraDirectaArquero;
+
+    final String? arqueroId = debeAsociarArquero ? goalkeeper?.playerId : null;
+    final String? arqueroNombre = debeAsociarArquero
+        ? goalkeeper?.displayName
+        : null;
 
     final legacyEvent = <String, dynamic>{
       'id': _contadorEventoId,
       'timestamp': now.toIso8601String(),
       'estadoPartido': estadoPartido,
-      'modo': modoEvento ?? modo,
+      'modo': eventMode,
       'origenJugada': origenJugadaActual,
       'tipo': tipo,
       'resultado': resultado,
@@ -1597,15 +1613,28 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       'zonaArco': zonaArcoValor,
       'detalle': detalle,
       'subtipo': subtipo,
-      'mantieneContexto': mantieneContexto,
+      'mantieneContexto': mantieneContexto ?? false,
       'prevState': prevState == null
           ? null
           : Map<String, dynamic>.from(prevState),
-      'arquero': currentGoalkeeperNumber,
+
+      // Legacy visual
+      'arquero': debeAsociarArquero ? currentGoalkeeperNumber : null,
+
+      // Nuevo estable
+      'arqueroId': arqueroId,
+      'arqueroNombre': arqueroNombre,
+      'esContraDirectaArquero': esContraDirectaArquero,
     };
+
     debugPrint(
-      'EVENTO -> tipo:$tipo resultado:$resultado modo:${modoEvento ?? modo} actor:$actorPrincipal zonaTiro:$zonaTiroValor zonaArco:$zonaArcoValor',
+      'EVENTO -> tipo:$tipo resultado:$resultado modo:$eventMode '
+      'actor:$actorPrincipal actorId:$actorPrincipalId '
+      'arquero:$arqueroNombre arqueroId:$arqueroId '
+      'zonaTiro:$zonaTiroValor zonaArco:$zonaArcoValor '
+      'contraDirecta:$esContraDirectaArquero',
     );
+
     eventos.add(legacyEvent);
     gameEvents.add(GameEvent.fromLegacyMap(legacyEvent));
 
@@ -1918,30 +1947,21 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _activarContra() {
-    final Map<String, dynamic> prevState = _captureStateSnapshot();
-
     setState(() {
-      if (contraDebeCambiarModo) {
-        modo = modo == 'ataque' ? 'defensa' : 'ataque';
-      }
+      // 🔥 Siempre invertir modo (clave)
+      modo = modo == 'ataque' ? 'defensa' : 'ataque';
+
       mostrarContra = false;
+
       zonaTiro = null;
       zonaArco = null;
+
       jugadorSeleccionado = null;
       jugadorSeleccionadoId = null;
-      origenJugadaActual = 'contra';
-      contraDebeCambiarModo = true;
-    });
 
-    _registrarEvento(
-      tipo: 'contra',
-      resultado: 'inicio_contra',
-      actorPrincipal: 'Cambio de contexto',
-      detalle: 'Se activa contragolpe',
-      subtipo: 'inicio_contra',
-      mantieneContexto: false,
-      prevState: prevState,
-    );
+      // 🔥 marcar origen
+      origenJugadaActual = 'contra';
+    });
   }
 
   void _iniciarFlujoPenalNormal() {
@@ -2801,9 +2821,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     required Map<String, dynamic> prevState,
   }) {
     final bool esContraDirectaArquero =
-        modoAntesDelEvento == 'ataque' &&
         origenJugadaActual == 'contra' &&
-        zonaTiroEvento == 'Contra directa arquero';
+        (zonaTiroEvento == 'Contra directa arquero');
 
     setState(() {
       if (resultado == 'gol') {
@@ -2862,8 +2881,8 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       mantieneContexto: mantieneContexto,
       prevState: prevState,
       modoEvento: modoAntesDelEvento,
+      esContraDirectaArquero: esContraDirectaArquero,
     );
-
     _clearSelection(
       keepContra:
           resultado == 'atajado' ||
