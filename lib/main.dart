@@ -4230,6 +4230,18 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     rivalStats.tiros,
   );
 
+final localName = _nombreLocal;
+final visitanteName = _nombreVisitante;
+
+final bool ganaLocal = _golesLocal > _golesVisitante;
+final bool ganaVisitante = _golesVisitante > _golesLocal;
+
+final String equipoDominante = ganaLocal
+    ? localName
+    : ganaVisitante
+        ? visitanteName
+        : 'Ninguno';
+
   Color valueColor({
     required double leftValue,
     required double rightValue,
@@ -4252,34 +4264,53 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   String buildInsight() {
-    final List<String> insights = [];
+  final List<String> insights = [];
 
-    if (sfEficacia > rivalEficacia) {
-      insights.add('San Fernando fue más eficaz en ataque');
-    } else if (rivalEficacia > sfEficacia) {
-      insights.add('${partidoV2.rival} fue más eficaz en ataque');
-    }
-
-    if (sanFernandoStats.recuperaciones > rivalStats.recuperaciones) {
-      insights.add('mejor recuperación defensiva de San Fernando');
-    } else if (rivalStats.recuperaciones > sanFernandoStats.recuperaciones) {
-      insights.add('mejor recuperación defensiva de ${partidoV2.rival}');
-    }
-
-    if (sanFernandoStats.perdidasNoForzadas >
-        rivalStats.perdidasNoForzadas) {
-      insights.add('San Fernando debe reducir pérdidas no forzadas');
-    } else if (rivalStats.perdidasNoForzadas >
-        sanFernandoStats.perdidasNoForzadas) {
-      insights.add('${partidoV2.rival} perdió más balones sin presión');
-    }
-
-    if (insights.isEmpty) {
-      return 'Partido equilibrado, definido por detalles de eficacia y control.';
-    }
-
-    return insights.take(2).join(' · ');
+  if (sfEficacia > rivalEficacia) {
+    insights.add('$localName más eficaz (${sfEficacia.toStringAsFixed(1)}%)');
+  } else if (rivalEficacia > sfEficacia) {
+    insights.add('$visitanteName más eficaz (${rivalEficacia.toStringAsFixed(1)}%)');
   }
+
+  if (sanFernandoStats.recuperaciones > rivalStats.recuperaciones) {
+    insights.add('$localName dominó recuperaciones');
+  } else if (rivalStats.recuperaciones > sanFernandoStats.recuperaciones) {
+    insights.add('$visitanteName dominó recuperaciones');
+  }
+
+  if (sanFernandoStats.perdidasNoForzadas >
+      rivalStats.perdidasNoForzadas) {
+    insights.add('$localName perdió balones sin presión');
+  } else if (rivalStats.perdidasNoForzadas >
+      sanFernandoStats.perdidasNoForzadas) {
+    insights.add('$visitanteName tuvo más pérdidas no forzadas');
+  }
+
+  if (insights.isEmpty) {
+    return 'Partido equilibrado definido por detalles';
+  }
+
+  return insights.take(2).join(' · ');
+}
+  
+  String buildMatchKey() {
+  if ((sfEficacia - rivalEficacia).abs() > 8) {
+    return 'Clave: eficacia ofensiva';
+  }
+
+  if ((sanFernandoStats.recuperaciones - rivalStats.recuperaciones).abs() > 5) {
+    return 'Clave: presión defensiva';
+  }
+
+  if ((sanFernandoStats.perdidasNoForzadas -
+              rivalStats.perdidasNoForzadas)
+          .abs() >
+      5) {
+    return 'Clave: pérdidas no forzadas';
+  }
+
+  return 'Partido parejo';
+}
 
   Widget statRow(
     String label,
@@ -4405,6 +4436,25 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 🔥 KPI DEL PARTIDO (badge arriba de todo)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF27D36B).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              buildMatchKey(),
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF27D36B),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 6),
           const Text(
             'Análisis del partido',
             style: TextStyle(
