@@ -4318,7 +4318,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Producción de juego',
+              'Analisis del partido',
               style: TextStyle(
                 decoration: TextDecoration.none,
                 color: Colors.white,
@@ -4380,20 +4380,17 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               sanFernandoStats.tirosAlPalo.toString(),
               rivalStats.tirosAlPalo.toString(),
             ),
+            const Divider(color: Color(0x223FFFFFF), height: 18, thickness: 1),
             statRow(
-              'Pérdidas',
-              sanFernandoStats.perdidas.toString(),
-              rivalStats.perdidas.toString(),
-              leftSub:
-                  'NF ${sanFernandoStats.perdidasNoForzadas} · R ${sanFernandoStats.perdidasForzadas}',
-              rightSub:
-                  'NF ${rivalStats.perdidasNoForzadas} · R ${rivalStats.perdidasForzadas}',
-            ),
-            statRow(
-              'Recuper.',
-              sanFernandoStats.recuperaciones.toString(),
-              rivalStats.recuperaciones.toString(),
-            ),
+                'Robos',
+                sanFernandoStats.recuperaciones.toString(),
+                rivalStats.recuperaciones.toString(),
+              ),
+              statRow(
+                'Pérd. no forzada',
+                sanFernandoStats.perdidasNoForzadas.toString(),
+                rivalStats.perdidasNoForzadas.toString(),
+              ),
 
             const Divider(color: Color(0x223FFFFFF), height: 18, thickness: 1),
 
@@ -4423,6 +4420,8 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               sanFernandoStats.penalesErrados.toString(),
               rivalStats.penalesErrados.toString(),
             ),
+            const Divider(color: Color(0x223FFFFFF), height: 18, thickness: 1),
+
             statRow('2 min', _exclusiones2MinV2.toString(), '0'),
             statRow('Amarillas', _amarillasV2.toString(), '0'),
             statRow('Rojas', _rojasV2.toString(), '0'),
