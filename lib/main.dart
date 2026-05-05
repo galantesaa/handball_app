@@ -4212,36 +4212,138 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   Widget _buildShareMatchOverviewCard(BuildContext context) {
-  final sanFernandoStats = _buildShareStatsForMode('ataque');
-  final rivalStats = _buildShareStatsForMode('defensa');
+  final ownStats = _buildShareStatsForMode('ataque');
+  final rivalStatsRaw = _buildShareStatsForMode('defensa');
+
+  final localName = _nombreLocal;
+  final visitanteName = _nombreVisitante;
+
+  final localStats = _somosLocales ? ownStats : rivalStatsRaw;
+  final visitanteStats = _somosLocales ? rivalStatsRaw : ownStats;
+
+  final int local2Min = _somosLocales ? _exclusiones2MinV2 : 0;
+  final int visitante2Min = _somosLocales ? 0 : _exclusiones2MinV2;
+
+  final int localAmarillas = _somosLocales ? _amarillasV2 : 0;
+  final int visitanteAmarillas = _somosLocales ? 0 : _amarillasV2;
+
+  final int localRojas = _somosLocales ? _rojasV2 : 0;
+  final int visitanteRojas = _somosLocales ? 0 : _rojasV2;
 
   double safeEfficiency(int goals, int shots) {
     if (shots <= 0) return 0;
     return (goals * 100) / shots;
   }
 
-  final double sfEficacia = safeEfficiency(
-    sanFernandoStats.tirosConGol,
-    sanFernandoStats.tiros,
+  final double localEficacia = safeEfficiency(
+    localStats.tirosConGol,
+    localStats.tiros,
   );
 
-  final double rivalEficacia = safeEfficiency(
-    rivalStats.tirosConGol,
-    rivalStats.tiros,
+  final double visitanteEficacia = safeEfficiency(
+    visitanteStats.tirosConGol,
+    visitanteStats.tiros,
   );
 
-final localName = _nombreLocal;
-final visitanteName = _nombreVisitante;
+  double clampDouble(double value, double min, double max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
 
-final bool ganaLocal = _golesLocal > _golesVisitante;
-final bool ganaVisitante = _golesVisitante > _golesLocal;
+  double balanceHigherBetter(double left, double right) {
+    final total = left + right;
+    if (total <= 0) return 0;
+    return ((left - right) / total) * 100;
+  }
 
-final String equipoDominante = ganaLocal
-    ? localName
-    : ganaVisitante
-        ? visitanteName
-        : 'Ninguno';
+  double balanceLowerBetter(double left, double right) {
+    final total = left + right;
+    if (total <= 0) return 0;
+    return ((right - left) / total) * 100;
+  }
 
+  double buildLocalControlIndex() {
+    final double eficaciaBalance = clampDouble(
+      localEficacia - visitanteEficacia,
+      -25,
+      25,
+    );
+
+    final double robosBalance = clampDouble(
+      balanceHigherBetter(
+        localStats.recuperaciones.toDouble(),
+        visitanteStats.recuperaciones.toDouble(),
+      ),
+      -25,
+      25,
+    );
+
+    final double perdidasBalance = clampDouble(
+      balanceLowerBetter(
+        localStats.perdidasNoForzadas.toDouble(),
+        visitanteStats.perdidasNoForzadas.toDouble(),
+      ),
+      -25,
+      25,
+    );
+
+    final double marcadorBalance = clampDouble(
+      ((_golesLocal - _golesVisitante) * 4).toDouble(),
+      -20,
+      20,
+    );
+
+    final double control =
+        50 +
+        (eficaciaBalance * 0.40) +
+        (robosBalance * 0.25) +
+        (perdidasBalance * 0.20) +
+        (marcadorBalance * 0.15);
+
+    return clampDouble(control, 0, 100);
+  }
+
+  final double localControl = buildLocalControlIndex();
+  final double visitanteControl = 100 - localControl;
+
+  String buildMatchKey() {
+    final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
+    final robosDiff =
+        (localStats.recuperaciones - visitanteStats.recuperaciones).abs();
+    final perdidasDiff =
+        (localStats.perdidasNoForzadas -
+                visitanteStats.perdidasNoForzadas)
+            .abs();
+
+    if (eficaciaDiff >= 8) return 'Clave: eficacia ofensiva';
+    if (robosDiff >= 5) return 'Clave: presión defensiva';
+    if (perdidasDiff >= 5) return 'Clave: pérdidas no forzadas';
+
+    return 'Partido parejo';
+  }
+
+  String buildInsight() {
+  final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
+  final golesDiff = (_golesLocal - _golesVisitante).abs();
+
+  if (eficaciaDiff > 10) {
+    return localEficacia > visitanteEficacia
+        ? '$localName fue mucho más eficaz'
+        : '$visitanteName fue mucho más eficaz';
+  }
+
+  if (golesDiff >= 6) {
+    return '$localName dominó claramente el partido';
+  }
+
+  if (golesDiff <= 2) {
+    return 'Partido muy parejo';
+  }
+
+  return 'Partido definido por detalles';
+}
+  
   Color valueColor({
     required double leftValue,
     required double rightValue,
@@ -4263,61 +4365,10 @@ final String equipoDominante = ganaLocal
     return !leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
   }
 
-  String buildInsight() {
-  final List<String> insights = [];
-
-  if (sfEficacia > rivalEficacia) {
-    insights.add('$localName más eficaz (${sfEficacia.toStringAsFixed(1)}%)');
-  } else if (rivalEficacia > sfEficacia) {
-    insights.add('$visitanteName más eficaz (${rivalEficacia.toStringAsFixed(1)}%)');
-  }
-
-  if (sanFernandoStats.recuperaciones > rivalStats.recuperaciones) {
-    insights.add('$localName dominó recuperaciones');
-  } else if (rivalStats.recuperaciones > sanFernandoStats.recuperaciones) {
-    insights.add('$visitanteName dominó recuperaciones');
-  }
-
-  if (sanFernandoStats.perdidasNoForzadas >
-      rivalStats.perdidasNoForzadas) {
-    insights.add('$localName perdió balones sin presión');
-  } else if (rivalStats.perdidasNoForzadas >
-      sanFernandoStats.perdidasNoForzadas) {
-    insights.add('$visitanteName tuvo más pérdidas no forzadas');
-  }
-
-  if (insights.isEmpty) {
-    return 'Partido equilibrado definido por detalles';
-  }
-
-  return insights.take(2).join(' · ');
-}
-  
-  String buildMatchKey() {
-  if ((sfEficacia - rivalEficacia).abs() > 8) {
-    return 'Clave: eficacia ofensiva';
-  }
-
-  if ((sanFernandoStats.recuperaciones - rivalStats.recuperaciones).abs() > 5) {
-    return 'Clave: presión defensiva';
-  }
-
-  if ((sanFernandoStats.perdidasNoForzadas -
-              rivalStats.perdidasNoForzadas)
-          .abs() >
-      5) {
-    return 'Clave: pérdidas no forzadas';
-  }
-
-  return 'Partido parejo';
-}
-
   Widget statRow(
     String label,
     String left,
     String right, {
-    String? leftSub,
-    String? rightSub,
     double? leftValue,
     double? rightValue,
     String compareMode = 'neutral',
@@ -4327,52 +4378,25 @@ final String equipoDominante = ganaLocal
     final double resolvedRightValue =
         rightValue ?? double.tryParse(right.replaceAll('%', '')) ?? 0;
 
-    final Color leftColor = valueColor(
-      leftValue: resolvedLeftValue,
-      rightValue: resolvedRightValue,
-      isLeft: true,
-      compareMode: compareMode,
-    );
-
-    final Color rightColor = valueColor(
-      leftValue: resolvedLeftValue,
-      rightValue: resolvedRightValue,
-      isLeft: false,
-      compareMode: compareMode,
-    );
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  left,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    decoration: TextDecoration.none,
-                    color: leftColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
+            child: Text(
+              left,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: valueColor(
+                  leftValue: resolvedLeftValue,
+                  rightValue: resolvedRightValue,
+                  isLeft: true,
+                  compareMode: compareMode,
                 ),
-                if (leftSub != null)
-                  Text(
-                    leftSub,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      decoration: TextDecoration.none,
-                      color: Color(0xFF8FA3BF),
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-              ],
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           SizedBox(
@@ -4391,33 +4415,20 @@ final String equipoDominante = ganaLocal
             ),
           ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  right,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    decoration: TextDecoration.none,
-                    color: rightColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
+            child: Text(
+              right,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: valueColor(
+                  leftValue: resolvedLeftValue,
+                  rightValue: resolvedRightValue,
+                  isLeft: false,
+                  compareMode: compareMode,
                 ),
-                if (rightSub != null)
-                  Text(
-                    rightSub,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      decoration: TextDecoration.none,
-                      color: Color(0xFF8FA3BF),
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-              ],
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -4425,6 +4436,81 @@ final String equipoDominante = ganaLocal
     );
   }
 
+  String shortTeamName(String name) {
+  final lower = name.toLowerCase();
+
+  if (lower.contains('vélez')) return 'Vélez';
+  if (lower.contains('san fernando')) return 'San Fernando';
+
+  // fallback inteligente
+  final words = name.split(' ');
+  if (words.length >= 2) {
+    return words.last;
+  }
+
+  return name;
+}
+
+  Widget controlIndexBar() {
+  final localShort = shortTeamName(localName);
+  final visitanteShort = shortTeamName(visitanteName);
+
+  return Column(
+    children: [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${localControl.toStringAsFixed(0)}% $localShort',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF27D36B),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              '${visitanteControl.toStringAsFixed(0)}% $visitanteShort',
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF8FA3BF),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          height: 6,
+          child: Row(
+            children: [
+              Expanded(
+                flex: localControl.round().clamp(1, 99),
+                child: Container(color: const Color(0xFF27D36B)),
+              ),
+              Expanded(
+                flex: visitanteControl.round().clamp(1, 99),
+                child: Container(color: const Color(0xFF324057)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+  
   Widget compactUnifiedPanel() {
     return Container(
       width: double.infinity,
@@ -4436,7 +4522,6 @@ final String equipoDominante = ganaLocal
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 🔥 KPI DEL PARTIDO (badge arriba de todo)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -4453,7 +4538,6 @@ final String equipoDominante = ganaLocal
               ),
             ),
           ),
-
           const SizedBox(height: 6),
           const Text(
             'Análisis del partido',
@@ -4465,13 +4549,17 @@ final String equipoDominante = ganaLocal
             ),
           ),
           const SizedBox(height: 8),
+          controlIndexBar(),
+          const SizedBox(height: 8),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'San Fernando',
+                  localName,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     decoration: TextDecoration.none,
                     color: Color(0xFF8FA3BF),
                     fontSize: 10,
@@ -4482,7 +4570,7 @@ final String equipoDominante = ganaLocal
               const SizedBox(width: 95),
               Expanded(
                 child: Text(
-                  partidoV2.rival,
+                  visitanteName,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -4500,34 +4588,33 @@ final String equipoDominante = ganaLocal
 
           statRow(
             'Tiros',
-            sanFernandoStats.tiros.toString(),
-            rivalStats.tiros.toString(),
-            compareMode: 'neutral',
+            localStats.tiros.toString(),
+            visitanteStats.tiros.toString(),
           ),
           statRow(
             'Eficacia',
-            '${sfEficacia.toStringAsFixed(1)}%',
-            '${rivalEficacia.toStringAsFixed(1)}%',
-            leftValue: sfEficacia,
-            rightValue: rivalEficacia,
+            '${localEficacia.toStringAsFixed(1)}%',
+            '${visitanteEficacia.toStringAsFixed(1)}%',
+            leftValue: localEficacia,
+            rightValue: visitanteEficacia,
             compareMode: 'higher',
           ),
           statRow(
             'Atajados',
-            sanFernandoStats.tirosAtajados.toString(),
-            rivalStats.tirosAtajados.toString(),
+            localStats.tirosAtajados.toString(),
+            visitanteStats.tirosAtajados.toString(),
             compareMode: 'lower',
           ),
           statRow(
             'Fuera',
-            sanFernandoStats.tirosFuera.toString(),
-            rivalStats.tirosFuera.toString(),
+            localStats.tirosFuera.toString(),
+            visitanteStats.tirosFuera.toString(),
             compareMode: 'lower',
           ),
           statRow(
             'Palo',
-            sanFernandoStats.tirosAlPalo.toString(),
-            rivalStats.tirosAlPalo.toString(),
+            localStats.tirosAlPalo.toString(),
+            visitanteStats.tirosAlPalo.toString(),
             compareMode: 'lower',
           ),
 
@@ -4539,14 +4626,14 @@ final String equipoDominante = ganaLocal
 
           statRow(
             'Robos',
-            sanFernandoStats.recuperaciones.toString(),
-            rivalStats.recuperaciones.toString(),
+            localStats.recuperaciones.toString(),
+            visitanteStats.recuperaciones.toString(),
             compareMode: 'higher',
           ),
           statRow(
             'Pérd. no forzada',
-            sanFernandoStats.perdidasNoForzadas.toString(),
-            rivalStats.perdidasNoForzadas.toString(),
+            localStats.perdidasNoForzadas.toString(),
+            visitanteStats.perdidasNoForzadas.toString(),
             compareMode: 'lower',
           ),
 
@@ -4569,20 +4656,19 @@ final String equipoDominante = ganaLocal
 
           statRow(
             'Penales',
-            sanFernandoStats.penales.toString(),
-            rivalStats.penales.toString(),
-            compareMode: 'neutral',
+            localStats.penales.toString(),
+            visitanteStats.penales.toString(),
           ),
           statRow(
             'Convert.',
-            sanFernandoStats.penalesConvertidos.toString(),
-            rivalStats.penalesConvertidos.toString(),
+            localStats.penalesConvertidos.toString(),
+            visitanteStats.penalesConvertidos.toString(),
             compareMode: 'higher',
           ),
           statRow(
             'Errados',
-            sanFernandoStats.penalesErrados.toString(),
-            rivalStats.penalesErrados.toString(),
+            localStats.penalesErrados.toString(),
+            visitanteStats.penalesErrados.toString(),
             compareMode: 'lower',
           ),
 
@@ -4594,20 +4680,20 @@ final String equipoDominante = ganaLocal
 
           statRow(
             '2 min',
-            _exclusiones2MinV2.toString(),
-            '0',
+            local2Min.toString(),
+            visitante2Min.toString(),
             compareMode: 'lower',
           ),
           statRow(
             'Amarillas',
-            _amarillasV2.toString(),
-            '0',
+            localAmarillas.toString(),
+            visitanteAmarillas.toString(),
             compareMode: 'lower',
           ),
           statRow(
             'Rojas',
-            _rojasV2.toString(),
-            '0',
+            localRojas.toString(),
+            visitanteRojas.toString(),
             compareMode: 'lower',
           ),
 
@@ -4681,7 +4767,6 @@ final String equipoDominante = ganaLocal
               ),
             ),
             const SizedBox(height: 14),
-
             Row(
               children: [
                 Expanded(
@@ -4711,15 +4796,10 @@ final String equipoDominante = ganaLocal
                 ),
               ],
             ),
-
             const SizedBox(height: 14),
-
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF111A28),
                 borderRadius: BorderRadius.circular(14),
@@ -4737,13 +4817,9 @@ final String equipoDominante = ganaLocal
                 ),
               ),
             ),
-
             const SizedBox(height: 14),
-
             compactUnifiedPanel(),
-
             const Spacer(),
-
             Text(
               '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
               style: const TextStyle(

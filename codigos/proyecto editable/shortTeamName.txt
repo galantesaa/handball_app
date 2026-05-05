@@ -1,0 +1,14 @@
+String shortTeamName(String name) {
+  final lower = name.toLowerCase();
+
+  if (lower.contains('vélez')) return 'Vélez';
+  if (lower.contains('san fernando')) return 'San Fernando';
+
+  // fallback inteligente
+  final words = name.split(' ');
+  if (words.length >= 2) {
+    return words.last;
+  }
+
+  return name;
+}
