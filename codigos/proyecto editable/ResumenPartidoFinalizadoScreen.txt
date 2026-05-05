@@ -1,5 +1,1535 @@
+/// ======================================================
+/// BLOQUES FINALES - RESUMEN + ARQUEROS + JUGADORES
+/// ======================================================
+/// PEGADO RECOMENDADO:
+/// 1) Reemplazá COMPLETA la class ResumenPartidoFinalizadoScreen.
+/// 2) Reemplazá COMPLETA la class ArquerosPartidoScreen si tu versión quedó rota.
+/// 3) Reemplazá COMPLETA la class JugadoresPartidoScreen si tu versión quedó rota.
+/// 4) NO toques partido_repository_v2.dart ni models_v2.dart para este arreglo.
+///
+/// IMPORTANTE:
+/// - _estadisticasPorArquero NO se elimina.
+/// - Se corrige para no usar actorPrincipalId como nombre visual.
+/// - _estadisticasJugadoresCampo usa actorPrincipal visible y filtra fantasmas.
+/// ======================================================
+
+/// ===============================
+/// ===============================
+/// RESUMEN DEL PARTIDO FINALIZADO
+/// ===============================
+/// ===============================
+
 class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   final Map<String, dynamic> partido;
+
+  Map<String, int> _shareStatsPorPeriodo(String periodoObjetivo) {
+    final stats = <String, int>{
+      'golesFavor': 0,
+      'golesContra': 0,
+      'atajadas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penales': 0,
+    };
+
+    String normalizarPeriodo(Map<String, dynamic> map) {
+      final raw =
+          (map['periodo'] ??
+                  map['tiempo'] ??
+                  map['tiempoPartido'] ??
+                  map['estadoTiempo'] ??
+                  map['estadoPartido'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+      if (raw == '1t' || raw == 'primer_tiempo' || raw == 'primer tiempo') {
+        return '1T';
+      }
+
+      if (raw == '2t' || raw == 'segundo_tiempo' || raw == 'segundo tiempo') {
+        return '2T';
+      }
+
+      return 'Global';
+    }
+
+    for (final e in _eventos) {
+      if (e is! Map) continue;
+
+      final map = Map<String, dynamic>.from(e);
+      final periodo = normalizarPeriodo(map);
+
+      if (periodo != periodoObjetivo) continue;
+
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      final resultado = (map['resultado'] ?? '').toString();
+      final modo = (map['modo'] ?? '').toString();
+
+      if (tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda') {
+        if (resultado == 'gol') {
+          if (modo == 'ataque') {
+            stats['golesFavor'] = stats['golesFavor']! + 1;
+          } else if (modo == 'defensa') {
+            stats['golesContra'] = stats['golesContra']! + 1;
+          }
+        }
+
+        if (resultado == 'atajado' && modo == 'defensa') {
+          stats['atajadas'] = stats['atajadas']! + 1;
+        }
+
+        if (tipo == 'penal' || tipo == 'penal_tanda') {
+          stats['penales'] = stats['penales']! + 1;
+        }
+      }
+
+      if (tipo == 'perdida' && resultado == 'perdida') {
+        stats['perdidas'] = stats['perdidas']! + 1;
+      }
+
+      if (tipo == 'perdida' && resultado == 'recuperacion') {
+        stats['recuperaciones'] = stats['recuperaciones']! + 1;
+      }
+    }
+
+    return stats;
+  }
+
+  Widget _buildShareMiniStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSharePeriodRow(String label, Map<String, int> stats) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 36,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              'GF ${stats['golesFavor']} · GC ${stats['golesContra']} · AT ${stats['atajadas']} · P ${stats['perdidas']} · R ${stats['recuperaciones']}',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFFDCE4EF),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoryGoalkeeperComparisonPanel(
+    List<Map<String, dynamic>> arqueros,
+  ) {
+    if (arqueros.length < 2) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111A28),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text(
+          'Análisis individual del arquero destacado',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+    }
+
+    final ordenados = [...arqueros]
+      ..sort((a, b) {
+        final eb = (b['eficacia'] ?? 0.0) as double;
+        final ea = (a['eficacia'] ?? 0.0) as double;
+        return eb.compareTo(ea);
+      });
+
+    final mejor = ordenados.first;
+    final segundo = ordenados[1];
+
+    final mejorNombre =
+        (mejor['arqueroNombre'] ?? mejor['arquero'] ?? 'Arquero').toString();
+
+    final mejorDorsal = (mejor['arqueroDorsal'] ?? '').toString();
+    final mejorEficacia = (mejor['eficacia'] ?? 0.0) as double;
+    final segundaEficacia = (segundo['eficacia'] ?? 0.0) as double;
+    final diferencia = mejorEficacia - segundaEficacia;
+
+    final lectura = diferencia >= 20
+        ? 'Dominio claro del arquero ${mejorDorsal.isEmpty ? '' : mejorDorsal}'
+        : diferencia >= 10
+        ? 'Ventaja moderada del arquero ${mejorDorsal.isEmpty ? '' : mejorDorsal}'
+        : 'Rendimiento parejo entre arqueros';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Comparación de arqueros',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildShareInsightRow('Mejor arquero', mejorNombre),
+          _buildShareInsightRow(
+            'Eficacia',
+            '${mejorEficacia.toStringAsFixed(1)}%',
+          ),
+          _buildShareInsightRow(
+            'Diferencia',
+            '+${diferencia.toStringAsFixed(1)} pts',
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: (mejorEficacia / 100).clamp(0.0, 1.0),
+              minHeight: 7,
+              backgroundColor: Colors.white.withOpacity(0.10),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _colorEficacia(mejorEficacia),
+              ),
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            lectura,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _colorEficacia(mejorEficacia),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _colorEficacia(double eficacia) {
+    if (eficacia >= 50) return const Color(0xFF22C55E);
+    if (eficacia >= 35) return const Color(0xFFFACC15);
+    if (eficacia >= 25) return const Color(0xFFF97316);
+    return const Color(0xFFEF4444);
+  }
+
+  Future<File> _captureShareCardAsFile({
+    required BuildContext context,
+    required String fileName,
+    required Widget child,
+  }) async {
+    final captureKey = GlobalKey();
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.70),
+      builder: (_) {
+        return Center(
+          child: RepaintBoundary(key: captureKey, child: child),
+        );
+      },
+    );
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    await WidgetsBinding.instance.endOfFrame;
+
+    final renderObject = captureKey.currentContext?.findRenderObject();
+
+    if (renderObject == null || renderObject is! RenderRepaintBoundary) {
+      throw Exception('No se encontró RenderRepaintBoundary');
+    }
+
+    final image = await renderObject.toImage(pixelRatio: 3);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    if (byteData == null) {
+      throw Exception('No se pudo generar PNG');
+    }
+
+    final bytes = byteData.buffer.asUint8List();
+    final dir = await getTemporaryDirectory();
+
+    final file = File(
+      '${dir.path}/${fileName}_${DateTime.now().millisecondsSinceEpoch}.png',
+    );
+
+    await file.writeAsBytes(bytes, flush: true);
+
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    return file;
+  }
+
+  _ShareMatchTeamStats _buildShareStatsForMode(String modo) {
+    int tiros = 0;
+    int tirosConGol = 0;
+    int tirosAtajados = 0;
+    int tirosFuera = 0;
+    int tirosAlPalo = 0;
+    int penales = 0;
+    int penalesConvertidos = 0;
+    int penalesErrados = 0;
+    int perdidas = 0;
+    int recuperaciones = 0;
+
+    final Map<String, int> perdidasPorTipo = {};
+
+    void addPerdidaDetalle(String rawSubtipo) {
+      final subtipo = rawSubtipo.trim().isEmpty ? 'sin_detalle' : rawSubtipo;
+      perdidasPorTipo[subtipo] = (perdidasPorTipo[subtipo] ?? 0) + 1;
+    }
+
+    for (final raw in _eventos) {
+      if (raw is! Map) continue;
+
+      final e = Map<String, dynamic>.from(raw);
+      final eventModo = (e['modo'] ?? '').toString();
+      final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
+      final resultado = (e['resultado'] ?? '').toString();
+      final subtipo = (e['subtipo'] ?? e['detalle'] ?? '').toString();
+
+      final esTiro = tipo == 'tiro';
+      final esPenal = tipo == 'penal' || tipo == 'penal_tanda';
+
+      if (eventModo == modo && (esTiro || esPenal)) {
+        tiros++;
+
+        if (resultado == 'gol') tirosConGol++;
+        if (resultado == 'atajado') tirosAtajados++;
+        if (resultado == 'fuera') tirosFuera++;
+        if (resultado == 'palo') tirosAlPalo++;
+
+        if (esPenal) {
+          penales++;
+          if (resultado == 'gol') {
+            penalesConvertidos++;
+          } else {
+            penalesErrados++;
+          }
+        }
+      }
+
+      if (tipo == 'perdida') {
+        final esPerdidaSanFernando = eventModo == 'ataque';
+        final esPerdidaRival = eventModo == 'defensa';
+
+        if (modo == 'ataque') {
+          if (esPerdidaSanFernando) {
+            perdidas++;
+            addPerdidaDetalle(subtipo);
+          }
+
+          if (esPerdidaRival) {
+            recuperaciones++;
+          }
+        }
+
+        if (modo == 'defensa') {
+          if (esPerdidaRival) {
+            perdidas++;
+            addPerdidaDetalle(subtipo);
+          }
+
+          if (esPerdidaSanFernando) {
+            recuperaciones++;
+          }
+        }
+      }
+    }
+
+    return _ShareMatchTeamStats(
+      tiros: tiros,
+      tirosConGol: tirosConGol,
+      tirosAtajados: tirosAtajados,
+      tirosFuera: tirosFuera,
+      tirosAlPalo: tirosAlPalo,
+      penales: penales,
+      penalesConvertidos: penalesConvertidos,
+      penalesErrados: penalesErrados,
+      perdidas: perdidas,
+      recuperaciones: recuperaciones,
+      perdidasPorTipo: perdidasPorTipo,
+    );
+  }
+
+  Widget _buildShareMatchOverviewCard(BuildContext context) {
+  final ownStats = _buildShareStatsForMode('ataque');
+  final rivalStatsRaw = _buildShareStatsForMode('defensa');
+
+  final localName = _nombreLocal;
+  final visitanteName = _nombreVisitante;
+
+  final localStats = _somosLocales ? ownStats : rivalStatsRaw;
+  final visitanteStats = _somosLocales ? rivalStatsRaw : ownStats;
+
+  final int local2Min = _somosLocales ? _exclusiones2MinV2 : 0;
+  final int visitante2Min = _somosLocales ? 0 : _exclusiones2MinV2;
+
+  final int localAmarillas = _somosLocales ? _amarillasV2 : 0;
+  final int visitanteAmarillas = _somosLocales ? 0 : _amarillasV2;
+
+  final int localRojas = _somosLocales ? _rojasV2 : 0;
+  final int visitanteRojas = _somosLocales ? 0 : _rojasV2;
+
+  double safeEfficiency(int goals, int shots) {
+    if (shots <= 0) return 0;
+    return (goals * 100) / shots;
+  }
+
+  final double localEficacia = safeEfficiency(
+    localStats.tirosConGol,
+    localStats.tiros,
+  );
+
+  final double visitanteEficacia = safeEfficiency(
+    visitanteStats.tirosConGol,
+    visitanteStats.tiros,
+  );
+
+  double clampDouble(double value, double min, double max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
+
+  double balanceHigherBetter(double left, double right) {
+    final total = left + right;
+    if (total <= 0) return 0;
+    return ((left - right) / total) * 100;
+  }
+
+  double balanceLowerBetter(double left, double right) {
+    final total = left + right;
+    if (total <= 0) return 0;
+    return ((right - left) / total) * 100;
+  }
+
+  double buildLocalControlIndex() {
+    final double eficaciaBalance = clampDouble(
+      localEficacia - visitanteEficacia,
+      -25,
+      25,
+    );
+
+    final double robosBalance = clampDouble(
+      balanceHigherBetter(
+        localStats.recuperaciones.toDouble(),
+        visitanteStats.recuperaciones.toDouble(),
+      ),
+      -25,
+      25,
+    );
+
+    final double perdidasBalance = clampDouble(
+      balanceLowerBetter(
+        localStats.perdidasNoForzadas.toDouble(),
+        visitanteStats.perdidasNoForzadas.toDouble(),
+      ),
+      -25,
+      25,
+    );
+
+    final double marcadorBalance = clampDouble(
+      ((_golesLocal - _golesVisitante) * 4).toDouble(),
+      -20,
+      20,
+    );
+
+    final double control =
+        50 +
+        (eficaciaBalance * 0.40) +
+        (robosBalance * 0.25) +
+        (perdidasBalance * 0.20) +
+        (marcadorBalance * 0.15);
+
+    return clampDouble(control, 0, 100);
+  }
+
+  final double localControl = buildLocalControlIndex();
+  final double visitanteControl = 100 - localControl;
+
+  String buildMatchKey() {
+    final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
+    final robosDiff =
+        (localStats.recuperaciones - visitanteStats.recuperaciones).abs();
+    final perdidasDiff =
+        (localStats.perdidasNoForzadas -
+                visitanteStats.perdidasNoForzadas)
+            .abs();
+
+    if (eficaciaDiff >= 8) return 'Clave: eficacia ofensiva';
+    if (robosDiff >= 5) return 'Clave: presión defensiva';
+    if (perdidasDiff >= 5) return 'Clave: pérdidas no forzadas';
+
+    return 'Partido parejo';
+  }
+
+  String buildInsight() {
+  final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
+  final golesDiff = (_golesLocal - _golesVisitante).abs();
+
+  if (eficaciaDiff > 10) {
+    return localEficacia > visitanteEficacia
+        ? '$localName fue mucho más eficaz'
+        : '$visitanteName fue mucho más eficaz';
+  }
+
+  if (golesDiff >= 6) {
+    return '$localName dominó claramente el partido';
+  }
+
+  if (golesDiff <= 2) {
+    return 'Partido muy parejo';
+  }
+
+  return 'Partido definido por detalles';
+}
+  
+  Color valueColor({
+    required double leftValue,
+    required double rightValue,
+    required bool isLeft,
+    required String compareMode,
+  }) {
+    if (compareMode == 'neutral' || leftValue == rightValue) {
+      return Colors.white;
+    }
+
+    final bool leftIsBetter = compareMode == 'higher'
+        ? leftValue > rightValue
+        : leftValue < rightValue;
+
+    if (isLeft) {
+      return leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+    }
+
+    return !leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+  }
+
+  Widget statRow(
+    String label,
+    String left,
+    String right, {
+    double? leftValue,
+    double? rightValue,
+    String compareMode = 'neutral',
+  }) {
+    final double resolvedLeftValue =
+        leftValue ?? double.tryParse(left.replaceAll('%', '')) ?? 0;
+    final double resolvedRightValue =
+        rightValue ?? double.tryParse(right.replaceAll('%', '')) ?? 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              left,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: valueColor(
+                  leftValue: resolvedLeftValue,
+                  rightValue: resolvedRightValue,
+                  isLeft: true,
+                  compareMode: compareMode,
+                ),
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 95,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFFAAB4C3),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              right,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: valueColor(
+                  leftValue: resolvedLeftValue,
+                  rightValue: resolvedRightValue,
+                  isLeft: false,
+                  compareMode: compareMode,
+                ),
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String shortTeamName(String name) {
+  final lower = name.toLowerCase();
+
+  if (lower.contains('vélez')) return 'Vélez';
+  if (lower.contains('san fernando')) return 'San Fernando';
+
+  // fallback inteligente
+  final words = name.split(' ');
+  if (words.length >= 2) {
+    return words.last;
+  }
+
+  return name;
+}
+
+  Widget controlIndexBar() {
+  final localShort = shortTeamName(localName);
+  final visitanteShort = shortTeamName(visitanteName);
+
+  return Column(
+    children: [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${localControl.toStringAsFixed(0)}% $localShort',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF27D36B),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              '${visitanteControl.toStringAsFixed(0)}% $visitanteShort',
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF8FA3BF),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          height: 6,
+          child: Row(
+            children: [
+              Expanded(
+                flex: localControl.round().clamp(1, 99),
+                child: Container(color: const Color(0xFF27D36B)),
+              ),
+              Expanded(
+                flex: visitanteControl.round().clamp(1, 99),
+                child: Container(color: const Color(0xFF324057)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+  
+  Widget compactUnifiedPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF27D36B).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              buildMatchKey(),
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF27D36B),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Análisis del partido',
+            style: TextStyle(
+              decoration: TextDecoration.none,
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          controlIndexBar(),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  localName,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 95),
+              Expanded(
+                child: Text(
+                  visitanteName,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          statRow(
+            'Tiros',
+            localStats.tiros.toString(),
+            visitanteStats.tiros.toString(),
+          ),
+          statRow(
+            'Eficacia',
+            '${localEficacia.toStringAsFixed(1)}%',
+            '${visitanteEficacia.toStringAsFixed(1)}%',
+            leftValue: localEficacia,
+            rightValue: visitanteEficacia,
+            compareMode: 'higher',
+          ),
+          statRow(
+            'Atajados',
+            localStats.tirosAtajados.toString(),
+            visitanteStats.tirosAtajados.toString(),
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Fuera',
+            localStats.tirosFuera.toString(),
+            visitanteStats.tirosFuera.toString(),
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Palo',
+            localStats.tirosAlPalo.toString(),
+            visitanteStats.tirosAlPalo.toString(),
+            compareMode: 'lower',
+          ),
+
+          const Divider(
+            color: Color(0x223FFFFFF),
+            height: 16,
+            thickness: 1,
+          ),
+
+          statRow(
+            'Robos',
+            localStats.recuperaciones.toString(),
+            visitanteStats.recuperaciones.toString(),
+            compareMode: 'higher',
+          ),
+          statRow(
+            'Pérd. no forzada',
+            localStats.perdidasNoForzadas.toString(),
+            visitanteStats.perdidasNoForzadas.toString(),
+            compareMode: 'lower',
+          ),
+
+          const Divider(
+            color: Color(0x223FFFFFF),
+            height: 16,
+            thickness: 1,
+          ),
+
+          const Text(
+            'Penales y disciplina',
+            style: TextStyle(
+              decoration: TextDecoration.none,
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+
+          statRow(
+            'Penales',
+            localStats.penales.toString(),
+            visitanteStats.penales.toString(),
+          ),
+          statRow(
+            'Convert.',
+            localStats.penalesConvertidos.toString(),
+            visitanteStats.penalesConvertidos.toString(),
+            compareMode: 'higher',
+          ),
+          statRow(
+            'Errados',
+            localStats.penalesErrados.toString(),
+            visitanteStats.penalesErrados.toString(),
+            compareMode: 'lower',
+          ),
+
+          const Divider(
+            color: Color(0x223FFFFFF),
+            height: 16,
+            thickness: 1,
+          ),
+
+          statRow(
+            '2 min',
+            local2Min.toString(),
+            visitante2Min.toString(),
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Amarillas',
+            localAmarillas.toString(),
+            visitanteAmarillas.toString(),
+            compareMode: 'lower',
+          ),
+          statRow(
+            'Rojas',
+            localRojas.toString(),
+            visitanteRojas.toString(),
+            compareMode: 'lower',
+          ),
+
+          const SizedBox(height: 7),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFF172235),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              buildInsight(),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFFE4EAF3),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  return Material(
+    color: Colors.transparent,
+    child: DefaultTextStyle(
+      style: const TextStyle(
+        decoration: TextDecoration.none,
+        color: Colors.white,
+        fontSize: 12,
+      ),
+      child: Container(
+        width: 390,
+        height: 693,
+        padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF070D17), Color(0xFF101827)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'HANDBALL SGS',
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${partidoV2.categoria} · ${partidoV2.torneo}',
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildShareTeam(
+                    nombre: _nombreLocal,
+                    assetPath: _somosLocales
+                        ? 'assets/images/san_fernando.png'
+                        : _rivalShieldAsset(),
+                  ),
+                ),
+                Text(
+                  '$_golesLocal - $_golesVisitante',
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Colors.white,
+                    fontSize: 39,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Expanded(
+                  child: _buildShareTeam(
+                    nombre: _nombreVisitante,
+                    assetPath: _somosLocales
+                        ? _rivalShieldAsset()
+                        : 'assets/images/san_fernando.png',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111A28),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                'Fecha: ${partidoV2.fecha} · Hora: ${partidoV2.hora} · Condición: ${partidoV2.condicion}',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Color(0xFFDCE4EF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            compactUnifiedPanel(),
+            const Spacer(),
+            Text(
+              '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+              style: const TextStyle(
+                decoration: TextDecoration.none,
+                color: Color(0xFF8FA3BF),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildShareGoalkeepersAnalysisCard(BuildContext context) {
+    final arqueros = _estadisticasPorArquero();
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 390,
+        height: 693,
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF070D17), Color(0xFF101827)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'ANÁLISIS DE ARQUEROS',
+              style: TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${partidoV2.categoria} · ${partidoV2.torneo}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            _buildStoryGoalkeeperComparisonPanel(arqueros),
+
+            const SizedBox(height: 14),
+
+            if (arqueros.isNotEmpty)
+              _buildShareGoalkeeperDetailPanel(arqueros.first),
+
+            const SizedBox(height: 12),
+
+            if (arqueros.length > 1)
+              _buildShareGoalkeeperCompactPanel(arqueros[1], esMejor: false),
+
+            const Spacer(),
+
+            Text(
+              '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+              style: const TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareGoalkeeperCompactPanel(
+    Map<String, dynamic> arquero, {
+    required bool esMejor,
+  }) {
+    final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
+        .toString();
+
+    final eficacia = (arquero['eficacia'] ?? 0.0) as double;
+    final atajadas = (arquero['atajadas'] ?? 0) as int;
+    final goles = (arquero['golesRecibidos'] ?? 0) as int;
+    final penales = (arquero['penales'] ?? 0) as int;
+    final penalesAtajados = (arquero['penalesAtajados'] ?? 0) as int;
+
+    Color colorNivel;
+    String nivel;
+
+    if (esMejor) {
+      colorNivel = Colors.green;
+      nivel = 'TOP';
+    } else if (eficacia >= 45) {
+      colorNivel = Colors.green;
+      nivel = 'ALTO';
+    } else if (eficacia >= 30) {
+      colorNivel = Colors.orange;
+      nivel = 'MEDIO';
+    } else {
+      colorNivel = Colors.red;
+      nivel = 'BAJO';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorNivel.withOpacity(esMejor ? 0.65 : 0.40),
+          width: esMejor ? 2 : 1.2,
+        ),
+        boxShadow: esMejor
+            ? [
+                BoxShadow(
+                  color: colorNivel.withOpacity(0.22),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorNivel.withOpacity(0.20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  nivel,
+                  style: TextStyle(
+                    color: colorNivel,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _buildShareCompactStat(
+                'Eficacia',
+                '${eficacia.toStringAsFixed(1)}%',
+              ),
+              const SizedBox(width: 6),
+              _buildShareCompactStat('Atajadas', '$atajadas'),
+              const SizedBox(width: 6),
+              _buildShareCompactStat('Goles', '$goles'),
+              const SizedBox(width: 6),
+              _buildShareCompactStat('Penales', '$penalesAtajados/$penales'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareCompactStat(String label, String value) {
+    double? numericValue;
+
+    if (label == 'Eficacia' && value.contains('%')) {
+      final cleanValue = value.replaceAll('%', '').trim();
+      numericValue = double.tryParse(cleanValue);
+    }
+
+    final valueColor = numericValue == null
+        ? Colors.white
+        : _colorEficacia(numericValue);
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: valueColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareInfoPanel({
+    required String title,
+    required Map<String, String> rows,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...rows.entries.map((e) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      e.key,
+                      style: const TextStyle(
+                        color: Color(0xFFAAB4C3),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    e.value,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareTwoTeamPanel({
+    required String title,
+    required String leftTitle,
+    required String rightTitle,
+    required List<_ShareTeamStatRow> rows,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  leftTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 90),
+              Expanded(
+                child: Text(
+                  rightTitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...rows.map((row) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      row.left,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      row.label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFFAAB4C3),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      row.right,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareGoalkeeperDetailPanel(Map<String, dynamic> arquero) {
+    final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
+        .toString();
+
+    final eficacia = (arquero['eficacia'] ?? 0.0) as double;
+    final atajadas = (arquero['atajadas'] ?? 0) as int;
+    final goles = (arquero['golesRecibidos'] ?? 0) as int;
+    final penales = (arquero['penales'] ?? 0) as int;
+    final penalesAtajados = (arquero['penalesAtajados'] ?? 0) as int;
+    final contra = (arquero['contraDirecta'] ?? 0) as int;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF22C55E).withOpacity(0.65),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF22C55E).withOpacity(0.18),
+            blurRadius: 16,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E).withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'TOP',
+                  style: TextStyle(
+                    color: Color(0xFF22C55E),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _buildStoryKpi('${eficacia.toStringAsFixed(1)}%', 'Eficacia'),
+              const SizedBox(width: 8),
+              _buildStoryKpi('$atajadas', 'Atajadas'),
+              const SizedBox(width: 8),
+              _buildStoryKpi('$goles', 'Goles'),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildShareInsightRow('Zona fuerte', _zonaFuerte(arquero)),
+          _buildShareInsightRow('Zona débil', _zonaDebil(arquero)),
+          _buildShareInsightRow('Más atacada', _zonaMasAtacada(arquero)),
+          _buildShareInsightRow('Penales', '$penalesAtajados/$penales'),
+          _buildShareInsightRow('Contra directa', '$contra'),
+        ],
+      ),
+    );
+  }
+
+  int _tirosPorModo(String modoObjetivo) {
+    return _eventos.where((e) {
+      if (e is! Map) return false;
+
+      final map = Map<String, dynamic>.from(e);
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      final modo = (map['modo'] ?? '').toString();
+
+      return modo == modoObjetivo &&
+          (tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda');
+    }).length;
+  }
+
+  int _tirosAtajadosPorModo(String modoObjetivo) {
+    return _eventos.where((e) {
+      if (e is! Map) return false;
+
+      final map = Map<String, dynamic>.from(e);
+      final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+      final modo = (map['modo'] ?? '').toString();
+      final resultado = (map['resultado'] ?? '').toString();
+
+      return modo == modoObjetivo &&
+          resultado == 'atajado' &&
+          (tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda');
+    }).length;
+  }
 
   /// ===============================
   /// PARTIDO V2
@@ -12,6 +1542,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   /// ESTADÍSTICAS DESDE MODELO 2.0
   /// Lectura paralela del resumen usando PartidoModel.
   /// ===============================
+
   double get _eficaciaArqueroV2 => partidoV2.eficaciaArquero;
 
   int get _atajadasV2 => partidoV2.atajadas;
@@ -46,6 +1577,43 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   List<Map<String, dynamic>> _estadisticasPorArquero() {
     final Map<String, Map<String, dynamic>> acumulado = {};
 
+    PlayerProfile? arqueroDesdePlayerId(String? playerId) {
+      final id = (playerId ?? '').trim();
+      if (id.isEmpty || id == 'null') return null;
+
+      for (final p in RosterRepository.players) {
+        if (p.playerId == id && p.esArquero) return p;
+      }
+
+      return null;
+    }
+
+    PlayerProfile? arqueroDesdeDorsal(String? dorsal) {
+      final value = (dorsal ?? '').trim();
+      if (value.isEmpty || value == 'null') return null;
+
+      final arqueros = RosterRepository.goalkeepersForCategory(
+        categoria: partidoV2.categoria,
+        temporada: '2026',
+      );
+
+      for (final p in arqueros) {
+        if ((p.numeroPreferido ?? '').trim() == value) return p;
+      }
+
+      return null;
+    }
+
+    PlayerProfile? resolverArquero(Map<String, dynamic> map) {
+      final arqueroId = (map['arqueroId'] ?? '').toString().trim();
+      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+      final arqueroRaw = (map['arquero'] ?? '').toString().trim();
+
+      return arqueroDesdePlayerId(arqueroId) ??
+          arqueroDesdePlayerId(actorId) ??
+          arqueroDesdeDorsal(arqueroRaw);
+    }
+
     String periodoDesdeEvento(Map<String, dynamic> map) {
       final raw =
           (map['periodo'] ??
@@ -73,9 +1641,12 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       return 'Global';
     }
 
-    Map<String, dynamic> crearItem(String arquero) {
+    Map<String, dynamic> crearItem(PlayerProfile arquero) {
       return {
-        'arquero': arquero,
+        'arquero': arquero.playerId,
+        'arqueroId': arquero.playerId,
+        'arqueroNombre': arquero.displayName,
+        'arqueroDorsal': arquero.numeroPreferido ?? '-',
         'atajadas': 0,
         'golesRecibidos': 0,
         'palos': 0,
@@ -147,6 +1718,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       final data = periodos[periodo]!;
 
+      if (esContraDirectaArquero) {
+        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
+        return;
+      }
+
       if (resultado == 'atajado') {
         data['atajadas'] = (data['atajadas'] as int) + 1;
       }
@@ -173,10 +1749,6 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         }
       }
 
-      if (esContraDirectaArquero) {
-        data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
-      }
-
       final zonasArcoPeriodo =
           data['zonasArco'] as Map<String, Map<String, int>>;
       final zonasTiroPeriodo =
@@ -193,12 +1765,10 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       final tipo = (map['tipo'] ?? map['kind'] ?? '').toString().trim();
       final resultado = (map['resultado'] ?? '').toString().trim();
-      final modo = (map['modo'] ?? map['phase'] ?? '').toString().trim();
-
-      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
-      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final modoEvento = (map['modo'] ?? map['phase'] ?? '').toString().trim();
       final origen = (map['origenJugada'] ?? '').toString().trim();
-      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+      final zonaTiro = (map['zonaTiro'] ?? '').toString().trim();
+      final zonaArco = (map['zonaArco'] ?? '').toString().trim();
 
       final bool esTiro =
           tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
@@ -215,31 +1785,42 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       if (!resultadoValido) continue;
 
-      final bool esDefensivoArquero = modo == 'defensa';
-
       final bool esContraDirectaArquero =
-          modo == 'ataque' &&
+          modoEvento == 'ataque' &&
           origen == 'contra' &&
-          zonaTiro == 'Contra directa arquero' &&
-          actorId.isNotEmpty;
+          zonaTiro == 'Contra directa arquero';
+
+      final bool esDefensivoArquero = modoEvento == 'defensa';
 
       if (!esDefensivoArquero && !esContraDirectaArquero) continue;
 
-      String arquero = (map['arquero'] ?? '').toString().trim();
+      final arquero = resolverArquero(map);
+      if (arquero == null) continue;
 
-      if (esContraDirectaArquero) {
-        arquero = actorId;
-      }
+      acumulado.putIfAbsent(arquero.playerId, () => crearItem(arquero));
 
-      if (arquero.isEmpty || arquero == 'null') {
-        arquero = 'Sin arquero';
-      }
-
-      acumulado.putIfAbsent(arquero, () => crearItem(arquero));
-
-      final item = acumulado[arquero]!;
+      final item = acumulado[arquero.playerId]!;
 
       item['totalEventos'] = (item['totalEventos'] as int) + 1;
+
+      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
+      final periodo = periodoDesdeEvento(map);
+
+      if (esContraDirectaArquero) {
+        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+
+        sumarPeriodo(
+          periodos: periodos,
+          periodo: periodo,
+          resultado: resultado,
+          zonaArco: zonaArco,
+          zonaTiro: zonaTiro,
+          esPenal: false,
+          esContraDirectaArquero: true,
+        );
+
+        continue;
+      }
 
       if (resultado == 'atajado') {
         item['atajadas'] = (item['atajadas'] as int) + 1;
@@ -271,15 +1852,8 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         }
       }
 
-      if (esContraDirectaArquero) {
-        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
-      }
-
-      final periodos = item['periodos'] as Map<String, Map<String, dynamic>>;
       final zonasArco = item['zonasArco'] as Map<String, Map<String, int>>;
       final zonasTiro = item['zonasTiro'] as Map<String, Map<String, int>>;
-
-      final periodo = periodoDesdeEvento(map);
 
       sumarEnMapa(zonasArco, zonaArco, resultado);
       sumarEnMapa(zonasTiro, zonaTiro, resultado);
@@ -291,7 +1865,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         zonaArco: zonaArco,
         zonaTiro: zonaTiro,
         esPenal: esPenal,
-        esContraDirectaArquero: esContraDirectaArquero,
+        esContraDirectaArquero: false,
       );
     }
 
@@ -589,7 +2163,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  _buildHeaderCard(),
+                  _buildHeaderCard(context),
                   const SizedBox(height: 16),
                   _buildKpiGrid(),
                   const SizedBox(height: 16),
@@ -630,7 +2204,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                             'Goles recibidos',
                             '$_golesRecibidosDesdeArqueros',
                           ),
-                          _buildInfoRow('Penales en contra', '$_penalesV2'),
+                          _buildInfoRow('Penales rival', '$_penalesV2'),
                           const SizedBox(height: 12),
                           Container(
                             width: double.infinity,
@@ -768,6 +2342,335 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _shareResumenComoImagen(BuildContext context) async {
+    try {
+      final resumenFile = await _captureShareCardAsFile(
+        context: context,
+        fileName: 'resumen_partido',
+        child: _buildShareMatchOverviewCard(context),
+      );
+
+      final arquerosFile = await _captureShareCardAsFile(
+        context: context,
+        fileName: 'arqueros_partido',
+        child: _buildShareGoalkeepersAnalysisCard(context),
+      );
+
+      final heatmapFile = await _captureShareCardAsFile(
+        context: context,
+        fileName: 'heatmap_arqueros',
+        child: _buildShareGoalkeepersHeatmapCard(context),
+      );
+
+      await Share.shareXFiles(
+        [
+          XFile(resumenFile.path),
+          XFile(arquerosFile.path),
+          XFile(heatmapFile.path),
+        ],
+        text:
+            'Resumen del partido - ${partidoV2.categoria} ${partidoV2.torneo}',
+      );
+    } catch (e) {
+      debugPrint('ERROR SHARE MULTIPLE IMAGE -> $e');
+
+      await Share.share(_buildResumenCompartible());
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudieron compartir las imágenes: $e')),
+      );
+    }
+  }
+
+  Color _shareIntensityColor(int value, int maxValue) {
+    if (value <= 0 || maxValue <= 0) return const Color(0xFF1B2533);
+
+    final ratio = value / maxValue;
+
+    if (ratio >= 0.75) return const Color(0xFFEF4444);
+    if (ratio >= 0.45) return const Color(0xFFF97316);
+    if (ratio >= 0.20) return const Color(0xFFFACC15);
+
+    return const Color(0xFF22C55E);
+  }
+
+  String _zonaLabel(String zona) {
+    switch (zona) {
+      case 'AI':
+        return 'Arr. izq.';
+      case 'AC':
+        return 'Arr. centro';
+      case 'AD':
+        return 'Arr. der.';
+      case 'CI':
+        return 'Med. izq.';
+      case 'CC':
+        return 'Centro';
+      case 'CD':
+        return 'Med. der.';
+      case 'BI':
+        return 'Ab. izq.';
+      case 'BC':
+        return 'Ab. centro';
+      case 'BD':
+        return 'Ab. der.';
+      default:
+        return zona;
+    }
+  }
+
+  Map<String, int> _zonasArcoTotales(Map<String, dynamic> arquero) {
+    final result = <String, int>{
+      'AI': 0,
+      'AC': 0,
+      'AD': 0,
+      'CI': 0,
+      'CC': 0,
+      'CD': 0,
+      'BI': 0,
+      'BC': 0,
+      'BD': 0,
+    };
+
+    final zonasRaw = arquero['zonasArco'];
+
+    if (zonasRaw is! Map) return result;
+
+    zonasRaw.forEach((key, value) {
+      if (value is! Map) return;
+
+      final zona = key.toString();
+      final atajadas = (value['atajadas'] ?? 0) as int;
+      final goles = (value['golesRecibidos'] ?? 0) as int;
+      final palos = (value['palos'] ?? 0) as int;
+      final fuera = (value['fuera'] ?? 0) as int;
+
+      result[zona] = atajadas + goles + palos + fuera;
+    });
+
+    return result;
+  }
+
+  String _zonaMasAtacada(Map<String, dynamic> arquero) {
+    final zonas = _zonasArcoTotales(arquero);
+    final entries = zonas.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    if (entries.isEmpty || entries.first.value == 0) return '-';
+
+    return _zonaLabel(entries.first.key);
+  }
+
+  String _zonaFuerte(Map<String, dynamic> arquero) {
+    final zonasRaw = arquero['zonasArco'];
+    if (zonasRaw is! Map) return '-';
+
+    String bestZona = '-';
+    double bestValue = -1;
+
+    zonasRaw.forEach((key, value) {
+      if (value is! Map) return;
+
+      final atajadas = (value['atajadas'] ?? 0) as int;
+      final goles = (value['golesRecibidos'] ?? 0) as int;
+      final total = atajadas + goles;
+
+      if (total == 0) return;
+
+      final eficacia = atajadas / total;
+
+      if (eficacia > bestValue) {
+        bestValue = eficacia;
+        bestZona = key.toString();
+      }
+    });
+
+    return bestZona == '-' ? '-' : _zonaLabel(bestZona);
+  }
+
+  String _zonaDebil(Map<String, dynamic> arquero) {
+    final zonasRaw = arquero['zonasArco'];
+    if (zonasRaw is! Map) return '-';
+
+    String worstZona = '-';
+    double worstValue = 2;
+
+    zonasRaw.forEach((key, value) {
+      if (value is! Map) return;
+
+      final atajadas = (value['atajadas'] ?? 0) as int;
+      final goles = (value['golesRecibidos'] ?? 0) as int;
+      final total = atajadas + goles;
+
+      if (total == 0) return;
+
+      final eficacia = atajadas / total;
+
+      if (eficacia < worstValue) {
+        worstValue = eficacia;
+        worstZona = key.toString();
+      }
+    });
+
+    return worstZona == '-' ? '-' : _zonaLabel(worstZona);
+  }
+
+  Widget _buildStoryHeatmap(Map<String, dynamic> arquero) {
+    final zonas = _zonasArcoTotales(arquero);
+    final maxValue = zonas.values.isEmpty
+        ? 0
+        : zonas.values.reduce((a, b) => a > b ? a : b);
+
+    final order = [
+      ['AI', 'AC', 'AD'],
+      ['CI', 'CC', 'CD'],
+      ['BI', 'BC', 'BD'],
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'Arriba del arco',
+            style: TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          ...order.map((row) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Row(
+                children: row.map((zona) {
+                  final value = zonas[zona] ?? 0;
+
+                  return Expanded(
+                    child: Container(
+                      height: 36,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: _shareIntensityColor(value, maxValue),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Center(
+                        child: Text(
+                          value == 0 ? '-' : '$value',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }),
+          const SizedBox(height: 2),
+          const Text(
+            'Rojo = más atacada · Verde = menor volumen',
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoryKpi(String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A2433),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoryGoalkeeperRow(Map<String, dynamic> item) {
+    final nombre = (item['arqueroNombre'] ?? item['arquero'] ?? 'Arquero')
+        .toString();
+
+    final eficacia = (item['eficacia'] ?? 0.0) as double;
+    final atajadas = (item['atajadas'] ?? 0) as int;
+    final goles = (item['golesRecibidos'] ?? 0) as int;
+    final contra = (item['contraDirecta'] ?? 0) as int;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              nombre,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${eficacia.toStringAsFixed(1)}% · A $atajadas · G $goles · CD $contra',
+            maxLines: 1,
+            style: const TextStyle(
+              color: Color(0xFFDCE4EF),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _buildResumenCompartible() {
     final local = _nombreLocal;
     final visitante = _nombreVisitante;
@@ -821,7 +2724,565 @@ $arquerosDetalle
 ''';
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildShareGoalkeepersHeatmapCard(BuildContext context) {
+    final arqueros = _estadisticasPorArquero();
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 390,
+        height: 693,
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF070D17), Color(0xFF101827)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'MAPA DE ARQUEROS',
+              style: TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${partidoV2.categoria} · ${partidoV2.torneo}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            if (arqueros.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    'No hay datos de arqueros para generar heatmap.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildShareHeatmapPanel(
+                      arquero: arqueros.first,
+                      destacado: true,
+                    ),
+                    if (arqueros.length > 1) ...[
+                      const SizedBox(height: 14),
+                      _buildShareHeatmapPanel(
+                        arquero: arqueros[1],
+                        destacado: false,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+            Text(
+              '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+              style: const TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareHeatmapPanel({
+    required Map<String, dynamic> arquero,
+    required bool destacado,
+  }) {
+    final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
+        .toString();
+
+    final zonas = _zonasArcoDetalle(arquero);
+
+    final eficacia = (arquero['eficacia'] ?? 0.0) as double;
+    final atajadas = (arquero['atajadas'] ?? 0) as int;
+    final goles = (arquero['golesRecibidos'] ?? 0) as int;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: destacado
+              ? const Color(0xFF22C55E).withOpacity(0.55)
+              : Colors.white.withOpacity(0.06),
+          width: destacado ? 1.6 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                '${eficacia.toStringAsFixed(1)}%',
+                style: TextStyle(
+                  color: _colorEficacia(eficacia),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$atajadas atajadas · $goles goles recibidos',
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: destacado ? 190 : 145,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: _GoalkeeperBlurHeatmapPainter(zonas: zonas),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _HeatLegendDot(color: Color(0xFF22C55E), text: 'Atajadas'),
+              SizedBox(width: 18),
+              _HeatLegendDot(color: Color(0xFFEF4444), text: 'Goles'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, _GoalZoneHeatData> _zonasArcoDetalle(
+    Map<String, dynamic> arquero,
+  ) {
+    final zonas = <String, _GoalZoneHeatData>{
+      'AI': const _GoalZoneHeatData(),
+      'AC': const _GoalZoneHeatData(),
+      'AD': const _GoalZoneHeatData(),
+      'CI': const _GoalZoneHeatData(),
+      'CC': const _GoalZoneHeatData(),
+      'CD': const _GoalZoneHeatData(),
+      'BI': const _GoalZoneHeatData(),
+      'BC': const _GoalZoneHeatData(),
+      'BD': const _GoalZoneHeatData(),
+    };
+
+    final raw = arquero['zonasArco'];
+
+    if (raw is! Map) return zonas;
+
+    raw.forEach((key, value) {
+      if (value is! Map) return;
+
+      final zona = key.toString();
+
+      if (!zonas.containsKey(zona)) return;
+
+      zonas[zona] = _GoalZoneHeatData(
+        atajadas: (value['atajadas'] ?? 0) as int,
+        goles: (value['golesRecibidos'] ?? 0) as int,
+        palos: (value['palos'] ?? 0) as int,
+        fuera: (value['fuera'] ?? 0) as int,
+      );
+    });
+
+    return zonas;
+  }
+
+  Widget _buildShareImageCard(BuildContext context) {
+    final arqueros = _estadisticasPorArquero();
+
+    final mejorArquero = arqueros.isNotEmpty ? arqueros.first : null;
+
+    final mejorNombre = mejorArquero == null
+        ? 'Sin arquero'
+        : (mejorArquero['arqueroNombre'] ??
+                  mejorArquero['arquero'] ??
+                  'Arquero')
+              .toString();
+
+    final mejorEficacia = mejorArquero == null
+        ? 0.0
+        : (mejorArquero['eficacia'] ?? 0.0) as double;
+
+    final mejorAtajadas = mejorArquero == null
+        ? 0
+        : (mejorArquero['atajadas'] ?? 0) as int;
+
+    final mejorGoles = mejorArquero == null
+        ? 0
+        : (mejorArquero['golesRecibidos'] ?? 0) as int;
+
+    final mejorContra = mejorArquero == null
+        ? 0
+        : (mejorArquero['contraDirecta'] ?? 0) as int;
+
+    final stats1T = _shareStatsPorPeriodo('1T');
+    final stats2T = _shareStatsPorPeriodo('2T');
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 390,
+        height: 693,
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF070D17), Color(0xFF101827)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'HANDBALL SGS',
+              style: TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.4,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            Text(
+              '${partidoV2.categoria} · ${partidoV2.torneo}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _buildShareTeam(
+                    nombre: _nombreLocal,
+                    assetPath: _somosLocales
+                        ? 'assets/images/san_fernando.png'
+                        : _rivalShieldAsset(),
+                  ),
+                ),
+                Text(
+                  '$_golesLocal - $_golesVisitante',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Expanded(
+                  child: _buildShareTeam(
+                    nombre: _nombreVisitante,
+                    assetPath: _somosLocales
+                        ? _rivalShieldAsset()
+                        : 'assets/images/san_fernando.png',
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A2433),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Arquero destacado',
+                    style: TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    mejorNombre,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildStoryKpi(
+                        '${mejorEficacia.toStringAsFixed(1)}%',
+                        'Eficacia',
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStoryKpi('$mejorAtajadas', 'Atajadas'),
+                      const SizedBox(width: 8),
+                      _buildStoryKpi('$mejorGoles', 'Goles'),
+                      const SizedBox(width: 8),
+                      _buildStoryKpi('$mejorContra', 'C. dir.'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Mapa de arco',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      mejorArquero == null
+                          ? const SizedBox.shrink()
+                          : _buildStoryHeatmap(mejorArquero),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF111A28),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildShareInsightRow(
+                          'Zona fuerte',
+                          mejorArquero == null
+                              ? '-'
+                              : _zonaFuerte(mejorArquero),
+                        ),
+                        _buildShareInsightRow(
+                          'Zona débil',
+                          mejorArquero == null ? '-' : _zonaDebil(mejorArquero),
+                        ),
+                        _buildShareInsightRow(
+                          'Más atacada',
+                          mejorArquero == null
+                              ? '-'
+                              : _zonaMasAtacada(mejorArquero),
+                        ),
+                        _buildShareInsightRow(
+                          '1T',
+                          'GF ${stats1T['golesFavor']} · GC ${stats1T['golesContra']}',
+                        ),
+                        _buildShareInsightRow(
+                          '2T',
+                          'GF ${stats2T['golesFavor']} · GC ${stats2T['golesContra']}',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111A28),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                arqueros.length > 1
+                    ? 'Participaron ${arqueros.length} arqueros · Ver detalle en análisis completo'
+                    : 'Análisis individual del arquero destacado',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFAAB4C3),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const Spacer(),
+
+            Text(
+              '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+              style: const TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareInsightRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareTeam({required String nombre, String? assetPath}) {
+    return Column(
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Center(
+            child: assetPath == null
+                ? const Icon(
+                    Icons.sports_handball,
+                    color: Color(0xFF1C2B44),
+                    size: 24,
+                  )
+                : Image.asset(assetPath, fit: BoxFit.contain),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          nombre,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShareKpiRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
@@ -858,11 +3319,8 @@ $arquerosDetalle
 
               /// 🔥 BOTÓN SHARE
               IconButton(
-                icon: const Icon(Icons.share, color: Colors.white),
-                onPressed: () {
-                  final texto = _buildResumenCompartible();
-                  Share.share(texto);
-                },
+                icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
+                onPressed: () => _shareResumenComoImagen(context),
               ),
             ],
           ),
@@ -1076,5 +3534,457 @@ $arquerosDetalle
         ],
       ),
     );
+  }
+}
+
+class _ShareMatchTeamStats {
+  final int tiros;
+  final int tirosConGol;
+  final int tirosAtajados;
+  final int tirosFuera;
+  final int tirosAlPalo;
+  final int penales;
+  final int penalesConvertidos;
+  final int penalesErrados;
+  final int perdidas;
+  final int recuperaciones;
+  final Map<String, int> perdidasPorTipo;
+
+  const _ShareMatchTeamStats({
+    required this.tiros,
+    required this.tirosConGol,
+    required this.tirosAtajados,
+    required this.tirosFuera,
+    required this.tirosAlPalo,
+    required this.penales,
+    required this.penalesConvertidos,
+    required this.penalesErrados,
+    required this.perdidas,
+    required this.recuperaciones,
+    required this.perdidasPorTipo,
+  });
+
+  int get perdidasForzadas {
+    return perdidasPorTipo['robo'] ?? 0;
+  }
+
+  int get perdidasNoForzadas {
+    final value = perdidas - perdidasForzadas;
+    return value < 0 ? 0 : value;
+  }
+}
+
+String _sharePerdidaLabel(String key) {
+  switch (key) {
+    case 'robo':
+      return 'Robo';
+    case 'mal_pase':
+      return 'Mal pase';
+    case 'invasion':
+      return 'Invasión';
+    case 'falta_en_ataque':
+      return 'Falta ataque';
+    case 'pasos':
+      return 'Pasos';
+    case 'error_tecnico':
+      return 'Error técnico';
+    case 'doble_drible':
+      return 'Doble drible';
+    default:
+      return key.trim().isEmpty ? 'Sin detalle' : key;
+  }
+}
+
+String _shareTopPerdidasText(Map<String, int> detalle) {
+  if (detalle.isEmpty) return '-';
+
+  final entries = detalle.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+
+  return entries
+      .take(2)
+      .map((e) => '${_sharePerdidaLabel(e.key)} ${e.value}')
+      .join(' · ');
+}
+
+class _ShareTeamStatRow {
+  final String label;
+  final String left;
+  final String right;
+
+  const _ShareTeamStatRow({
+    required this.label,
+    required this.left,
+    required this.right,
+  });
+}
+
+class _GoalZoneHeatData {
+  final int atajadas;
+  final int goles;
+  final int palos;
+  final int fuera;
+
+  const _GoalZoneHeatData({
+    this.atajadas = 0,
+    this.goles = 0,
+    this.palos = 0,
+    this.fuera = 0,
+  });
+
+  int get total => atajadas + goles + palos + fuera;
+}
+
+class _HeatLegendDot extends StatelessWidget {
+  final Color color;
+  final String text;
+
+  const _HeatLegendDot({required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GoalkeeperBlurHeatmapPainter extends CustomPainter {
+  final Map<String, _GoalZoneHeatData> zonas;
+
+  Rect _zoneRect(String zone, Size size) {
+    final left = size.width * 0.08;
+    final top = size.height * 0.14;
+    final goalWidth = size.width * 0.84;
+    final goalHeight = size.height * 0.70;
+
+    final cellWidth = goalWidth / 3;
+    final cellHeight = goalHeight / 3;
+
+    final index = _orderedZones.indexOf(zone);
+    if (index < 0) {
+      return Rect.fromLTWH(left, top, cellWidth, cellHeight);
+    }
+
+    final row = index ~/ 3;
+    final col = index % 3;
+
+    return Rect.fromLTWH(
+      left + (cellWidth * col),
+      top + (cellHeight * row),
+      cellWidth,
+      cellHeight,
+    );
+  }
+
+  const _GoalkeeperBlurHeatmapPainter({required this.zonas});
+
+  static const List<String> _orderedZones = [
+    'AI',
+    'AC',
+    'AD',
+    'CI',
+    'CC',
+    'CD',
+    'BI',
+    'BC',
+    'BD',
+  ];
+
+  Offset _zoneCenter(String zone, Size size) {
+    final left = size.width * 0.08;
+    final top = size.height * 0.14;
+    final goalWidth = size.width * 0.84;
+    final goalHeight = size.height * 0.70;
+
+    final positions = <String, Offset>{
+      'AI': Offset(left + goalWidth * 0.18, top + goalHeight * 0.18),
+      'AC': Offset(left + goalWidth * 0.50, top + goalHeight * 0.18),
+      'AD': Offset(left + goalWidth * 0.82, top + goalHeight * 0.18),
+      'CI': Offset(left + goalWidth * 0.18, top + goalHeight * 0.50),
+      'CC': Offset(left + goalWidth * 0.50, top + goalHeight * 0.50),
+      'CD': Offset(left + goalWidth * 0.82, top + goalHeight * 0.50),
+      'BI': Offset(left + goalWidth * 0.18, top + goalHeight * 0.82),
+      'BC': Offset(left + goalWidth * 0.50, top + goalHeight * 0.82),
+      'BD': Offset(left + goalWidth * 0.82, top + goalHeight * 0.82),
+    };
+
+    return positions[zone] ?? Offset(size.width / 2, size.height / 2);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final maxGoles = zonas.values.fold<int>(
+      0,
+      (max, data) => data.goles > max ? data.goles : max,
+    );
+
+    final maxAtajadas = zonas.values.fold<int>(
+      0,
+      (max, data) => data.atajadas > max ? data.atajadas : max,
+    );
+
+    final goalRect = Rect.fromLTWH(
+      size.width * 0.08,
+      size.height * 0.14,
+      size.width * 0.84,
+      size.height * 0.70,
+    );
+
+    final bgPaint = Paint()
+      ..color = const Color(0xFF07101B)
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = Colors.white.withOpacity(0.22)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final netPaint = Paint()
+      ..color = Colors.white.withOpacity(0.07)
+      ..strokeWidth = 1;
+
+    final rounded = RRect.fromRectAndRadius(
+      goalRect,
+      const Radius.circular(18),
+    );
+
+    canvas.drawRRect(rounded, bgPaint);
+    canvas.drawRRect(rounded, borderPaint);
+
+    for (int i = 1; i <= 2; i++) {
+      final x = goalRect.left + goalRect.width * (i / 3);
+      canvas.drawLine(
+        Offset(x, goalRect.top),
+        Offset(x, goalRect.bottom),
+        netPaint,
+      );
+
+      final y = goalRect.top + goalRect.height * (i / 3);
+      canvas.drawLine(
+        Offset(goalRect.left, y),
+        Offset(goalRect.right, y),
+        netPaint,
+      );
+    }
+
+    final maxValue = zonas.values.fold<int>(
+      0,
+      (max, data) => data.total > max ? data.total : max,
+    );
+
+    if (maxValue <= 0) {
+      _drawEmptyText(canvas, size);
+      return;
+    }
+
+    for (final zone in _orderedZones) {
+      final data = zonas[zone] ?? const _GoalZoneHeatData();
+      final center = _zoneCenter(zone, size);
+      final zoneRect = _zoneRect(zone, size);
+
+      _drawZoneHeat(
+        canvas: canvas,
+        zoneRect: zoneRect,
+        atajadas: data.atajadas,
+        goles: data.goles,
+        maxValue: maxValue,
+      );
+    }
+  }
+
+  void _drawZoneHeat({
+    required Canvas canvas,
+    required Rect zoneRect,
+    required int atajadas,
+    required int goles,
+    required int maxValue,
+  }) {
+    final total = atajadas + goles;
+    final safeMaxValue = maxValue <= 0 ? 1 : maxValue;
+
+    final ratio = total == 0 ? 0.0 : (total / safeMaxValue).clamp(0.20, 1.0);
+
+    // 1) Nebulosa base gris para conectar todo el 3x3
+    final neutralRadius = zoneRect.width * 0.86;
+
+    final neutralPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        zoneRect.center,
+        neutralRadius,
+        [
+          Colors.white.withOpacity(total == 0 ? 0.030 : 0.022),
+          Colors.white.withOpacity(total == 0 ? 0.016 : 0.010),
+          Colors.white.withOpacity(0.0),
+        ],
+        const [0.0, 0.55, 1.0],
+      )
+      ..blendMode = BlendMode.srcOver
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+
+    canvas.drawCircle(zoneRect.center, neutralRadius, neutralPaint);
+
+    if (total == 0) return;
+
+    final dominantIsGoal = goles >= atajadas;
+
+    final dominantColor = dominantIsGoal
+        ? const Color(0xFFEF4444)
+        : const Color(0xFF22C55E);
+
+    final secondaryColor = dominantIsGoal
+        ? const Color(0xFF22C55E)
+        : const Color(0xFFEF4444);
+
+    final dominantValue = dominantIsGoal ? goles : atajadas;
+    final secondaryValue = dominantIsGoal ? atajadas : goles;
+
+    final dominantShare = dominantValue / total;
+    final secondaryShare = secondaryValue / total;
+
+    // 2) Capa amplia de color dominante
+    final dominantRadius = zoneRect.width * (0.76 + ratio * 0.32);
+
+    final dominantPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        zoneRect.center,
+        dominantRadius,
+        [
+          dominantColor.withOpacity(0.34 + ratio * 0.10),
+          dominantColor.withOpacity(0.20 + ratio * 0.07),
+          dominantColor.withOpacity(0.085),
+          dominantColor.withOpacity(0.0),
+        ],
+        const [0.0, 0.40, 0.74, 1.0],
+      )
+      ..blendMode = BlendMode.srcOver
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+
+    canvas.drawCircle(zoneRect.center, dominantRadius, dominantPaint);
+
+    // 3) Núcleo fuerte para que la zona importante se vea
+    final coreRadius = zoneRect.width * (0.34 + ratio * 0.16);
+
+    final corePaint = Paint()
+      ..shader = ui.Gradient.radial(
+        zoneRect.center,
+        coreRadius,
+        [
+          dominantColor.withOpacity(0.36 + dominantShare * 0.10),
+          dominantColor.withOpacity(0.18),
+          dominantColor.withOpacity(0.0),
+        ],
+        const [0.0, 0.50, 1.0],
+      )
+      ..blendMode = BlendMode.srcOver
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+
+    canvas.drawCircle(zoneRect.center, coreRadius, corePaint);
+
+    // 4) Color secundario si hubo mezcla
+    if (secondaryValue > 0) {
+      final secondaryCenter = Offset(
+        zoneRect.center.dx + zoneRect.width * 0.16,
+        zoneRect.center.dy + zoneRect.height * 0.08,
+      );
+
+      final secondaryRadius = zoneRect.width * (0.50 + ratio * 0.20);
+
+      final secondaryPaint = Paint()
+        ..shader = ui.Gradient.radial(
+          secondaryCenter,
+          secondaryRadius,
+          [
+            secondaryColor.withOpacity(0.16 + secondaryShare * 0.12),
+            secondaryColor.withOpacity(0.08),
+            secondaryColor.withOpacity(0.0),
+          ],
+          const [0.0, 0.55, 1.0],
+        )
+        ..blendMode = BlendMode.srcOver
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+      canvas.drawCircle(secondaryCenter, secondaryRadius, secondaryPaint);
+    }
+  }
+
+  void _drawZoneValue({
+    required Canvas canvas,
+    required Offset center,
+    required String text,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.75),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final bgRect = Rect.fromCenter(
+      center: center,
+      width: textPainter.width + 10,
+      height: textPainter.height + 6,
+    );
+
+    final paint = Paint()..color = Colors.black.withOpacity(0.35);
+
+    final rRect = RRect.fromRectAndRadius(bgRect, const Radius.circular(6));
+
+    canvas.drawRRect(rRect, paint);
+
+    textPainter.paint(
+      canvas,
+      Offset(
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
+      ),
+    );
+  }
+
+  void _drawEmptyText(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'Sin tiros registrados',
+        style: TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    textPainter.paint(
+      canvas,
+      Offset(
+        size.width / 2 - textPainter.width / 2,
+        size.height / 2 - textPainter.height / 2,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GoalkeeperBlurHeatmapPainter oldDelegate) {
+    return oldDelegate.zonas != zonas;
   }
 }

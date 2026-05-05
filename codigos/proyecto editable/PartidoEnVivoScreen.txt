@@ -1,4 +1,4 @@
-// ===============================
+/// ===============================
 /// ===============================
 /// PARTIDO EN VIVO
 /// ===============================
@@ -128,6 +128,32 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
   static const bool _showCourtOverlay = true;
   static const bool _showTouchDebug = false;
+
+  void _activarSalidaNormal() {
+    if (modo == null) return;
+
+    setState(() {
+      // Sale jugando normal el equipo que recuperó la pelota.
+      modo = modo == 'ataque' ? 'defensa' : 'ataque';
+
+      mostrarContra = false;
+      contraDebeCambiarModo = true;
+
+      zonaTiro = null;
+      zonaArco = null;
+
+      jugadorSeleccionado = null;
+      jugadorSeleccionadoId = null;
+
+      penalEnCurso = false;
+      actorPenalActual = null;
+
+      origenJugadaActual = 'normal';
+      mostrarSelectorLateralJugador = false;
+    });
+
+    _persistLiveMatch();
+  }
 
   bool get _hasUndoableGameEvents {
     return gameEvents.any((e) => e.isUndoableGameEvent);
@@ -708,12 +734,14 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _buildEventButton(
-                            text: 'Penal',
+                            text: mostrarContra ? 'Normal' : 'Penal',
                             onTap:
                                 _isPlayLocked() ||
                                     _isPenaltyShootout() ||
                                     modo == null
                                 ? null
+                                : mostrarContra
+                                ? _activarSalidaNormal
                                 : _iniciarFlujoPenalNormal,
                           ),
                         ),
@@ -1704,7 +1732,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Seleccioná tipo de perdida',
+                'Motivo de la perdida',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 17,

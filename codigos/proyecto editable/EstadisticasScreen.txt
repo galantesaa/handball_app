@@ -1,0 +1,369 @@
+///===============================
+/// ESTADISTICAS
+/// ==============================
+///===============================
+
+class EstadisticasScreen extends StatefulWidget {
+  final String categoria;
+
+  const EstadisticasScreen({super.key, required this.categoria});
+
+  @override
+  State<EstadisticasScreen> createState() => _EstadisticasScreenState();
+}
+
+class _EstadisticasScreenState extends State<EstadisticasScreen> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadPartidosReales();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadPartidosReales() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('finished_matches_history_v1');
+
+    if (raw == null || raw.isEmpty) return [];
+
+    final decoded = jsonDecode(raw) as List<dynamic>;
+
+    final partidos = <Map<String, dynamic>>[];
+
+    for (final item in decoded) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+
+      if (map['isReal'] != true) continue;
+
+      final base = Map<String, dynamic>.from(
+        (map['partido'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{},
+      );
+
+      final categoriaPartido = (base['categoria'] ?? '').toString().trim();
+
+      if (categoriaPartido != widget.categoria) {
+        continue;
+      }
+
+      partidos.add({
+        ...base,
+        'matchIdentity': map['matchIdentity'],
+        'archivedAt': map['archivedAt'] ?? map['timestamp'],
+        'golesSanFernando':
+            map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
+        'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
+        'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
+        'eventos': map['eventos'] ?? base['eventos'] ?? const [],
+      });
+    }
+
+    partidos.sort((a, b) {
+      final fa = _fechaOrden(a);
+      final fb = _fechaOrden(b);
+      return fa.compareTo(fb);
+    });
+
+    return partidos;
+  }
+
+  static int _fechaOrden(Map<String, dynamic> p) {
+    final fecha = (p['fecha'] ?? '').toString();
+    final parts = fecha.split('/');
+    if (parts.length != 2) return 9999;
+    final d = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    return (m * 100) + d;
+  }
+
+  int _int(Map<String, dynamic> p, String key) {
+    final v = p[key];
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? 0;
+    return 0;
+  }
+
+  String _resultado(Map<String, dynamic> p) {
+    final gf = _int(p, 'golesSanFernando');
+    final gc = _int(p, 'golesRival');
+    if (gf > gc) return 'W';
+    if (gf < gc) return 'L';
+    return 'D';
+  }
+
+  Color _rachaColor(String r) {
+    if (r == 'W') return const Color(0xFF1E7D4F);
+    if (r == 'L') return const Color(0xFF9F2D2D);
+    return const Color(0xFFC58B1D);
+  }
+
+  IconData _rachaIcon(String r) {
+    if (r == 'W') return Icons.keyboard_double_arrow_up_rounded;
+    if (r == 'L') return Icons.keyboard_double_arrow_down_rounded;
+    return Icons.remove_rounded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Estadísticas'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final partidos = snapshot.data ?? [];
+
+                if (partidos.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Todavía no hay partidos reales para estadísticas.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFFAAB4C3), fontSize: 14),
+                    ),
+                  );
+                }
+
+                final jugados = partidos.length;
+                final golesFavor = partidos.fold<int>(
+                  0,
+                  (acc, p) => acc + _int(p, 'golesSanFernando'),
+                );
+                final golesContra = partidos.fold<int>(
+                  0,
+                  (acc, p) => acc + _int(p, 'golesRival'),
+                );
+                final atajadas = partidos.fold<int>(
+                  0,
+                  (acc, p) => acc + _int(p, 'atajadas'),
+                );
+
+                final promedio = jugados == 0 ? 0.0 : golesFavor / jugados;
+                final racha = partidos.reversed
+                    .take(3)
+                    .map(_resultado)
+                    .toList();
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  children: [
+                    const Text(
+                      'Temporada 2026',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _buildStatsCard(
+                      jugados: jugados,
+                      golesFavor: golesFavor,
+                      golesContra: golesContra,
+                      promedio: promedio,
+                      atajadas: atajadas,
+                      racha: racha,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildUltimosPartidos(partidos.reversed.take(5).toList()),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCard({
+    required int jugados,
+    required int golesFavor,
+    required int golesContra,
+    required double promedio,
+    required int atajadas,
+    required List<String> racha,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        children: [
+          _statRow(Icons.stadium_rounded, 'Partidos jugados', '$jugados'),
+          _statRow(
+            Icons.sports_handball_rounded,
+            'Goles en temporada',
+            '$golesFavor',
+          ),
+          _statRow(Icons.shield_rounded, 'Goles en contra', '$golesContra'),
+          _statRow(
+            Icons.show_chart_rounded,
+            'Promedio de goles',
+            promedio.toStringAsFixed(2),
+          ),
+          _statRow(Icons.sports_mma_rounded, 'Atajadas', '$atajadas'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.bar_chart_rounded,
+                  color: Color(0xFF4F8CFF),
+                  size: 26,
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text(
+                    'Racha últimos 3',
+                    style: TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Row(
+                  children: racha.map((r) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Icon(
+                        _rachaIcon(r),
+                        color: _rachaColor(r),
+                        size: 26,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF4F8CFF), size: 26),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFAAB4C3),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUltimosPartidos(List<Map<String, dynamic>> partidos) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Últimos partidos',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...partidos.map((p) {
+            final r = _resultado(p);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(_rachaIcon(r), color: _rachaColor(r), size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      (p['rival'] ?? 'Rival').toString(),
+                      style: const TextStyle(
+                        color: Color(0xFFDCE4EF),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Builder(
+                    builder: (_) {
+                      final gf = _int(p, 'golesSanFernando');
+                      final gc = _int(p, 'golesRival');
+                      final condicion = (p['condicion'] ?? '').toString();
+                      final esLocal = condicion == 'Local';
+
+                      final score = esLocal ? '$gf - $gc' : '$gc - $gf';
+
+                      return Text(
+                        score,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}

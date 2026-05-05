@@ -1,0 +1,1726 @@
+/// ===============================
+/// PRoXIMO PARTIDO
+/// ===============================
+/// ===============================
+
+class ProximoPartidoScreen extends StatefulWidget {
+  final String categoria;
+  final String torneo;
+
+  const ProximoPartidoScreen({
+    super.key,
+    required this.categoria,
+    required this.torneo,
+  });
+
+  @override
+  State<ProximoPartidoScreen> createState() => _ProximoPartidoScreenState();
+}
+
+/// ===============================
+/// ESTADO REAL V2
+/// Lectura paralela del sistema nuevo:
+/// - partido en vivo actual
+/// - partidos finalizados reales
+/// ===============================
+PartidoModel? _partidoEnVivoV2;
+List<PartidoModel> _finalizadosV2 = [];
+
+class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
+  /// ===============================
+  /// LOAD ESTADO REAL V2
+  /// Lee partido en vivo y finalizados desde el repository 2.0
+  /// ===============================
+
+  Future<void> _loadEstadoRealV2() async {
+    final live = await PartidoRepositoryV2.readLiveMatch();
+    final finished = await PartidoRepositoryV2.readFinishedMatches();
+
+    if (!mounted) return;
+
+    setState(() {
+      _partidoEnVivoV2 = live;
+      _finalizadosV2 = finished;
+    });
+  }
+
+  bool hayPartido = true;
+
+  Map<String, dynamic> proximoPartido = {};
+  List<Map<String, dynamic>> siguientesPartidos = [];
+  List<Map<String, dynamic>> partidosFinalizados = [];
+
+  String get _proximoPartidoStorageKey =>
+      'proximo_partido_${widget.categoria}_${widget.torneo}';
+
+  String get _siguientesPartidosStorageKey =>
+      'siguientes_${widget.categoria}_${widget.torneo}';
+
+  String get _partidosFinalizadosStorageKey =>
+      'finalizados_${widget.categoria}_${widget.torneo}';
+  static const String _liveMatchStorageKey = 'live_match_current_v1';
+  static const String _finishedMatchesStorageKey =
+      'finished_matches_history_v1';
+
+  /// ===============================
+  /// MATCH IDENTITY HELPERS V2
+  /// Permiten comparar Map actual con PartidoModel
+  /// ===============================
+  String _identityFromMap(Map<String, dynamic> partido) {
+    return buildNormalizedMatchIdentity(partido);
+  }
+
+  bool _estaFinalizadoV2(Map<String, dynamic> partido) {
+    if (!_esPartidoValido(partido)) return false;
+
+    final identidad = _identityFromMap(partido);
+
+    return _finalizadosV2.any((p) {
+      return buildNormalizedMatchIdentity(p.toMap()) == identidad;
+    });
+  }
+
+  /// ===============================
+  /// VALIDACIÓN LOCAL DEL MAPA PARTIDO
+  /// Evita pantallas con null/null cuando quedó un próximo corrupto en prefs.
+  /// ===============================
+  bool _esPartidoValido(Map<String, dynamic> partido) {
+    final rival = (partido['rival'] ?? '').toString().trim();
+    final fecha = (partido['fecha'] ?? '').toString().trim();
+    final hora = (partido['hora'] ?? '').toString().trim();
+    final categoria = (partido['categoria'] ?? '').toString().trim();
+    final torneo = (partido['torneo'] ?? '').toString().trim();
+
+    return partido.isNotEmpty &&
+        rival.isNotEmpty &&
+        rival != 'null' &&
+        fecha.isNotEmpty &&
+        fecha != 'null' &&
+        hora.isNotEmpty &&
+        hora != 'null' &&
+        categoria.isNotEmpty &&
+        categoria != 'null' &&
+        torneo.isNotEmpty &&
+        torneo != 'null';
+  }
+
+  /// ===============================
+  /// FINALIZADO GLOBAL
+  /// Compara contra V2 y contra historial legado ya mergeado.
+  /// ===============================
+  bool _estaFinalizadoGlobal(Map<String, dynamic> partido) {
+    if (!_esPartidoValido(partido)) return false;
+
+    final identidad = _identityFromMap(partido);
+
+    final enV2 = _estaFinalizadoV2(partido);
+    final enLegacy = partidosFinalizados.any((p) {
+      return buildNormalizedMatchIdentity(p) == identidad ||
+          _partidoIdentity(p) == _partidoIdentity(partido);
+    });
+
+    return enV2 || enLegacy;
+  }
+
+  /// ===============================
+  /// RECALCULAR PRoXIMO PARTIDO DESDE FIXTURE BASE
+  /// Si el proximo actual quedo inválido, toma el primer pendiente real
+  /// y recompone tambien los siguientes partidos.
+  /// ===============================
+  /// ===============================
+  /// RECALCULAR PRoXIMO Y SIGUIENTES DESDE FIXTURE BASE
+  /// Usa solo el fixture base del torneo/categoría actual
+  /// y filtra por partidos no finalizados segun V2.
+  /// ===============================
+  void _recalcularProximoYSiguientesDesdeBase() {
+    final todos = _buildFixtureCompleto(
+      categoria: widget.categoria,
+    ).where((p) => (p['torneo'] ?? '').toString() == widget.torneo).toList();
+
+    final pendientes = todos.where((p) => !_estaFinalizadoGlobal(p)).toList();
+
+    pendientes.sort((a, b) {
+      final fa = (a['fechaNumero'] ?? 0) as int;
+      final fb = (b['fechaNumero'] ?? 0) as int;
+      return fa.compareTo(fb);
+    });
+
+    if (pendientes.isEmpty) {
+      proximoPartido = {};
+      siguientesPartidos = [];
+      hayPartido = false;
+      return;
+    }
+
+    final proximo = Map<String, dynamic>.from(pendientes.first);
+
+    final siguientes = pendientes.skip(1).map((p) {
+      return {
+        'rival': p['rival'],
+        'fechaNumero': p['fechaNumero'],
+        'fecha': p['fecha'],
+        'hora': p['hora'],
+        'condicion': p['condicion'],
+        'torneo': p['torneo'],
+        'categoria': p['categoria'],
+        'escudoRival': p['escudoRival'],
+      };
+    }).toList();
+
+    proximoPartido = proximo;
+    siguientesPartidos = siguientes;
+    hayPartido = true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadEstadoRealV2();
+      await _loadFixtureState();
+
+      if (!mounted) return;
+
+      setState(() {
+        _recalcularProximoYSiguientesDesdeBase();
+      });
+    });
+  }
+
+  Map<String, dynamic> _defaultProximoPartido() {
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+
+    return fixture.firstWhere(
+      (p) =>
+          p['torneo'] == widget.torneo &&
+          p['categoria'] == widget.categoria &&
+          p['estadoPartido'] != 'finalizado',
+      orElse: () => fixture.first,
+    );
+  }
+
+  List<DateTime> _generarSabadosDesde({
+    required DateTime inicio,
+    required int cantidad,
+  }) {
+    return List.generate(cantidad, (i) => inicio.add(Duration(days: i * 7)));
+  }
+
+  String _formatFecha(DateTime d) {
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm';
+  }
+
+  List<Map<String, dynamic>> _buildAperturaBase({required String categoria}) {
+    return [
+      {
+        'fechaNumero': 1,
+        'fecha': '21/03',
+        'hora': '13:00',
+        'local': 'Municipalidad de Vicente Lopez',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 2,
+        'fecha': '28/03',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'Colegio Ward',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 3,
+        'fecha': '11/04',
+        'hora': '13:00',
+        'local': 'S.A.G. Villa Ballester',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 4,
+        'fecha': '18/04',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'Argentinos Juniors',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 5,
+        'fecha': '25/04',
+        'hora': '13:00',
+        'local': 'Ferro Carril Oeste',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 6,
+        'fecha': '02/05',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'C.A. Velez Sarsfield',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 7,
+        'fecha': '09/05',
+        'hora': '13:00',
+        'local': 'Campana Boat Club',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 8,
+        'fecha': '16/05',
+        'hora': '13:00',
+        'local': 'S.A.G.A.B.',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 9,
+        'fecha': '23/05',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'C.A. River Plate',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 10,
+        'fecha': '30/05',
+        'hora': '13:00',
+        'local': 'Dorrego Handball',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 11,
+        'fecha': '06/06',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'Estudiantes de La Plata',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 12,
+        'fecha': '20/06',
+        'hora': '13:00',
+        'local': 'S.E.D.A.L.O.',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 13,
+        'fecha': '27/06',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'C.A. Lanus',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 14,
+        'fecha': '04/07',
+        'hora': '13:00',
+        'local': 'Nuestra Senora de Luján',
+        'visitante': 'San Fernando Handball',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+      {
+        'fechaNumero': 15,
+        'fecha': '11/07',
+        'hora': '13:00',
+        'local': 'San Fernando Handball',
+        'visitante': 'A.A.C.F. Quilmes',
+        'torneo': 'Apertura',
+        'categoria': categoria,
+      },
+    ];
+  }
+
+  List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
+    final apertura = _buildAperturaBase(categoria: categoria);
+    final sabados = _generarSabadosDesde(
+      inicio: DateTime(2026, 8, 8),
+      cantidad: apertura.length,
+    );
+
+    return List.generate(apertura.length, (i) {
+      final p = Map<String, dynamic>.from(apertura[i]);
+      final tmpLocal = p['local'];
+      p['local'] = p['visitante'];
+      p['visitante'] = tmpLocal;
+      p['torneo'] = 'Clausura';
+      p['fecha'] = _formatFecha(sabados[i]);
+
+      return p;
+    });
+  }
+
+  Map<String, dynamic> _convertirAFixturePartido(Map<String, dynamic> raw) {
+    final bool somosLocales =
+        (raw['local'] ?? '').toString() == 'San Fernando Handball';
+
+    final rival = somosLocales
+        ? (raw['visitante'] ?? 'Rival').toString()
+        : (raw['local'] ?? 'Rival').toString();
+
+    return {
+      'rival': rival,
+      'fechaNumero': raw['fechaNumero'],
+      'fecha': raw['fecha'],
+      'hora': raw['hora'],
+      'condicion': somosLocales ? 'Local' : 'Visitante',
+      'torneo': raw['torneo'],
+      'categoria': raw['categoria'],
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': _rivalShieldAssetByName(rival),
+    };
+  }
+
+  String? _rivalShieldAssetByName(String rival) {
+    return rivalShieldAssetGlobal(rival);
+  }
+
+  List<Map<String, dynamic>> _buildFixtureCompleto({
+    required String categoria,
+  }) {
+    final apertura = _buildAperturaBase(
+      categoria: categoria,
+    ).map(_convertirAFixturePartido).toList();
+
+    final clausura = _buildClausuraBase(
+      categoria: categoria,
+    ).map(_convertirAFixturePartido).toList();
+
+    return [...apertura, ...clausura];
+  }
+
+  List<Map<String, dynamic>> _defaultSiguientesPartidos() {
+    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+
+    final identidadesFinalizadas = partidosFinalizados
+        .map((p) => _partidoIdentity(p))
+        .toSet();
+
+    final pendientes = fixture.where((p) {
+      return p['torneo'] == widget.torneo &&
+          p['categoria'] == widget.categoria &&
+          !identidadesFinalizadas.contains(_partidoIdentity(p));
+    }).toList();
+
+    if (pendientes.isEmpty) return [];
+
+    final identidadProximo = _partidoIdentity(proximoPartido);
+
+    final siguientes = pendientes
+        .where((p) => _partidoIdentity(p) != identidadProximo)
+        .toList();
+
+    return siguientes.take(3).map((p) {
+      return {
+        'rival': p['rival'],
+        'fecha': p['fecha'],
+        'hora': p['hora'],
+        'condicion': p['condicion'],
+        'torneo': p['torneo'],
+        'categoria': p['categoria'],
+        'fechaNumero': p['fechaNumero'],
+        'escudoRival': p['escudoRival'],
+        'estado': p['estado'],
+      };
+    }).toList();
+  }
+
+  Future<void> _loadFixtureState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final proximoRaw = prefs.getString(_proximoPartidoStorageKey);
+    final siguientesRaw = prefs.getString(_siguientesPartidosStorageKey);
+    final finalizadosRaw = prefs.getString(_partidosFinalizadosStorageKey);
+    final finishedHistoryRaw = prefs.getString(_finishedMatchesStorageKey);
+
+    List<Map<String, dynamic>> finalizadosDesdeProximo = [];
+    List<Map<String, dynamic>> finalizadosDesdeHistory = [];
+
+    if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
+      final decoded = jsonDecode(finalizadosRaw) as List<dynamic>;
+      finalizadosDesdeProximo = decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
+      final decoded = jsonDecode(finishedHistoryRaw) as List<dynamic>;
+      finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
+        return _partidoDesdeFinishedHistoryEntry(Map<String, dynamic>.from(e));
+      }).toList();
+    }
+
+    partidosFinalizados = _mergeFinalizados(
+      desdeProximoScreen: finalizadosDesdeProximo,
+      desdeFinishedHistory: finalizadosDesdeHistory,
+    );
+
+    if (proximoRaw != null && proximoRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(proximoRaw);
+        if (decoded is Map) {
+          proximoPartido = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {
+        proximoPartido = {};
+      }
+    }
+
+    if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(siguientesRaw) as List<dynamic>;
+        siguientesPartidos = decoded
+            .whereType<Map>()
+            .map((e) {
+              final item = Map<String, dynamic>.from(e);
+              item['escudoRival'] =
+                  item['escudoRival'] ??
+                  _rivalShieldAssetByName((item['rival'] ?? '').toString());
+              return item;
+            })
+            .where(_esPartidoValido)
+            .toList();
+      } catch (_) {
+        siguientesPartidos = [];
+      }
+    }
+
+    final debeReconstruir =
+        !_esPartidoValido(proximoPartido) ||
+        _estaFinalizadoGlobal(proximoPartido);
+
+    if (debeReconstruir) {
+      _recalcularProximoYSiguientesDesdeBase();
+      await _persistFixtureState();
+      return;
+    }
+
+    hayPartido = _esPartidoValido(proximoPartido);
+  }
+
+  Future<void> _persistFixtureState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (hayPartido && proximoPartido.isNotEmpty) {
+      await prefs.setString(
+        _proximoPartidoStorageKey,
+        jsonEncode(proximoPartido),
+      );
+    } else {
+      await prefs.remove(_proximoPartidoStorageKey);
+    }
+
+    await prefs.setString(
+      _siguientesPartidosStorageKey,
+      jsonEncode(siguientesPartidos),
+    );
+
+    await prefs.setString(
+      _partidosFinalizadosStorageKey,
+      jsonEncode(partidosFinalizados),
+    );
+  }
+
+  Future<void> _resetPartidosDePrueba() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final fixture = _buildFixtureCompleto(
+      categoria: widget.categoria,
+    ).where((p) => p['torneo'] == widget.torneo).toList();
+
+    final Map<String, Map<String, dynamic>> finalizadosPorId = {
+      for (final p in partidosFinalizados)
+        _partidoIdentity(p): Map<String, dynamic>.from(p),
+    };
+
+    final List<Map<String, dynamic>> pendientes = [];
+    final List<Map<String, dynamic>> finalizadosConservados = [];
+
+    for (final partido in fixture) {
+      final id = _partidoIdentity(partido);
+
+      if (finalizadosPorId.containsKey(id)) {
+        final partidoFinalizado =
+            Map<String, dynamic>.from(finalizadosPorId[id]!)
+              ..['estado'] = 'Finalizado'
+              ..['estadoPartido'] = 'finalizado';
+        finalizadosConservados.add(partidoFinalizado);
+      } else {
+        pendientes.add(Map<String, dynamic>.from(partido));
+      }
+    }
+
+    setState(() {
+      partidosFinalizados = finalizadosConservados;
+
+      if (pendientes.isNotEmpty) {
+        proximoPartido = pendientes.first;
+        siguientesPartidos = pendientes.skip(1).map((p) {
+          return {
+            'rival': p['rival'],
+            'fecha': p['fecha'],
+            'hora': p['hora'],
+            'condicion': p['condicion'],
+            'torneo': p['torneo'],
+            'categoria': p['categoria'],
+            'fechaNumero': p['fechaNumero'],
+            'escudoRival': p['escudoRival'],
+          };
+        }).toList();
+        hayPartido = true;
+      } else {
+        proximoPartido = {};
+        siguientesPartidos = [];
+        hayPartido = false;
+      }
+    });
+
+    if (hayPartido && proximoPartido.isNotEmpty) {
+      await prefs.setString(
+        _proximoPartidoStorageKey,
+        jsonEncode(proximoPartido),
+      );
+    } else {
+      await prefs.remove(_proximoPartidoStorageKey);
+    }
+
+    await prefs.setString(
+      _siguientesPartidosStorageKey,
+      jsonEncode(siguientesPartidos),
+    );
+
+    await prefs.setString(
+      _partidosFinalizadosStorageKey,
+      jsonEncode(partidosFinalizados),
+    );
+  }
+
+  Future<void> _eliminarPartidosDePrueba() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    int eliminados = 0;
+
+    final rawFinished = prefs.getString(_finishedMatchesStorageKey);
+
+    if (rawFinished != null && rawFinished.isNotEmpty) {
+      final decoded = jsonDecode(rawFinished) as List<dynamic>;
+
+      final soloReales = decoded.where((item) {
+        if (item is! Map) return false;
+        return item['isReal'] == true;
+      }).toList();
+
+      eliminados = decoded.length - soloReales.length;
+
+      await prefs.setString(_finishedMatchesStorageKey, jsonEncode(soloReales));
+    }
+
+    await prefs.remove(_partidosFinalizadosStorageKey);
+
+    if (!mounted) return;
+
+    await _loadEstadoRealV2();
+    await _loadFixtureState();
+
+    if (!mounted) return;
+
+    setState(() {
+      _recalcularProximoYSiguientesDesdeBase();
+    });
+
+    if (hayPartido && proximoPartido.isNotEmpty) {
+      await prefs.setString(
+        _proximoPartidoStorageKey,
+        jsonEncode(proximoPartido),
+      );
+    } else {
+      await prefs.remove(_proximoPartidoStorageKey);
+    }
+
+    await prefs.setString(
+      _siguientesPartidosStorageKey,
+      jsonEncode(siguientesPartidos),
+    );
+
+    await prefs.setString(
+      _partidosFinalizadosStorageKey,
+      jsonEncode(partidosFinalizados),
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          eliminados == 1
+              ? 'Se eliminó 1 partido de prueba'
+              : 'Se eliminaron $eliminados partidos de prueba',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmarEliminarPartidosDePrueba() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Eliminar partidos de prueba',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Se van a borrar solo los partidos que no esten marcados como reales. Los partidos finalizados reales se conservarán.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      await _eliminarPartidosDePrueba();
+    }
+  }
+
+  String _partidoIdentity(Map<String, dynamic> partido) {
+    return [
+      (partido['torneo'] ?? '').toString(),
+      (partido['categoria'] ?? '').toString(),
+      (partido['rival'] ?? '').toString(),
+      (partido['fecha'] ?? '').toString(),
+      (partido['hora'] ?? '').toString(),
+      (partido['condicion'] ?? '').toString(),
+    ].join('|');
+  }
+
+  Map<String, dynamic> _partidoDesdeFinishedHistoryEntry(
+    Map<String, dynamic> entry,
+  ) {
+    final base = Map<String, dynamic>.from(
+      (entry['partido'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{},
+    );
+
+    return {
+      ...base,
+      'estado': 'Finalizado',
+      'estadoPartido': 'finalizado',
+      'golesSanFernando':
+          entry['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
+      'golesRival': entry['golesRival'] ?? base['golesRival'] ?? 0,
+      'golesRecibidos': entry['golesRecibidos'] ?? base['golesRecibidos'] ?? 0,
+      'atajadas': entry['atajadas'] ?? base['atajadas'] ?? 0,
+      'penales': entry['penales'] ?? base['penales'] ?? 0,
+      'exclusiones2Min':
+          entry['exclusiones2Min'] ?? base['exclusiones2Min'] ?? 0,
+      'amarillas': entry['amarillas'] ?? base['amarillas'] ?? 0,
+      'rojas': entry['rojas'] ?? base['rojas'] ?? 0,
+      'perdidas': entry['perdidas'] ?? base['perdidas'] ?? 0,
+      'recuperaciones': entry['recuperaciones'] ?? base['recuperaciones'] ?? 0,
+      'penalesConvertidosSanFernando':
+          entry['penalesConvertidosSanFernando'] ??
+          base['penalesConvertidosSanFernando'] ??
+          0,
+      'penalesConvertidosRival':
+          entry['penalesConvertidosRival'] ??
+          base['penalesConvertidosRival'] ??
+          0,
+      'eventos':
+          entry['eventos'] ?? base['eventos'] ?? <Map<String, dynamic>>[],
+      'archivedAt': entry['archivedAt'] ?? entry['timestamp'],
+    };
+  }
+
+  List<Map<String, dynamic>> _mergeFinalizados({
+    required List<Map<String, dynamic>> desdeProximoScreen,
+    required List<Map<String, dynamic>> desdeFinishedHistory,
+  }) {
+    final Map<String, Map<String, dynamic>> unicos = {};
+
+    for (final p in [...desdeProximoScreen, ...desdeFinishedHistory]) {
+      final partido = Map<String, dynamic>.from(p)
+        ..['estado'] = 'Finalizado'
+        ..['estadoPartido'] = 'finalizado';
+      unicos[_partidoIdentity(partido)] = partido;
+    }
+
+    final lista = unicos.values.toList();
+
+    lista.sort((a, b) {
+      final aDate = DateTime.tryParse((a['archivedAt'] ?? '').toString());
+      final bDate = DateTime.tryParse((b['archivedAt'] ?? '').toString());
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
+    });
+
+    return lista;
+  }
+
+  bool _partidoEstaFinalizado(Map<String, dynamic> partido) {
+    return (partido['estadoPartido'] ?? '') == 'finalizado' ||
+        (partido['estado'] ?? '') == 'Finalizado';
+  }
+
+  Map<String, dynamic> _crearPartidoBaseDesdeSiguiente(
+    Map<String, dynamic> siguiente,
+  ) {
+    final String rival = (siguiente['rival'] ?? 'Rival').toString();
+
+    return {
+      'rival': rival,
+      'fechaNumero': siguiente['fechaNumero'],
+      'fecha': (siguiente['fecha'] ?? '').toString(),
+      'hora': (siguiente['hora'] ?? '').toString(),
+      'condicion': (siguiente['condicion'] ?? 'Local').toString(),
+      'torneo': (siguiente['torneo'] ?? 'Apertura').toString(),
+      'categoria': (siguiente['categoria'] ?? 'Cadetes').toString(),
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': siguiente['escudoRival'] ?? _rivalShieldAssetByName(rival),
+    };
+  }
+
+  void _promoverSiguienteSiActualEstaFinalizado({bool saveAfter = true}) {
+    if (!hayPartido || !_partidoEstaFinalizado(proximoPartido)) return;
+
+    final actualId = _partidoIdentity(proximoPartido);
+    final yaExiste = partidosFinalizados.any(
+      (p) => _partidoIdentity(p) == actualId,
+    );
+
+    if (!yaExiste) {
+      final partidoArchivado = Map<String, dynamic>.from(proximoPartido)
+        ..['estado'] = 'Finalizado'
+        ..['estadoPartido'] = 'finalizado';
+      partidosFinalizados.insert(0, partidoArchivado);
+    }
+
+    if (siguientesPartidos.isNotEmpty) {
+      final siguiente = Map<String, dynamic>.from(
+        siguientesPartidos.removeAt(0),
+      );
+      proximoPartido = _crearPartidoBaseDesdeSiguiente(siguiente);
+      hayPartido = true;
+    } else {
+      proximoPartido = {};
+      hayPartido = false;
+    }
+
+    if (saveAfter) {
+      _persistFixtureState();
+    }
+  }
+
+  Future<void> _abrirCentroDeControl() async {
+    if (!hayPartido || proximoPartido.isEmpty) return;
+
+    final rival = fixTextoRoto(proximoPartido['rival'] ?? 'Rival');
+    if (rival.isEmpty) {
+      setState(() {
+        _recalcularProximoYSiguientesDesdeBase();
+      });
+      await _persistFixtureState();
+      return;
+    }
+
+    proximoPartido['esPartidoReal'] ??= false;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
+      ),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      if (_partidoEstaFinalizado(proximoPartido)) {
+        _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
+      }
+    });
+
+    await _persistFixtureState();
+  }
+
+  void _abrirResumenUltimoFinalizado() {
+    if (partidosFinalizados.isEmpty) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ResumenPartidoFinalizadoScreen(partido: partidosFinalizados.first),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Proximo partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.84)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: hayPartido && _esPartidoValido(proximoPartido)
+                  ? _buildEstadoConPartido()
+                  : _buildEstadoSinPartido(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEstadoConPartido() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildScreenHeader(),
+        const SizedBox(height: 22),
+        _buildMatchCard(),
+        const SizedBox(height: 16),
+        _buildUpcomingList(),
+        /*if (partidosFinalizados.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Text(
+            'ultimo partido finalizado',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Builder(
+            builder: (context) {
+              final partidosOrdenados = List<Map<String, dynamic>>.from(
+                partidosFinalizados,
+              );
+
+              partidosOrdenados.sort((a, b) {
+                final aDate = DateTime.tryParse(
+                  (a['archivedAt'] ?? '').toString(),
+                );
+                final bDate = DateTime.tryParse(
+                  (b['archivedAt'] ?? '').toString(),
+                );
+
+                if (aDate == null && bDate == null) return 0;
+                if (aDate == null) return 1;
+                if (bDate == null) return -1;
+
+                return bDate.compareTo(aDate);
+              });
+
+              final partido = partidosOrdenados.first;
+
+              final rival = (partido['rival'] ?? '').toString();
+              final golesSanFernando =
+                  (partido['golesSanFernando'] ?? 0) as int;
+              final golesRival = (partido['golesRival'] ?? 0) as int;
+              final condicion = (partido['condicion'] ?? '').toString();
+
+              final esLocal = condicion == 'Local';
+
+              final nombreLocal = esLocal ? 'San Fernando' : rival;
+              final nombreVisitante = esLocal ? rival : 'San Fernando';
+
+              final marcador = esLocal
+                  ? '$golesSanFernando - $golesRival'
+                  : '$golesRival - $golesSanFernando';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$nombreLocal vs $nombreVisitante',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      marcador,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResumenPartidoFinalizadoScreen(
+                              partido: Map<String, dynamic>.from(partido),
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Ver resumen',
+                        style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],*/
+        const SizedBox(height: 10),
+        _buildSecondaryAction(
+          text: 'Ver fixture completo',
+          icon: Icons.calendar_month_outlined,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FixtureScreen(
+                  categoria: widget.categoria,
+                  torneo: widget.torneo,
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        _buildPrimaryAction(
+          text: _estaFinalizadoV2(proximoPartido)
+              ? 'Ver resumen'
+              : 'Iniciar partido',
+          onTap: () {
+            if (_estaFinalizadoV2(proximoPartido)) {
+              final identidad = _identityFromMap(proximoPartido);
+
+              final finalizado = _finalizadosV2.firstWhere(
+                (p) => buildNormalizedMatchIdentity(p.toMap()) == identidad,
+              );
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ResumenPartidoFinalizadoScreen(
+                    partido: finalizado.toMap(),
+                  ),
+                ),
+              );
+              return;
+            }
+
+            _abrirCentroDeControl();
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildOutlinedAction(
+          text: 'Editar partido',
+          onTap: () {
+            debugPrint('Editar partido');
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildOutlinedAction(
+          text: 'Eliminar partidos de prueba',
+          onTap: _confirmarEliminarPartidosDePrueba,
+        ),
+        //const SizedBox(height: 10),
+        /*_buildOutlinedAction(
+          text: 'Marcar como jugado',
+          onTap: () {
+            final partidoManual = Map<String, dynamic>.from(proximoPartido)
+              ..['estado'] = 'Finalizado'
+              ..['estadoPartido'] = 'finalizado';
+            setState(() {
+              proximoPartido = partidoManual;
+              _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
+            });
+            _persistFixtureState();
+          },
+        ),*/
+      ],
+    );
+  }
+
+  Widget _buildEstadoSinPartido() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildScreenHeaderSinPartido(),
+        const SizedBox(height: 24),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111A28).withOpacity(0.78),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.04)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'No hay un proximo partido cargado',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              if (partidosFinalizados.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                _buildFinishedMatchesSection(),
+              ],
+              const SizedBox(height: 12),
+              _buildOutlinedAction(
+                text: 'Eliminar partidos de prueba',
+                onTap: _confirmarEliminarPartidosDePrueba,
+              ),
+              const SizedBox(height: 18),
+              _buildPrimaryAction(
+                text: 'Crear partido',
+                onTap: () {
+                  debugPrint('Crear partido');
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScreenHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'San Fernando Handball',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${(proximoPartido['categoria'] ?? widget.categoria).toString()} · ${(proximoPartido['torneo'] ?? widget.torneo).toString()}',
+          style: const TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScreenHeaderSinPartido() {
+    final ultimo = partidosFinalizados.isNotEmpty
+        ? partidosFinalizados.first
+        : null;
+
+    final categoria = ultimo?['categoria']?.toString() ?? 'Cadetes';
+    final torneo = ultimo?['torneo']?.toString() ?? 'Apertura';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'San Fernando Handball',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$categoria · $torneo',
+          style: const TextStyle(fontSize: 14, color: Color(0xFFD4DCE7)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatchCard() {
+    if (!_esPartidoValido(proximoPartido)) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.90),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: const Text(
+          'No hay próximo partido válido. Entrá al fixture completo para seleccionar uno.',
+          style: TextStyle(color: Color(0xFFAAB4C3)),
+        ),
+      );
+    }
+
+    final estaFinalizadoV2 = _estaFinalizadoV2(proximoPartido);
+    final estadoVisual = estaFinalizadoV2
+        ? 'Finalizado'
+        : (proximoPartido['estado'] ?? 'Pendiente').toString();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStatusChip(estadoVisual),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _buildTeamBadge(
+                assetPath:
+                    proximoPartido['escudoRival'] as String? ??
+                    _rivalShieldAssetByName(
+                      (proximoPartido['rival'] ?? '').toString(),
+                    ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  (proximoPartido['rival'] ?? '').toString(),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _buildHeadToHeadButton(),
+          const SizedBox(height: 10),
+          _buildInfoRow(
+            'Fecha',
+            '${(proximoPartido['fecha'] ?? '-').toString()} • ${(proximoPartido['hora'] ?? '-').toString()}',
+          ),
+          _buildInfoRow(
+            'Condicion',
+            (proximoPartido['condicion'] ?? '').toString(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinishedMatchesSection() {
+    final visibles = partidosFinalizados.take(3).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Partidos finalizados',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...visibles.map((partido) {
+            final int golesSF = (partido['golesSanFernando'] ?? 0) as int;
+            final int golesR = (partido['golesRival'] ?? 0) as int;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF182338).withOpacity(0.75),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'San Fernando vs ${partido['rival']}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$golesSF - $golesR',
+                      style: const TextStyle(
+                        color: Color(0xFFDCE4EF),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildOutlinedAction(
+                      text: 'Ver resumen',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResumenPartidoFinalizadoScreen(
+                              partido: partido,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpcomingList() {
+    final visibles = siguientesPartidos.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Siguientes partidos',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (visibles.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1A2B).withOpacity(0.6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'No hay más partidos cargados',
+              style: TextStyle(color: Color(0xFFAAB4C3), fontSize: 13),
+            ),
+          )
+        else
+          ...visibles.map(_buildUpcomingItem),
+      ],
+    );
+  }
+
+  Widget _buildUpcomingItem(Map<String, dynamic> partido) {
+    final String? escudoRival = partido['escudoRival'] as String?;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          final nuevosSiguientes = siguientesPartidos
+              .where((p) => p != partido)
+              .toList();
+
+          if (_esPartidoValido(proximoPartido)) {
+            final partidoActualAnterior = {
+              'rival': proximoPartido['rival'].toString(),
+              'fecha': proximoPartido['fecha'].toString(),
+              'hora': proximoPartido['hora'].toString(),
+              'condicion': proximoPartido['condicion'].toString(),
+              'torneo': proximoPartido['torneo'].toString(),
+              'categoria': proximoPartido['categoria'].toString(),
+              'fechaNumero': proximoPartido['fechaNumero'],
+              'escudoRival': proximoPartido['escudoRival'],
+            };
+            nuevosSiguientes.add(partidoActualAnterior);
+          }
+
+          proximoPartido = _crearPartidoBaseDesdeSiguiente(partido);
+
+          siguientesPartidos = nuevosSiguientes
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        });
+
+        _persistFixtureState();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1A2B).withOpacity(0.6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              padding: const EdgeInsets.all(6),
+              child: Center(
+                child: escudoRival == null
+                    ? const Icon(
+                        Icons.sports_handball,
+                        size: 18,
+                        color: Color(0xFF1C2B44),
+                      )
+                    : Image.asset(escudoRival, fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                (partido['rival'] ?? '').toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Text(
+              '${partido['fecha']} • ${partido['hora']}',
+              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 12),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              (partido['condicion'] ?? '').toString(),
+              style: const TextStyle(color: Color(0xFF4DA3FF), fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTeamBadge({String? assetPath}) {
+    return Container(
+      width: 58,
+      height: 58,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Center(
+        child: assetPath == null
+            ? const Icon(
+                Icons.sports_handball,
+                color: Color(0xFF1C2B44),
+                size: 24,
+              )
+            : Image.asset(assetPath, fit: BoxFit.contain),
+      ),
+    );
+  }
+
+  /// ===============================
+  /// CHIP DE ESTADO (MEJORADO CON COLOR DINÁMICO)
+  /// ===============================
+  Widget _buildStatusChip(String label, {Color? color}) {
+    final baseColor = color ?? const Color(0xFF4F8CFF);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: baseColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: baseColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeadToHeadButton() {
+    return GestureDetector(
+      onTap: () {
+        debugPrint('Ver historial vs rival');
+      },
+      child: Container(
+        margin: const EdgeInsets.only(top: 10, bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF182338).withOpacity(0.85),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.history, size: 18, color: Color(0xFFDCE4EF)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Historial vs ${(proximoPartido['rival'] ?? 'rival').toString()}',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  color: Color(0xFFDCE4EF),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 18, color: Color(0xFF8FA3BF)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrimaryAction({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4F8CFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryAction({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1A2B).withOpacity(0.6),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white70, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDAE2EE),
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutlinedAction({
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: BorderSide(color: Colors.white.withOpacity(0.08)),
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
