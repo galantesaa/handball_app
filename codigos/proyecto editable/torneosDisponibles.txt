@@ -1,0 +1,15 @@
+List<String> get torneosDisponibles {
+    if (competenciaSeleccionada == 'Local') {
+      return ['Apertura', 'Clausura'];
+    }
+
+    if (competenciaSeleccionada.startsWith('Nacional')) {
+      return ['Único'];
+    }
+
+    if (competenciaSeleccionada == 'Amistoso') {
+      return ['Amistoso'];
+    }
+
+    return ['Único'];
+  }

@@ -1239,6 +1239,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String competenciaSeleccionada = 'Local';
   String torneoSeleccionado = 'Apertura';
   String categoriaSeleccionada = 'Cadetes';
+  String _contextStep = 'competencia';
 
   List<String> get contexto => <String>[
     temporadaSeleccionada,
@@ -1507,7 +1508,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<String> get competenciasDisponibles {
-    return ['Local', 'Nacional A', 'Nacional B', 'Nacional C', 'Amistoso'];
+    return ['Local', 'Nacional A', 'Nacional B', /*'Nacional C',*/ 'Amistoso'];
   }
 
   List<String> get torneosDisponibles {
@@ -1741,6 +1742,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildContextSection(),
+                
                 const SizedBox(height: 12),
                 _buildPrimaryOutlineAction(
                   text: 'Ver fixture actual',
@@ -1854,63 +1856,198 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContextLine() {
-    return Column(
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
       children: [
-        Row(
-          children: [
-            SizedBox(
-              width: 96,
-              child: _buildContextDropdown(
-                value: temporadaSeleccionada,
-                items: const ['2026', '+ Crear temporada'],
-                onChanged: (value) {
-                  if (value == null || value.startsWith('+')) return;
-                  setState(() => temporadaSeleccionada = value);
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildContextDropdown(
-                value: competenciaSeleccionada,
-                items: [...competenciasDisponibles, '+ Crear competencia'],
-                onChanged: (value) {
-                  if (value == null || value.startsWith('+')) return;
-                  _setCompetencia(value);
-                },
-              ),
-            ),
-          ],
+        _buildContextToken(
+          text: temporadaSeleccionada,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí temporada',
+            options: const ['2026', '+ Crear temporada'],
+            currentValue: temporadaSeleccionada,
+            onSelected: (value) {
+              if (value.startsWith('+')) return;
+              setState(() => temporadaSeleccionada = value);
+            },
+          ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _buildContextDropdown(
-                value: torneoSeleccionado,
-                items: [...torneosDisponibles, '+ Crear torneo'],
-                onChanged: (value) {
-                  if (value == null || value.startsWith('+')) return;
-                  _setTorneo(value);
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildContextDropdown(
-                value: categoriaSeleccionada,
-                items: const ['Cadetes', 'Juveniles', '+ Crear categoría'],
-                onChanged: (value) {
-                  if (value == null || value.startsWith('+')) return;
-                  setState(() => categoriaSeleccionada = value);
-                },
-              ),
-            ),
-          ],
+        const SizedBox(width: 4),
+        _buildContextToken(
+          text: competenciaSeleccionada,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí competencia',
+            options: const [
+              'Local',
+              'Nacional A',
+              'Nacional B',
+              //'Nacional C',//
+              'Amistoso',
+              '+ Crear competencia',
+            ],
+            currentValue: competenciaSeleccionada,
+            onSelected: (value) {
+              if (value.startsWith('+')) return;
+              _setCompetencia(value);
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        _buildContextToken(
+          text: torneoSeleccionado,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí torneo',
+            options: [...torneosDisponibles, '+ Crear torneo'],
+            currentValue: torneoSeleccionado,
+            onSelected: (value) {
+              if (value.startsWith('+')) return;
+              _setTorneo(value);
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        _buildContextToken(
+          text: categoriaSeleccionada,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí categoría',
+            options: const ['Cadetes', 'Juveniles', '+ Crear categoría'],
+            currentValue: categoriaSeleccionada,
+            onSelected: (value) {
+              if (value.startsWith('+')) return;
+              setState(() => categoriaSeleccionada = value);
+            },
+          ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+  
+  void _showContextPicker({
+  required String title,
+  required List<String> options,
+  required String currentValue,
+  required ValueChanged<String> onSelected,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1722),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: options.map((option) {
+                  final selected = option == currentValue;
+                  final isCreate = option.startsWith('+');
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      onSelected(option);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF4F8CFF)
+                            : const Color(0xFF182338),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: selected
+                              ? const Color(0xFF4F8CFF)
+                              : Colors.white.withOpacity(0.06),
+                        ),
+                      ),
+                      child: Text(
+                        option,
+                        style: TextStyle(
+                          color: isCreate
+                              ? const Color(0xFF7DB7FF)
+                              : Colors.white,
+                          fontSize: 14,
+                          fontWeight:
+                              selected ? FontWeight.w900 : FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  Widget _buildContextToken({
+  required String text,
+  required bool removable,
+  VoidCallback? onRemove,
+  VoidCallback? onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338).withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.035)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFFDCE4EF),
+              fontWeight: FontWeight.w600,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 15,
+            color: Color(0xFFC9D3E0),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildContextDropdown({
     required String value,
@@ -1960,54 +2097,137 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSwitcherRow() {
-    return Column(
-      children: [
-        // 🔥 COMPETENCIA
-        Row(
-          children: [
-            Expanded(
-              child: _buildSecondaryButton(
-                text: 'Comp: $competenciaSeleccionada',
-                onTap: () {
-                  final opciones = ['Local', 'Amistoso', 'Nacional'];
+  List<String> opciones = <String>[];
+  String titulo = '';
 
-                  final actual = opciones.indexOf(competenciaSeleccionada);
+  if (_contextStep == 'temporada') {
+    titulo = 'Elegí temporada';
+    opciones = ['2026', '+ Crear temporada'];
+  } else if (_contextStep == 'competencia') {
+    titulo = 'Elegí competencia';
+    opciones = [
+      'Local',
+      'Nacional A',
+      'Nacional B',
+      /*'Nacional C',*/
+      'Amistoso',
+      '+ Crear competencia',
+    ];
+  } else if (_contextStep == 'torneo') {
+    titulo = 'Elegí torneo';
 
-                  final siguiente = (actual + 1) % opciones.length;
-
-                  _setCompetencia(opciones[siguiente]);
-                },
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 8),
-
-        // 🔥 CATEGORIA + TORNEO
-        Row(
-          children: [
-            Expanded(
-              child: _buildSecondaryButton(
-                text: 'Categoría: $categoriaSeleccionada',
-                onTap: _toggleCategoria,
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            Expanded(
-              child: _buildSecondaryButton(
-                text: 'Torneo: $torneoSeleccionado',
-                onTap: _toggleTorneo,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+    if (competenciaSeleccionada == 'Local') {
+      opciones = ['Apertura', 'Clausura', '+ Crear torneo'];
+    } else if (competenciaSeleccionada.startsWith('Nacional')) {
+      opciones = ['Único', '+ Crear torneo'];
+    } else if (competenciaSeleccionada == 'Amistoso') {
+      opciones = ['Amistoso', '+ Crear torneo'];
+    } else {
+      opciones = ['Único', '+ Crear torneo'];
+    }
+  } else {
+    titulo = 'Elegí categoría';
+    opciones = ['Cadetes', 'Juveniles', '+ Crear categoría'];
   }
 
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.78),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: Colors.white.withOpacity(0.04)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: opciones.map((opcion) {
+            final bool selected =
+                opcion == temporadaSeleccionada ||
+                opcion == competenciaSeleccionada ||
+                opcion == torneoSeleccionado ||
+                opcion == categoriaSeleccionada;
+
+            return GestureDetector(
+              onTap: () {
+                if (opcion.startsWith('+')) {
+                  debugPrint(opcion);
+                  return;
+                }
+
+                setState(() {
+                  if (_contextStep == 'temporada') {
+                    temporadaSeleccionada = opcion;
+                    _contextStep = 'competencia';
+                  } else if (_contextStep == 'competencia') {
+                    competenciaSeleccionada = opcion;
+
+                    if (competenciaSeleccionada == 'Local') {
+                      torneoSeleccionado = 'Apertura';
+                    } else if (competenciaSeleccionada.startsWith('Nacional')) {
+                      torneoSeleccionado = 'Único';
+                    } else if (competenciaSeleccionada == 'Amistoso') {
+                      torneoSeleccionado = 'Amistoso';
+                    } else {
+                      torneoSeleccionado = 'Único';
+                    }
+
+                    _contextStep = 'torneo';
+                  } else if (_contextStep == 'torneo') {
+                    torneoSeleccionado = opcion;
+                    _contextStep = 'categoria';
+                  } else {
+                    categoriaSeleccionada = opcion;
+                    _contextStep = 'completo';
+                  }
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? const Color(0xFF4F8CFF).withOpacity(0.95)
+                      : const Color(0xFF182338).withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: selected
+                        ? const Color(0xFF4F8CFF)
+                        : Colors.white.withOpacity(0.05),
+                  ),
+                ),
+                child: Text(
+                  opcion,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    ),
+  );
+}
+  
   Widget _buildPrimaryOutlineAction({
     required String text,
     required IconData icon,
@@ -17724,21 +17944,25 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 Future<String> generarBackupCompleto() async {
   final prefs = await SharedPreferences.getInstance();
 
+  final Map<String, dynamic> allPrefs = {};
+
+  for (final key in prefs.getKeys()) {
+    final value = prefs.get(key);
+
+    if (value == null) continue;
+
+    allPrefs[key] = value;
+  }
+
   final backup = <String, dynamic>{
     'createdAt': DateTime.now().toIso8601String(),
     'app': 'Handball SGS',
-    'historial': prefs.getString('finished_matches_history_v1'),
-    'liveMatch': prefs.getString('live_match_current_v1'),
+    'version': 2,
+    'sharedPreferences': allPrefs,
   };
 
-  for (final key in prefs.getKeys()) {
-    if (key.startsWith('roster_')) {
-      backup[key] = prefs.getString(key);
-    }
-  }
-
   return const JsonEncoder.withIndent('  ').convert(backup);
-}
+  }
 
 /// ===============================
 /// SANEAR TEXTO IMPORTADO
@@ -17759,6 +17983,37 @@ Future<void> restaurarBackupCompleto(String backupJson) async {
   final jsonLimpio = sanitizeImportedJsonText(backupJson);
   final data = Map<String, dynamic>.from(jsonDecode(jsonLimpio) as Map);
 
+  final rawPrefs = data['sharedPreferences'];
+
+  if (rawPrefs is Map) {
+    final restoredPrefs = Map<String, dynamic>.from(rawPrefs);
+
+    await prefs.clear();
+
+    for (final entry in restoredPrefs.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      if (value is String) {
+        await prefs.setString(key, sanitizeImportedJsonText(value));
+      } else if (value is bool) {
+        await prefs.setBool(key, value);
+      } else if (value is int) {
+        await prefs.setInt(key, value);
+      } else if (value is double) {
+        await prefs.setDouble(key, value);
+      } else if (value is List) {
+        await prefs.setStringList(
+          key,
+          value.map((e) => sanitizeImportedJsonText(e)).toList(),
+        );
+      }
+    }
+
+    return;
+  }
+
+  // Compatibilidad con backups viejos.
   if (data['historial'] != null) {
     await prefs.setString(
       'finished_matches_history_v1',

@@ -1,0 +1,341 @@
+/// ===============================
+/// BACKUP TOTAL APP
+/// Exporta historial + planteles.
+/// ===============================
+Future<String> generarBackupCompleto() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final backup = <String, dynamic>{
+    'createdAt': DateTime.now().toIso8601String(),
+    'app': 'Handball SGS',
+    'historial': prefs.getString('finished_matches_history_v1'),
+    'liveMatch': prefs.getString('live_match_current_v1'),
+  };
+
+  for (final key in prefs.getKeys()) {
+    if (key.startsWith('roster_')) {
+      backup[key] = prefs.getString(key);
+    }
+  }
+
+  return const JsonEncoder.withIndent('  ').convert(backup);
+}
+
+/// ===============================
+/// SANEAR TEXTO IMPORTADO
+/// Corrige textos rotos antes de guardarlos.
+/// ===============================
+String sanitizeImportedJsonText(dynamic value) {
+  return fixTextoRoto(value);
+}
+
+/// ===============================
+/// RESTAURAR BACKUP APP
+/// Restaura historial + planteles desde JSON.
+/// Guarda todo saneado para evitar acentos rotos.
+/// ===============================
+Future<void> restaurarBackupCompleto(String backupJson) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final jsonLimpio = sanitizeImportedJsonText(backupJson);
+  final data = Map<String, dynamic>.from(jsonDecode(jsonLimpio) as Map);
+
+  if (data['historial'] != null) {
+    await prefs.setString(
+      'finished_matches_history_v1',
+      sanitizeImportedJsonText(data['historial']),
+    );
+  }
+
+  if (data['liveMatch'] != null &&
+      data['liveMatch'].toString().trim().isNotEmpty &&
+      data['liveMatch'].toString().trim() != 'null') {
+    await prefs.setString(
+      'live_match_current_v1',
+      sanitizeImportedJsonText(data['liveMatch']),
+    );
+  } else {
+    await prefs.remove('live_match_current_v1');
+  }
+
+  for (final entry in data.entries) {
+    if (entry.key.startsWith('roster_') && entry.value != null) {
+      await prefs.setString(entry.key, sanitizeImportedJsonText(entry.value));
+    }
+  }
+}
+
+/// ===============================
+/// EXPORTAR BACKUP A ARCHIVO
+/// Genera un .json UTF-8 y abre compartir.
+/// ===============================
+Future<void> exportarBackupComoArchivo() async {
+  final backup = await generarBackupCompleto();
+
+  final dir = await getTemporaryDirectory();
+
+  final fecha = DateTime.now()
+      .toIso8601String()
+      .replaceAll(':', '-')
+      .replaceAll('.', '-');
+
+  final file = File('${dir.path}/backup_handball_sgs_$fecha.json');
+
+  await file.writeAsBytes(utf8.encode(backup), flush: true);
+
+  await Share.shareXFiles([XFile(file.path)], text: 'Backup Handball SGS');
+}
+
+/// ===============================
+/// IMPORTAR BACKUP DESDE ARCHIVO
+/// Lee bytes UTF-8 desde archivo/Drive.
+/// ===============================
+Future<void> importarBackupDesdeArchivo(BuildContext context) async {
+  try {
+    const typeGroup = XTypeGroup(
+      label: 'Backup JSON',
+      extensions: ['json'],
+      mimeTypes: ['application/json'],
+    );
+
+    final XFile? pickedFile = await openFile(acceptedTypeGroups: [typeGroup]);
+
+    if (pickedFile == null) return;
+
+    final file = File(pickedFile.path);
+    final bytes = await file.readAsBytes();
+    final backupJson = utf8.decode(bytes);
+
+    await restaurarBackupCompleto(backupJson);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Backup importado correctamente')),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Error al importar backup: $e')));
+  }
+}
+
+/// ===============================
+/// TEXTO SEGURO / NORMALIZACIÓN GLOBAL
+/// fixTextoRoto: visual y saneo.
+/// textoKey / normalizeHandballText: comparación.
+/// ===============================
+String fixTextoRoto(dynamic value) {
+  var text = (value ?? '').toString();
+
+  text = text
+      .replaceAll('Ã¡', 'á')
+      .replaceAll('Ã©', 'é')
+      .replaceAll('Ã­', 'í')
+      .replaceAll('Ã³', 'ó')
+      .replaceAll('Ãº', 'ú')
+      .replaceAll('Ã±', 'ñ')
+      .replaceAll('Ã', 'Á')
+      .replaceAll('Ã‰', 'É')
+      .replaceAll('Ã', 'Í')
+      .replaceAll('Ã“', 'Ó')
+      .replaceAll('Ãš', 'Ú')
+      .replaceAll('Ã‘', 'Ñ')
+      .replaceAll('Â', '');
+
+  text = text
+      .replaceAll('Guinazu', 'Guiñazu')
+      .replaceAll('GuiÃ±azu', 'Guiñazu')
+      .replaceAll('Joaquin', 'Joaquín')
+      .replaceAll('Julian', 'Julián')
+      .replaceAll('Agustin', 'Agustín')
+      .replaceAll('Leon Rodriguez', 'León Rodríguez')
+      .replaceAll('Lopez Aranda', 'López Aranda')
+      .replaceAll(
+        'Municipalidad de Vicente Lopez',
+        'Municipalidad de Vicente López',
+      )
+      .replaceAll('C.A. Velez Sarsfield', 'C.A. Vélez Sarsfield')
+      .replaceAll('Velez', 'Vélez');
+
+  return text;
+}
+
+String normalizeHandballText(dynamic value) {
+  var text = fixTextoRoto(value).trim().toLowerCase();
+
+  text = text
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u')
+      .replaceAll('ñ', 'n');
+
+  text = text.replaceAll(RegExp(r'\s+'), ' ');
+  return text;
+}
+
+String textoKey(dynamic value) {
+  return normalizeHandballText(value);
+}
+
+/// ===============================
+/// IDENTIDAD NORMALIZADA DE PARTIDO
+/// Evita que acentos o encoding rompan finalizados / fixture / próximo.
+/// ===============================
+String buildNormalizedMatchIdentity(Map<String, dynamic> partido) {
+  String rival = fixTextoRoto(partido['rival'] ?? '');
+  String condicion = fixTextoRoto(partido['condicion'] ?? '');
+
+  if (rival.trim().isEmpty || rival == 'null') {
+    final local = fixTextoRoto(partido['local'] ?? '');
+    final visitante = fixTextoRoto(partido['visitante'] ?? '');
+    final localNorm = normalizeHandballText(local);
+    final visitanteNorm = normalizeHandballText(visitante);
+
+    if (localNorm == 'san fernando handball' || localNorm == 'san fernando') {
+      rival = visitante;
+      condicion = condicion.trim().isEmpty ? 'Local' : condicion;
+    } else if (visitanteNorm == 'san fernando handball' ||
+        visitanteNorm == 'san fernando') {
+      rival = local;
+      condicion = condicion.trim().isEmpty ? 'Visitante' : condicion;
+    }
+  }
+
+  return [
+    normalizeHandballText(partido['torneo']),
+    normalizeHandballText(partido['categoria']),
+    normalizeHandballText(partido['fecha']),
+    normalizeHandballText(rival),
+    normalizeHandballText(condicion),
+  ].join('|');
+}
+
+/// ===============================
+/// ESCUDO DE RIVAL POR NOMBRE NORMALIZADO
+/// ===============================
+String? rivalShieldAssetGlobal(dynamic rivalRaw) {
+  switch (normalizeHandballText(rivalRaw)) {
+    case 'argentinos juniors':
+      return 'assets/images/argentinos.png';
+    case 'ferro carril oeste':
+      return 'assets/images/ferro.png';
+    case 's.a.g. villa ballester':
+      return 'assets/images/ballester.png';
+    case 'colegio ward':
+      return 'assets/images/ward.png';
+    case 'municipalidad de vicente lopez':
+      return 'assets/images/vicente_lopez.png';
+    case 'c.a. velez sarsfield':
+      return 'assets/images/velez.png';
+    case 'campana boat club':
+      return 'assets/images/campana.png';
+    case 's.a.g.a.b.':
+      return 'assets/images/sagab.png';
+    case 'c.a. river plate':
+      return 'assets/images/river.png';
+    case 'dorrego handball':
+      return 'assets/images/dorrego.png';
+    case 'estudiantes de la plata':
+      return 'assets/images/estudiantes_lp.png';
+    case 's.e.d.a.l.o.':
+      return 'assets/images/sedalo.png';
+    case 'c.a. lanus':
+      return 'assets/images/lanus.png';
+    case 'nuestra senora de lujan':
+      return 'assets/images/nsl.png';
+    case 'a.a.c.f. quilmes':
+      return 'assets/images/quilmes.png';
+    default:
+      final r = normalizeHandballText(rivalRaw);
+      if (r.contains('argentinos')) return 'assets/images/argentinos.png';
+      if (r.contains('ferro')) return 'assets/images/ferro.png';
+      if (r.contains('ballester')) return 'assets/images/ballester.png';
+      if (r.contains('ward')) return 'assets/images/ward.png';
+      if (r.contains('vicente lopez')) return 'assets/images/vicente_lopez.png';
+      if (r.contains('velez')) return 'assets/images/velez.png';
+      if (r.contains('campana')) return 'assets/images/campana.png';
+      if (r.contains('sagab')) return 'assets/images/sagab.png';
+      if (r.contains('river')) return 'assets/images/river.png';
+      if (r.contains('dorrego')) return 'assets/images/dorrego.png';
+      if (r.contains('estudiantes')) return 'assets/images/estudiantes_lp.png';
+      if (r.contains('sedalo')) return 'assets/images/sedalo.png';
+      if (r.contains('lanus')) return 'assets/images/lanus.png';
+      if (r.contains('lujan')) return 'assets/images/nsl.png';
+      if (r.contains('quilmes')) return 'assets/images/quilmes.png';
+      return null;
+  }
+}
+
+String nombreArqueroDesdeDorsal({
+  required String categoria,
+  required String dorsal,
+}) {
+  final arquerosCategoria = RosterRepository.goalkeepersForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  PlayerProfile? encontrado;
+
+  for (final arquero in arquerosCategoria) {
+    if (arquero.numeroPreferido == dorsal) {
+      encontrado = arquero;
+      break;
+    }
+  }
+
+  encontrado ??= RosterRepository.players
+      .where((p) => p.esArquero)
+      .where((p) => p.numeroPreferido == dorsal)
+      .cast<PlayerProfile?>()
+      .firstOrNull;
+
+  if (encontrado == null) {
+    return 'Arquero $dorsal';
+  }
+
+  final apellido = encontrado.apellido.trim();
+  final nombre = encontrado.nombre.trim();
+
+  final nombreCompleto = [
+    apellido,
+    nombre,
+  ].where((p) => p.isNotEmpty).join(', ');
+
+  if (nombreCompleto.isEmpty) return 'Arquero $dorsal';
+
+  return '$dorsal · $nombreCompleto';
+}
+
+String nombreJugadorDesdeDorsal({
+  required String categoria,
+  required String dorsal,
+}) {
+  final jugadores = RosterRepository.rosterForCategory(
+    categoria: categoria,
+    temporada: '2026',
+  );
+
+  try {
+    final jugador = jugadores.firstWhere((j) => j.numeroPreferido == dorsal);
+
+    final apellido = jugador.apellido.trim();
+    final nombre = jugador.nombre.trim();
+
+    final nombreCompleto = [
+      apellido,
+      nombre,
+    ].where((p) => p.isNotEmpty).join(', ');
+
+    if (nombreCompleto.isEmpty) return 'Jugador $dorsal';
+
+    return '$dorsal · $nombreCompleto';
+  } catch (_) {
+    return 'Jugador $dorsal';
+  }
+}

@@ -1,0 +1,3 @@
+List<String> get competenciasDisponibles {
+    return ['Local', 'Nacional A', 'Nacional B', 'Nacional C', 'Amistoso'];
+  }

@@ -1,8 +1,3 @@
-/// ===============================
-/// PRoXIMO PARTIDO
-/// ===============================
-/// ===============================
-
 class ProximoPartidoScreen extends StatefulWidget {
   final String categoria;
   final String torneo;
@@ -648,7 +643,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
       final soloReales = decoded.where((item) {
         if (item is! Map) return false;
-        return item['isReal'] == true;
+
+        final map = Map<String, dynamic>.from(item);
+
+        final partidoInterno = Map<String, dynamic>.from(
+          (map['partido'] as Map?)?.cast<String, dynamic>() ??
+              <String, dynamic>{},
+        );
+
+        return map['isReal'] == true ||
+            map['esPartidoReal'] == true ||
+            partidoInterno['isReal'] == true ||
+            partidoInterno['esPartidoReal'] == true;
       }).toList();
 
       eliminados = decoded.length - soloReales.length;
