@@ -1274,7 +1274,7 @@ class _HomeScreenState extends State<HomeScreen> {
   });
 }
 
-Future<void> _saveActiveContext() async {
+  Future<void> _saveActiveContext() async {
   await _settingsRepository.saveActiveContext(
     ActiveContext(
       hasInstitution: tieneInstitucion,
@@ -1286,6 +1286,7 @@ Future<void> _saveActiveContext() async {
     ),
   );
 }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1431,7 +1432,16 @@ Future<void> _saveActiveContext() async {
                   text: 'Importar backup',
                   onTap: () async {
                     Navigator.pop(context);
+
+                    setState(() {
+                      _isLoadingContext = true;
+                    });
+
                     await importarBackupDesdeArchivo(context);
+
+                    if (!mounted) return;
+
+                    await _loadActiveContext();
                   },
                 ),
               ],
@@ -1715,6 +1725,18 @@ Future<void> _saveActiveContext() async {
     );
   }
 
+  Future<void> _importarBackupDesdeEstadoVacio() async {
+  setState(() {
+    _isLoadingContext = true;
+  });
+
+  await importarBackupDesdeArchivo(context);
+
+  if (!mounted) return;
+
+  await _loadActiveContext();
+}
+
   Widget _buildEstadoSinInstitucion(BuildContext context) {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.68,
@@ -1753,7 +1775,7 @@ Future<void> _saveActiveContext() async {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () {},
+            onPressed: _importarBackupDesdeEstadoVacio,
             child: const Text(
               'Importar datos',
               style: TextStyle(color: Color(0xFFD7DCE3), fontSize: 15),
