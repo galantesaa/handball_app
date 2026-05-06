@@ -1,3 +1,5 @@
+import 'features/settings/data/settings_repository.dart';
+import 'features/settings/domain/models/active_context.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
@@ -1231,15 +1233,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool tieneInstitucion = true;
-  final String institucionNombre = 'San Fernando Handball';
-  final bool hayMasDeUnaTemporada = false;
+  bool _isLoadingContext = true;
+  bool tieneInstitucion = false;
 
-  String temporadaSeleccionada = '2026';
-  String competenciaSeleccionada = 'Local';
-  String torneoSeleccionado = 'Apertura';
-  String categoriaSeleccionada = 'Cadetes';
+  String institucionNombre = '';
+  String temporadaSeleccionada = '';
+  String competenciaSeleccionada = '';
+  String torneoSeleccionado = '';
+  String categoriaSeleccionada = '';
+
   String _contextStep = 'competencia';
+
+  final SettingsRepository _settingsRepository = SettingsRepository();
 
   List<String> get contexto => <String>[
     temporadaSeleccionada,
@@ -1247,7 +1252,40 @@ class _HomeScreenState extends State<HomeScreen> {
     torneoSeleccionado,
     categoriaSeleccionada,
   ];
+  @override
+  void initState() {
+  super.initState();
+  _loadActiveContext();
+}
 
+  Future<void> _loadActiveContext() async {
+  final activeContext = await _settingsRepository.getActiveContext();
+
+  if (!mounted) return;
+
+  setState(() {
+    tieneInstitucion = activeContext.hasInstitution;
+    institucionNombre = activeContext.institutionName;
+    temporadaSeleccionada = activeContext.season;
+    competenciaSeleccionada = activeContext.competition;
+    torneoSeleccionado = activeContext.tournament;
+    categoriaSeleccionada = activeContext.category;
+    _isLoadingContext = false;
+  });
+}
+
+Future<void> _saveActiveContext() async {
+  await _settingsRepository.saveActiveContext(
+    ActiveContext(
+      hasInstitution: tieneInstitucion,
+      institutionName: institucionNombre,
+      season: temporadaSeleccionada,
+      competition: competenciaSeleccionada,
+      tournament: torneoSeleccionado,
+      category: categoriaSeleccionada,
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1269,7 +1307,9 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: true,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 46, 20, 24),
-              child: Column(
+              child: _isLoadingContext
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTopIdentityRow(),
@@ -1528,18 +1568,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _setCompetencia(String competencia) {
-    setState(() {
-      competenciaSeleccionada = competencia;
-      torneoSeleccionado = torneosDisponibles.first;
-    });
-  }
+  setState(() {
+    competenciaSeleccionada = competencia;
+    torneoSeleccionado = torneosDisponibles.first;
+  });
 
+  _saveActiveContext();
+}
+  
   void _setTorneo(String torneo) {
-    setState(() {
-      torneoSeleccionado = torneo;
-    });
-  }
+  setState(() {
+    torneoSeleccionado = torneo;
+  });
 
+  _saveActiveContext();
+}
+  
   Widget _buildSelectableChip({
     required String text,
     required bool selected,
@@ -1870,6 +1914,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onSelected: (value) {
               if (value.startsWith('+')) return;
               setState(() => temporadaSeleccionada = value);
+              _saveActiveContext();
             },
           ),
         ),
@@ -1919,6 +1964,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onSelected: (value) {
               if (value.startsWith('+')) return;
               setState(() => categoriaSeleccionada = value);
+              _saveActiveContext();
             },
           ),
         ),

@@ -6,9 +6,7 @@ import '../../../core/storage/app_storage_keys.dart';
 import '../domain/models/active_context.dart';
 
 class SettingsRepository {
-  Future<void> saveActiveContext(
-    ActiveContext context,
-  ) async {
+  Future<void> saveActiveContext(ActiveContext context) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(
@@ -20,28 +18,48 @@ class SettingsRepository {
   Future<ActiveContext> getActiveContext() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final raw = prefs.getString(
-      AppStorageKeys.activeContext,
-    );
+    final raw = prefs.getString(AppStorageKeys.activeContext);
 
-    if (raw == null || raw.isEmpty) {
-      final initial = ActiveContext.initial();
-
+    if (raw == null || raw.trim().isEmpty) {
+      final initial = ActiveContext.initialSeed();
       await saveActiveContext(initial);
-
       return initial;
     }
 
     try {
       final decoded = jsonDecode(raw);
 
-      if (decoded is! Map<String, dynamic>) {
-        return ActiveContext.initial();
+      if (decoded is! Map) {
+        final initial = ActiveContext.initialSeed();
+        await saveActiveContext(initial);
+        return initial;
       }
 
-      return ActiveContext.fromJson(decoded);
+      final map = Map<String, dynamic>.from(decoded);
+
+      final context = ActiveContext.fromJson(map);
+
+      if (context.tournament.trim().isEmpty &&
+          context.competition.trim().isNotEmpty) {
+        final migrated = context.copyWith(
+          tournament: context.competition,
+          competition: 'Local',
+        );
+
+        await saveActiveContext(migrated);
+        return migrated;
+      }
+
+      return context;
     } catch (_) {
-      return ActiveContext.initial();
+      final initial = ActiveContext.initialSeed();
+      await saveActiveContext(initial);
+      return initial;
     }
+  }
+
+  Future<void> clearActiveContext() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(AppStorageKeys.activeContext);
   }
 }
