@@ -1491,11 +1491,153 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _toggleTorneo() {
+    final disponibles = torneosDisponibles;
+
+    if (disponibles.isEmpty) return;
+
+    final actualIndex = disponibles.indexOf(torneoSeleccionado);
+
+    final siguienteIndex = actualIndex < 0
+        ? 0
+        : (actualIndex + 1) % disponibles.length;
+
     setState(() {
-      torneoSeleccionado = torneoSeleccionado == 'Apertura'
-          ? 'Clausura'
-          : 'Apertura';
+      torneoSeleccionado = disponibles[siguienteIndex];
     });
+  }
+
+  List<String> get competenciasDisponibles {
+    return ['Local', 'Nacional A', 'Nacional B', 'Nacional C', 'Amistoso'];
+  }
+
+  List<String> get torneosDisponibles {
+    if (competenciaSeleccionada == 'Local') {
+      return ['Apertura', 'Clausura'];
+    }
+
+    if (competenciaSeleccionada.startsWith('Nacional')) {
+      return ['Único'];
+    }
+
+    if (competenciaSeleccionada == 'Amistoso') {
+      return ['Amistoso'];
+    }
+
+    return ['Único'];
+  }
+
+  void _setCompetencia(String competencia) {
+    setState(() {
+      competenciaSeleccionada = competencia;
+      torneoSeleccionado = torneosDisponibles.first;
+    });
+  }
+
+  void _setTorneo(String torneo) {
+    setState(() {
+      torneoSeleccionado = torneo;
+    });
+  }
+
+  Widget _buildSelectableChip({
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF4F8CFF)
+              : const Color(0xFF182338).withOpacity(0.95),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF4F8CFF)
+                : Colors.white.withOpacity(0.05),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompetenciaYTorneoSelector() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Competencia',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildSelectableChip(
+                text: 'Local',
+                selected: competenciaSeleccionada == 'Local',
+                onTap: () => _setCompetencia('Local'),
+              ),
+              _buildSelectableChip(
+                text: 'Amistoso',
+                selected: competenciaSeleccionada == 'Amistoso',
+                onTap: () => _setCompetencia('Amistoso'),
+              ),
+              _buildSelectableChip(
+                text: 'Nacional',
+                selected: competenciaSeleccionada == 'Nacional',
+                onTap: () => _setCompetencia('Nacional'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Torneo',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: torneosDisponibles.map((torneo) {
+              return _buildSelectableChip(
+                text: torneo,
+                selected: torneoSeleccionado == torneo,
+                onTap: () => _setTorneo(torneo),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTopIdentityRow() {
@@ -1599,8 +1741,6 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildContextSection(),
-                const SizedBox(height: 12),
-                _buildSwitcherRow(),
                 const SizedBox(height: 12),
                 _buildPrimaryOutlineAction(
                   text: 'Ver fixture actual',
@@ -1714,89 +1854,155 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContextLine() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: contexto.asMap().entries.map((entry) {
-          final int index = entry.key;
-          final String value = entry.value;
-          final bool removable = index == 0 ? hayMasDeUnaTemporada : false;
-
-          return Padding(
-            padding: EdgeInsets.only(
-              right: index == contexto.length - 1 ? 0 : 4,
+    return Column(
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 96,
+              child: _buildContextDropdown(
+                value: temporadaSeleccionada,
+                items: const ['2026', '+ Crear temporada'],
+                onChanged: (value) {
+                  if (value == null || value.startsWith('+')) return;
+                  setState(() => temporadaSeleccionada = value);
+                },
+              ),
             ),
-            child: _buildContextToken(
-              text: value,
-              removable: removable,
-              onRemove: removable
-                  ? () {
-                      setState(() {});
-                    }
-                  : null,
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildContextDropdown(
+                value: competenciaSeleccionada,
+                items: [...competenciasDisponibles, '+ Crear competencia'],
+                onChanged: (value) {
+                  if (value == null || value.startsWith('+')) return;
+                  _setCompetencia(value);
+                },
+              ),
             ),
-          );
-        }).toList(),
-      ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildContextDropdown(
+                value: torneoSeleccionado,
+                items: [...torneosDisponibles, '+ Crear torneo'],
+                onChanged: (value) {
+                  if (value == null || value.startsWith('+')) return;
+                  _setTorneo(value);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildContextDropdown(
+                value: categoriaSeleccionada,
+                items: const ['Cadetes', 'Juveniles', '+ Crear categoría'],
+                onChanged: (value) {
+                  if (value == null || value.startsWith('+')) return;
+                  setState(() => categoriaSeleccionada = value);
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildContextToken({
-    required String text,
-    required bool removable,
-    VoidCallback? onRemove,
+  Widget _buildContextDropdown({
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
   }) {
+    final safeItems = items.contains(value) ? items : [value, ...items];
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF182338).withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.035)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFFDCE4EF),
-              fontWeight: FontWeight.w500,
-              height: 1.0,
-            ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          dropdownColor: const Color(0xFF0F1722),
+          iconEnabledColor: const Color(0xFFC9D3E0),
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFFDCE4EF),
+            fontWeight: FontWeight.w600,
           ),
-          if (removable) ...[
-            const SizedBox(width: 5),
-            GestureDetector(
-              onTap: onRemove,
-              child: const Icon(
-                Icons.close_rounded,
-                size: 14,
-                color: Color(0xFFC9D3E0),
+          items: safeItems.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: item.startsWith('+')
+                      ? const Color(0xFF4F8CFF)
+                      : const Color(0xFFDCE4EF),
+                  fontWeight: item.startsWith('+')
+                      ? FontWeight.w800
+                      : FontWeight.w600,
+                ),
               ),
-            ),
-          ],
-        ],
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
       ),
     );
   }
 
   Widget _buildSwitcherRow() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildSecondaryButton(
-            text: 'Categoría: $categoriaSeleccionada',
-            onTap: _toggleCategoria,
-          ),
+        // 🔥 COMPETENCIA
+        Row(
+          children: [
+            Expanded(
+              child: _buildSecondaryButton(
+                text: 'Comp: $competenciaSeleccionada',
+                onTap: () {
+                  final opciones = ['Local', 'Amistoso', 'Nacional'];
+
+                  final actual = opciones.indexOf(competenciaSeleccionada);
+
+                  final siguiente = (actual + 1) % opciones.length;
+
+                  _setCompetencia(opciones[siguiente]);
+                },
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildSecondaryButton(
-            text: 'Torneo: $torneoSeleccionado',
-            onTap: _toggleTorneo,
-          ),
+
+        const SizedBox(height: 8),
+
+        // 🔥 CATEGORIA + TORNEO
+        Row(
+          children: [
+            Expanded(
+              child: _buildSecondaryButton(
+                text: 'Categoría: $categoriaSeleccionada',
+                onTap: _toggleCategoria,
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            Expanded(
+              child: _buildSecondaryButton(
+                text: 'Torneo: $torneoSeleccionado',
+                onTap: _toggleTorneo,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -4223,629 +4429,619 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   Widget _buildShareMatchOverviewCard(BuildContext context) {
-  final ownStats = _buildShareStatsForMode('ataque');
-  final rivalStatsRaw = _buildShareStatsForMode('defensa');
+    final ownStats = _buildShareStatsForMode('ataque');
+    final rivalStatsRaw = _buildShareStatsForMode('defensa');
 
-  final localName = _nombreLocal;
-  final visitanteName = _nombreVisitante;
+    final localName = _nombreLocal;
+    final visitanteName = _nombreVisitante;
 
-  final localStats = _somosLocales ? ownStats : rivalStatsRaw;
-  final visitanteStats = _somosLocales ? rivalStatsRaw : ownStats;
+    final localStats = _somosLocales ? ownStats : rivalStatsRaw;
+    final visitanteStats = _somosLocales ? rivalStatsRaw : ownStats;
 
-  final int local2Min = _somosLocales ? _exclusiones2MinV2 : 0;
-  final int visitante2Min = _somosLocales ? 0 : _exclusiones2MinV2;
+    final int local2Min = _somosLocales ? _exclusiones2MinV2 : 0;
+    final int visitante2Min = _somosLocales ? 0 : _exclusiones2MinV2;
 
-  final int localAmarillas = _somosLocales ? _amarillasV2 : 0;
-  final int visitanteAmarillas = _somosLocales ? 0 : _amarillasV2;
+    final int localAmarillas = _somosLocales ? _amarillasV2 : 0;
+    final int visitanteAmarillas = _somosLocales ? 0 : _amarillasV2;
 
-  final int localRojas = _somosLocales ? _rojasV2 : 0;
-  final int visitanteRojas = _somosLocales ? 0 : _rojasV2;
+    final int localRojas = _somosLocales ? _rojasV2 : 0;
+    final int visitanteRojas = _somosLocales ? 0 : _rojasV2;
 
-  double safeEfficiency(int goals, int shots) {
-    if (shots <= 0) return 0;
-    return (goals * 100) / shots;
-  }
-
-  final double localEficacia = safeEfficiency(
-    localStats.tirosConGol,
-    localStats.tiros,
-  );
-
-  final double visitanteEficacia = safeEfficiency(
-    visitanteStats.tirosConGol,
-    visitanteStats.tiros,
-  );
-
-  double clampDouble(double value, double min, double max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-  }
-
-  double balanceHigherBetter(double left, double right) {
-    final total = left + right;
-    if (total <= 0) return 0;
-    return ((left - right) / total) * 100;
-  }
-
-  double balanceLowerBetter(double left, double right) {
-    final total = left + right;
-    if (total <= 0) return 0;
-    return ((right - left) / total) * 100;
-  }
-
-  double buildLocalControlIndex() {
-    final double eficaciaBalance = clampDouble(
-      localEficacia - visitanteEficacia,
-      -25,
-      25,
-    );
-
-    final double robosBalance = clampDouble(
-      balanceHigherBetter(
-        localStats.recuperaciones.toDouble(),
-        visitanteStats.recuperaciones.toDouble(),
-      ),
-      -25,
-      25,
-    );
-
-    final double perdidasBalance = clampDouble(
-      balanceLowerBetter(
-        localStats.perdidasNoForzadas.toDouble(),
-        visitanteStats.perdidasNoForzadas.toDouble(),
-      ),
-      -25,
-      25,
-    );
-
-    final double marcadorBalance = clampDouble(
-      ((_golesLocal - _golesVisitante) * 4).toDouble(),
-      -20,
-      20,
-    );
-
-    final double control =
-        50 +
-        (eficaciaBalance * 0.40) +
-        (robosBalance * 0.25) +
-        (perdidasBalance * 0.20) +
-        (marcadorBalance * 0.15);
-
-    return clampDouble(control, 0, 100);
-  }
-
-  final double localControl = buildLocalControlIndex();
-  final double visitanteControl = 100 - localControl;
-
-  String buildMatchKey() {
-    final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
-    final robosDiff =
-        (localStats.recuperaciones - visitanteStats.recuperaciones).abs();
-    final perdidasDiff =
-        (localStats.perdidasNoForzadas -
-                visitanteStats.perdidasNoForzadas)
-            .abs();
-
-    if (eficaciaDiff >= 8) return 'Clave: eficacia ofensiva';
-    if (robosDiff >= 5) return 'Clave: presión defensiva';
-    if (perdidasDiff >= 5) return 'Clave: pérdidas no forzadas';
-
-    return 'Partido parejo';
-  }
-
-  String buildInsight() {
-  final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
-  final golesDiff = (_golesLocal - _golesVisitante).abs();
-
-  if (eficaciaDiff > 10) {
-    return localEficacia > visitanteEficacia
-        ? '$localName fue mucho más eficaz'
-        : '$visitanteName fue mucho más eficaz';
-  }
-
-  if (golesDiff >= 6) {
-    return '$localName dominó claramente el partido';
-  }
-
-  if (golesDiff <= 2) {
-    return 'Partido muy parejo';
-  }
-
-  return 'Partido definido por detalles';
-}
-  
-  Color valueColor({
-    required double leftValue,
-    required double rightValue,
-    required bool isLeft,
-    required String compareMode,
-  }) {
-    if (compareMode == 'neutral' || leftValue == rightValue) {
-      return Colors.white;
+    double safeEfficiency(int goals, int shots) {
+      if (shots <= 0) return 0;
+      return (goals * 100) / shots;
     }
 
-    final bool leftIsBetter = compareMode == 'higher'
-        ? leftValue > rightValue
-        : leftValue < rightValue;
+    final double localEficacia = safeEfficiency(
+      localStats.tirosConGol,
+      localStats.tiros,
+    );
 
-    if (isLeft) {
-      return leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+    final double visitanteEficacia = safeEfficiency(
+      visitanteStats.tirosConGol,
+      visitanteStats.tiros,
+    );
+
+    double clampDouble(double value, double min, double max) {
+      if (value < min) return min;
+      if (value > max) return max;
+      return value;
     }
 
-    return !leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
-  }
+    double balanceHigherBetter(double left, double right) {
+      final total = left + right;
+      if (total <= 0) return 0;
+      return ((left - right) / total) * 100;
+    }
 
-  Widget statRow(
-    String label,
-    String left,
-    String right, {
-    double? leftValue,
-    double? rightValue,
-    String compareMode = 'neutral',
-  }) {
-    final double resolvedLeftValue =
-        leftValue ?? double.tryParse(left.replaceAll('%', '')) ?? 0;
-    final double resolvedRightValue =
-        rightValue ?? double.tryParse(right.replaceAll('%', '')) ?? 0;
+    double balanceLowerBetter(double left, double right) {
+      final total = left + right;
+      if (total <= 0) return 0;
+      return ((right - left) / total) * 100;
+    }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              left,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                decoration: TextDecoration.none,
-                color: valueColor(
-                  leftValue: resolvedLeftValue,
-                  rightValue: resolvedRightValue,
-                  isLeft: true,
-                  compareMode: compareMode,
-                ),
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 95,
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFFAAB4C3),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              right,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                decoration: TextDecoration.none,
-                color: valueColor(
-                  leftValue: resolvedLeftValue,
-                  rightValue: resolvedRightValue,
-                  isLeft: false,
-                  compareMode: compareMode,
-                ),
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    double buildLocalControlIndex() {
+      final double eficaciaBalance = clampDouble(
+        localEficacia - visitanteEficacia,
+        -25,
+        25,
+      );
 
-  String shortTeamName(String name) {
-  final lower = name.toLowerCase();
-
-  if (lower.contains('vélez')) return 'Vélez';
-  if (lower.contains('san fernando')) return 'San Fernando';
-
-  // fallback inteligente
-  final words = name.split(' ');
-  if (words.length >= 2) {
-    return words.last;
-  }
-
-  return name;
-}
-
-  Widget controlIndexBar() {
-  final localShort = shortTeamName(localName);
-  final visitanteShort = shortTeamName(visitanteName);
-
-  return Column(
-    children: [
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              '${localControl.toStringAsFixed(0)}% $localShort',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFF27D36B),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              '${visitanteControl.toStringAsFixed(0)}% $visitanteShort',
-              textAlign: TextAlign.right,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFF8FA3BF),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 4),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: SizedBox(
-          height: 6,
-          child: Row(
-            children: [
-              Expanded(
-                flex: localControl.round().clamp(1, 99),
-                child: Container(color: const Color(0xFF27D36B)),
-              ),
-              Expanded(
-                flex: visitanteControl.round().clamp(1, 99),
-                child: Container(color: const Color(0xFF324057)),
-              ),
-            ],
-          ),
+      final double robosBalance = clampDouble(
+        balanceHigherBetter(
+          localStats.recuperaciones.toDouble(),
+          visitanteStats.recuperaciones.toDouble(),
         ),
-      ),
-    ],
-  );
-}
-  
-  Widget compactUnifiedPanel() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111A28),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF27D36B).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              buildMatchKey(),
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFF27D36B),
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Análisis del partido',
-            style: TextStyle(
-              decoration: TextDecoration.none,
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          controlIndexBar(),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  localName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    decoration: TextDecoration.none,
-                    color: Color(0xFF8FA3BF),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 95),
-              Expanded(
-                child: Text(
-                  visitanteName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    decoration: TextDecoration.none,
-                    color: Color(0xFF8FA3BF),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+        -25,
+        25,
+      );
 
-          statRow(
-            'Tiros',
-            localStats.tiros.toString(),
-            visitanteStats.tiros.toString(),
-          ),
-          statRow(
-            'Eficacia',
-            '${localEficacia.toStringAsFixed(1)}%',
-            '${visitanteEficacia.toStringAsFixed(1)}%',
-            leftValue: localEficacia,
-            rightValue: visitanteEficacia,
-            compareMode: 'higher',
-          ),
-          statRow(
-            'Atajados',
-            localStats.tirosAtajados.toString(),
-            visitanteStats.tirosAtajados.toString(),
-            compareMode: 'lower',
-          ),
-          statRow(
-            'Fuera',
-            localStats.tirosFuera.toString(),
-            visitanteStats.tirosFuera.toString(),
-            compareMode: 'lower',
-          ),
-          statRow(
-            'Palo',
-            localStats.tirosAlPalo.toString(),
-            visitanteStats.tirosAlPalo.toString(),
-            compareMode: 'lower',
-          ),
-
-          const Divider(
-            color: Color(0x223FFFFFF),
-            height: 16,
-            thickness: 1,
-          ),
-
-          statRow(
-            'Robos',
-            localStats.recuperaciones.toString(),
-            visitanteStats.recuperaciones.toString(),
-            compareMode: 'higher',
-          ),
-          statRow(
-            'Pérd. no forzada',
-            localStats.perdidasNoForzadas.toString(),
-            visitanteStats.perdidasNoForzadas.toString(),
-            compareMode: 'lower',
-          ),
-
-          const Divider(
-            color: Color(0x223FFFFFF),
-            height: 16,
-            thickness: 1,
-          ),
-
-          const Text(
-            'Penales y disciplina',
-            style: TextStyle(
-              decoration: TextDecoration.none,
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 5),
-
-          statRow(
-            'Penales',
-            localStats.penales.toString(),
-            visitanteStats.penales.toString(),
-          ),
-          statRow(
-            'Convert.',
-            localStats.penalesConvertidos.toString(),
-            visitanteStats.penalesConvertidos.toString(),
-            compareMode: 'higher',
-          ),
-          statRow(
-            'Errados',
-            localStats.penalesErrados.toString(),
-            visitanteStats.penalesErrados.toString(),
-            compareMode: 'lower',
-          ),
-
-          const Divider(
-            color: Color(0x223FFFFFF),
-            height: 16,
-            thickness: 1,
-          ),
-
-          statRow(
-            '2 min',
-            local2Min.toString(),
-            visitante2Min.toString(),
-            compareMode: 'lower',
-          ),
-          statRow(
-            'Amarillas',
-            localAmarillas.toString(),
-            visitanteAmarillas.toString(),
-            compareMode: 'lower',
-          ),
-          statRow(
-            'Rojas',
-            localRojas.toString(),
-            visitanteRojas.toString(),
-            compareMode: 'lower',
-          ),
-
-          const SizedBox(height: 7),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: const Color(0xFF172235),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              buildInsight(),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFFE4EAF3),
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  return Material(
-    color: Colors.transparent,
-    child: DefaultTextStyle(
-      style: const TextStyle(
-        decoration: TextDecoration.none,
-        color: Colors.white,
-        fontSize: 12,
-      ),
-      child: Container(
-        width: 390,
-        height: 693,
-        padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF070D17), Color(0xFF101827)],
-          ),
+      final double perdidasBalance = clampDouble(
+        balanceLowerBetter(
+          localStats.perdidasNoForzadas.toDouble(),
+          visitanteStats.perdidasNoForzadas.toDouble(),
         ),
-        child: Column(
+        -25,
+        25,
+      );
+
+      final double marcadorBalance = clampDouble(
+        ((_golesLocal - _golesVisitante) * 4).toDouble(),
+        -20,
+        20,
+      );
+
+      final double control =
+          50 +
+          (eficaciaBalance * 0.40) +
+          (robosBalance * 0.25) +
+          (perdidasBalance * 0.20) +
+          (marcadorBalance * 0.15);
+
+      return clampDouble(control, 0, 100);
+    }
+
+    final double localControl = buildLocalControlIndex();
+    final double visitanteControl = 100 - localControl;
+
+    String buildMatchKey() {
+      final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
+      final robosDiff =
+          (localStats.recuperaciones - visitanteStats.recuperaciones).abs();
+      final perdidasDiff =
+          (localStats.perdidasNoForzadas - visitanteStats.perdidasNoForzadas)
+              .abs();
+
+      if (eficaciaDiff >= 8) return 'Clave: eficacia ofensiva';
+      if (robosDiff >= 5) return 'Clave: presión defensiva';
+      if (perdidasDiff >= 5) return 'Clave: pérdidas no forzadas';
+
+      return 'Partido parejo';
+    }
+
+    String buildInsight() {
+      final eficaciaDiff = (localEficacia - visitanteEficacia).abs();
+      final golesDiff = (_golesLocal - _golesVisitante).abs();
+
+      if (eficaciaDiff > 10) {
+        return localEficacia > visitanteEficacia
+            ? '$localName fue mucho más eficaz'
+            : '$visitanteName fue mucho más eficaz';
+      }
+
+      if (golesDiff >= 6) {
+        return '$localName dominó claramente el partido';
+      }
+
+      if (golesDiff <= 2) {
+        return 'Partido muy parejo';
+      }
+
+      return 'Partido definido por detalles';
+    }
+
+    Color valueColor({
+      required double leftValue,
+      required double rightValue,
+      required bool isLeft,
+      required String compareMode,
+    }) {
+      if (compareMode == 'neutral' || leftValue == rightValue) {
+        return Colors.white;
+      }
+
+      final bool leftIsBetter = compareMode == 'higher'
+          ? leftValue > rightValue
+          : leftValue < rightValue;
+
+      if (isLeft) {
+        return leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+      }
+
+      return !leftIsBetter ? const Color(0xFF27D36B) : Colors.white;
+    }
+
+    Widget statRow(
+      String label,
+      String left,
+      String right, {
+      double? leftValue,
+      double? rightValue,
+      String compareMode = 'neutral',
+    }) {
+      final double resolvedLeftValue =
+          leftValue ?? double.tryParse(left.replaceAll('%', '')) ?? 0;
+      final double resolvedRightValue =
+          rightValue ?? double.tryParse(right.replaceAll('%', '')) ?? 0;
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
           children: [
-            const Text(
-              'HANDBALL SGS',
-              style: TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFF8FA3BF),
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2.4,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${partidoV2.categoria} · ${partidoV2.torneo}',
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildShareTeam(
-                    nombre: _nombreLocal,
-                    assetPath: _somosLocales
-                        ? 'assets/images/san_fernando.png'
-                        : _rivalShieldAsset(),
-                  ),
-                ),
-                Text(
-                  '$_golesLocal - $_golesVisitante',
-                  style: const TextStyle(
-                    decoration: TextDecoration.none,
-                    color: Colors.white,
-                    fontSize: 39,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Expanded(
-                  child: _buildShareTeam(
-                    nombre: _nombreVisitante,
-                    assetPath: _somosLocales
-                        ? _rivalShieldAsset()
-                        : 'assets/images/san_fernando.png',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF111A28),
-                borderRadius: BorderRadius.circular(14),
-              ),
+            Expanded(
               child: Text(
-                'Fecha: ${partidoV2.fecha} · Hora: ${partidoV2.hora} · Condición: ${partidoV2.condicion}',
+                left,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  decoration: TextDecoration.none,
+                  color: valueColor(
+                    leftValue: resolvedLeftValue,
+                    rightValue: resolvedRightValue,
+                    isLeft: true,
+                    compareMode: compareMode,
+                  ),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 95,
+              child: Text(
+                label,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   decoration: TextDecoration.none,
-                  color: Color(0xFFDCE4EF),
-                  fontSize: 12,
+                  color: Color(0xFFAAB4C3),
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            compactUnifiedPanel(),
-            const Spacer(),
-            Text(
-              '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
-              style: const TextStyle(
-                decoration: TextDecoration.none,
-                color: Color(0xFF8FA3BF),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+            Expanded(
+              child: Text(
+                right,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  decoration: TextDecoration.none,
+                  color: valueColor(
+                    leftValue: resolvedLeftValue,
+                    rightValue: resolvedRightValue,
+                    isLeft: false,
+                    compareMode: compareMode,
+                  ),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],
         ),
+      );
+    }
+
+    String shortTeamName(String name) {
+      final lower = name.toLowerCase();
+
+      if (lower.contains('vélez')) return 'Vélez';
+      if (lower.contains('san fernando')) return 'San Fernando';
+
+      // fallback inteligente
+      final words = name.split(' ');
+      if (words.length >= 2) {
+        return words.last;
+      }
+
+      return name;
+    }
+
+    Widget controlIndexBar() {
+      final localShort = shortTeamName(localName);
+      final visitanteShort = shortTeamName(visitanteName);
+
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${localControl.toStringAsFixed(0)}% $localShort',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Color(0xFF27D36B),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  '${visitanteControl.toStringAsFixed(0)}% $visitanteShort',
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Color(0xFF8FA3BF),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              height: 6,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: localControl.round().clamp(1, 99),
+                    child: Container(color: const Color(0xFF27D36B)),
+                  ),
+                  Expanded(
+                    flex: visitanteControl.round().clamp(1, 99),
+                    child: Container(color: const Color(0xFF324057)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    Widget compactUnifiedPanel() {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111A28),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF27D36B).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                buildMatchKey(),
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Color(0xFF27D36B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Análisis del partido',
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            controlIndexBar(),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    localName,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      decoration: TextDecoration.none,
+                      color: Color(0xFF8FA3BF),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 95),
+                Expanded(
+                  child: Text(
+                    visitanteName,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      decoration: TextDecoration.none,
+                      color: Color(0xFF8FA3BF),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            statRow(
+              'Tiros',
+              localStats.tiros.toString(),
+              visitanteStats.tiros.toString(),
+            ),
+            statRow(
+              'Eficacia',
+              '${localEficacia.toStringAsFixed(1)}%',
+              '${visitanteEficacia.toStringAsFixed(1)}%',
+              leftValue: localEficacia,
+              rightValue: visitanteEficacia,
+              compareMode: 'higher',
+            ),
+            statRow(
+              'Atajados',
+              localStats.tirosAtajados.toString(),
+              visitanteStats.tirosAtajados.toString(),
+              compareMode: 'lower',
+            ),
+            statRow(
+              'Fuera',
+              localStats.tirosFuera.toString(),
+              visitanteStats.tirosFuera.toString(),
+              compareMode: 'lower',
+            ),
+            statRow(
+              'Palo',
+              localStats.tirosAlPalo.toString(),
+              visitanteStats.tirosAlPalo.toString(),
+              compareMode: 'lower',
+            ),
+
+            const Divider(color: Color(0x223FFFFFF), height: 16, thickness: 1),
+
+            statRow(
+              'Robos',
+              localStats.recuperaciones.toString(),
+              visitanteStats.recuperaciones.toString(),
+              compareMode: 'higher',
+            ),
+            statRow(
+              'Pérd. no forzada',
+              localStats.perdidasNoForzadas.toString(),
+              visitanteStats.perdidasNoForzadas.toString(),
+              compareMode: 'lower',
+            ),
+
+            const Divider(color: Color(0x223FFFFFF), height: 16, thickness: 1),
+
+            const Text(
+              'Penales y disciplina',
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 5),
+
+            statRow(
+              'Penales',
+              localStats.penales.toString(),
+              visitanteStats.penales.toString(),
+            ),
+            statRow(
+              'Convert.',
+              localStats.penalesConvertidos.toString(),
+              visitanteStats.penalesConvertidos.toString(),
+              compareMode: 'higher',
+            ),
+            statRow(
+              'Errados',
+              localStats.penalesErrados.toString(),
+              visitanteStats.penalesErrados.toString(),
+              compareMode: 'lower',
+            ),
+
+            const Divider(color: Color(0x223FFFFFF), height: 16, thickness: 1),
+
+            statRow(
+              '2 min',
+              local2Min.toString(),
+              visitante2Min.toString(),
+              compareMode: 'lower',
+            ),
+            statRow(
+              'Amarillas',
+              localAmarillas.toString(),
+              visitanteAmarillas.toString(),
+              compareMode: 'lower',
+            ),
+            statRow(
+              'Rojas',
+              localRojas.toString(),
+              visitanteRojas.toString(),
+              compareMode: 'lower',
+            ),
+
+            const SizedBox(height: 7),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFF172235),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                buildInsight(),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Color(0xFFE4EAF3),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: DefaultTextStyle(
+        style: const TextStyle(
+          decoration: TextDecoration.none,
+          color: Colors.white,
+          fontSize: 12,
+        ),
+        child: Container(
+          width: 390,
+          height: 693,
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF070D17), Color(0xFF101827)],
+            ),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'HANDBALL SGS',
+                style: TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Color(0xFF8FA3BF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${partidoV2.categoria} · ${partidoV2.torneo}',
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildShareTeam(
+                      nombre: _nombreLocal,
+                      assetPath: _somosLocales
+                          ? 'assets/images/san_fernando.png'
+                          : _rivalShieldAsset(),
+                    ),
+                  ),
+                  Text(
+                    '$_golesLocal - $_golesVisitante',
+                    style: const TextStyle(
+                      decoration: TextDecoration.none,
+                      color: Colors.white,
+                      fontSize: 39,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildShareTeam(
+                      nombre: _nombreVisitante,
+                      assetPath: _somosLocales
+                          ? _rivalShieldAsset()
+                          : 'assets/images/san_fernando.png',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111A28),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  'Fecha: ${partidoV2.fecha} · Hora: ${partidoV2.hora} · Condición: ${partidoV2.condicion}',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    decoration: TextDecoration.none,
+                    color: Color(0xFFDCE4EF),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              compactUnifiedPanel(),
+              const Spacer(),
+              Text(
+                '${partidoV2.fecha} · ${partidoV2.hora} · ${partidoV2.condicion}',
+                style: const TextStyle(
+                  decoration: TextDecoration.none,
+                  color: Color(0xFF8FA3BF),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildShareGoalkeepersAnalysisCard(BuildContext context) {
     final arqueros = _estadisticasPorArquero();

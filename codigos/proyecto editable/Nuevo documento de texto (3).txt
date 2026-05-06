@@ -1,0 +1,68 @@
+Widget _buildContextLine() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: contexto.asMap().entries.map((entry) {
+          final int index = entry.key;
+          final String value = entry.value;
+          final bool removable = index == 0 ? hayMasDeUnaTemporada : false;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              right: index == contexto.length - 1 ? 0 : 4,
+            ),
+            child: _buildContextToken(
+              text: value,
+              removable: removable,
+              onRemove: removable
+                  ? () {
+                      setState(() {});
+                    }
+                  : null,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildContextToken({
+    required String text,
+    required bool removable,
+    VoidCallback? onRemove,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338).withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.035)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFFDCE4EF),
+              fontWeight: FontWeight.w500,
+              height: 1.0,
+            ),
+          ),
+          if (removable) ...[
+            const SizedBox(width: 5),
+            GestureDetector(
+              onTap: onRemove,
+              child: const Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: Color(0xFFC9D3E0),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }

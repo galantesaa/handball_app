@@ -1,0 +1,19 @@
+Widget _buildSwitcherRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildSecondaryButton(
+            text: 'Categoría: $categoriaSeleccionada',
+            onTap: _toggleCategoria,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildSecondaryButton(
+            text: 'Torneo: $torneoSeleccionado',
+            onTap: _toggleTorneo,
+          ),
+        ),
+      ],
+    );
+  }
