@@ -128,15 +128,42 @@ class StructureRepository {
     required String tournament,
     required String category,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+
     final seasons = await getSeasons();
     if (season.trim().isNotEmpty && !seasons.contains(season)) {
       await saveSeasons([...seasons, season]);
     }
 
-    final categories = await getCategories();
-    if (category.trim().isNotEmpty && !categories.contains(category)) {
-      await saveCategories([...categories, category]);
+    final detectedCategories = <String>{};
+
+    if (category.trim().isNotEmpty) {
+      detectedCategories.add(category.trim());
     }
+
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith('roster_')) continue;
+
+      final parts = key.split('_');
+
+      if (parts.length < 3) continue;
+
+      final detectedSeason = parts[1].trim();
+      final detectedCategory = parts.sublist(2).join('_').trim();
+
+      if (detectedSeason == season && detectedCategory.isNotEmpty) {
+        detectedCategories.add(detectedCategory);
+      }
+    }
+
+    final categories = await getCategories();
+
+    final mergedCategories = {
+      ...categories.map((e) => e.trim()).where((e) => e.isNotEmpty),
+      ...detectedCategories,
+    }.toList();
+
+    await saveCategories(mergedCategories);
 
     final competitions = await getCompetitions();
     final exists = competitions.any((c) => c.name == competition);
