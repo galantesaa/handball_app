@@ -2091,47 +2091,67 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSection(BuildContext context, String title) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) {
-          switch (title) {
-            case 'Proximo partido':
-              return ProximoPartidoScreen(
-                categoria: categoriaSeleccionada,
-                torneo: torneoSeleccionado,
-              );
-            case 'Partidos jugados':
-              return const HistorialScreen();
-            case 'Estadísticas':
-              return EstadisticasScreen(categoria: categoriaSeleccionada);
-            case 'Equipo':
-              return EquiposScreen(
-                categoriaInicial: categoriaSeleccionada,
-                temporada: temporadaSeleccionada,
-              );
-            default:
-              return Scaffold(
-                appBar: AppBar(title: Text(title)),
-                body: Center(child: Text('Pantalla $title')),
-              );
-          }
-        },
-      ),
-    );
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) {
+        switch (title) {
+          case 'Proximo partido':
+            return ProximoPartidoScreen(
+              temporada: temporadaSeleccionada,
+              competencia: competenciaSeleccionada,
+              torneo: torneoSeleccionado,
+              categoria: categoriaSeleccionada,
+            );
 
+          case 'Partidos jugados':
+            return HistorialScreen(
+              temporada: temporadaSeleccionada,
+              competencia: competenciaSeleccionada,
+              torneo: torneoSeleccionado,
+              categoria: categoriaSeleccionada,
+            );
+
+          case 'Estadísticas':
+            return EstadisticasScreen(
+              temporada: temporadaSeleccionada,
+              competencia: competenciaSeleccionada,
+              torneo: torneoSeleccionado,
+              categoria: categoriaSeleccionada,
+            );
+
+          case 'Equipo':
+            return EquiposScreen(
+              temporada: temporadaSeleccionada,
+              competencia: competenciaSeleccionada,
+              torneo: torneoSeleccionado,
+              categoriaInicial: categoriaSeleccionada,
+            );
+
+          default:
+            return Scaffold(
+              appBar: AppBar(title: Text(title)),
+              body: Center(child: Text('Pantalla $title')),
+            );
+        }
+      },
+    ),
+  );
+}
+  
   void _abrirFixtureActual() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FixtureScreen(
-          categoria: categoriaSeleccionada,
-          torneo: torneoSeleccionado,
-        ),
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FixtureScreen(
+        temporada: temporadaSeleccionada,
+        competencia: competenciaSeleccionada,
+        torneo: torneoSeleccionado,
+        categoria: categoriaSeleccionada,
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _toggleCategoria() {
     setState(() {
@@ -3660,13 +3680,17 @@ class _PressableTileState extends State<_PressableTile> {
 /// ===============================
 
 class ProximoPartidoScreen extends StatefulWidget {
-  final String categoria;
+  final String temporada;
+  final String competencia;
   final String torneo;
+  final String categoria;
 
   const ProximoPartidoScreen({
     super.key,
-    required this.categoria,
+    required this.temporada,
+    required this.competencia,
     required this.torneo,
+    required this.categoria,
   });
 
   @override
@@ -4749,8 +4773,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               context,
               MaterialPageRoute(
                 builder: (_) => FixtureScreen(
-                  categoria: widget.categoria,
+                  temporada: widget.temporada,
+                  competencia: widget.competencia,
                   torneo: widget.torneo,
+                  categoria: widget.categoria,
                 ),
               ),
             );
@@ -9380,13 +9406,17 @@ class _GoalkeeperBlurHeatmapPainter extends CustomPainter {
 ///
 
 class FixtureScreen extends StatefulWidget {
-  final String categoria;
+  final String temporada;
+  final String competencia;
   final String torneo;
+  final String categoria;
 
   const FixtureScreen({
     super.key,
-    required this.categoria,
+    required this.temporada,
+    required this.competencia,
     required this.torneo,
+    required this.categoria,
   });
 
   @override
@@ -14460,7 +14490,18 @@ class HeatmapPainter extends CustomPainter {
 ///===============================
 
 class HistorialScreen extends StatefulWidget {
-  const HistorialScreen({super.key});
+  final String temporada;
+  final String competencia;
+  final String torneo;
+  final String categoria;
+
+  const HistorialScreen({
+    super.key,
+    required this.temporada,
+    required this.competencia,
+    required this.torneo,
+    required this.categoria,
+  });
 
   @override
   State<HistorialScreen> createState() => _HistorialScreenState();
@@ -15147,9 +15188,18 @@ class _ExtremeZonePainter extends CustomPainter {
 ///===============================
 
 class EstadisticasScreen extends StatefulWidget {
+  final String temporada;
+  final String competencia;
+  final String torneo;
   final String categoria;
 
-  const EstadisticasScreen({super.key, required this.categoria});
+  const EstadisticasScreen({
+    super.key,
+    required this.temporada,
+    required this.competencia,
+    required this.torneo,
+    required this.categoria,
+  });
 
   @override
   State<EstadisticasScreen> createState() => _EstadisticasScreenState();
@@ -15532,11 +15582,15 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
 class EquiposScreen extends StatelessWidget {
   final String categoriaInicial;
   final String temporada;
+  final String competencia;
+  final String torneo;
 
   const EquiposScreen({
     super.key,
     required this.categoriaInicial,
     required this.temporada,
+    required this.competencia,
+    required this.torneo,
   });
 
   @override
