@@ -3730,14 +3730,34 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   List<Map<String, dynamic>> siguientesPartidos = [];
   List<Map<String, dynamic>> partidosFinalizados = [];
 
-  String get _proximoPartidoStorageKey =>
-      'proximo_partido_${widget.categoria}_${widget.torneo}';
+  String _storageSafe(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(' ', '_')
+      .replaceAll('/', '_')
+      .replaceAll('\\', '_')
+      .replaceAll(RegExp(r'[^a-z0-9_áéíóúñü-]'), '');
+}
 
-  String get _siguientesPartidosStorageKey =>
-      'siguientes_${widget.categoria}_${widget.torneo}';
+String get _contextStorageSuffix {
+  return [
+    widget.temporada,
+    widget.competencia,
+    widget.torneo,
+    widget.categoria,
+  ].map(_storageSafe).join('_');
+}
 
-  String get _partidosFinalizadosStorageKey =>
-      'finalizados_${widget.categoria}_${widget.torneo}';
+String get _proximoPartidoStorageKey =>
+    'proximo_partido_$_contextStorageSuffix';
+
+String get _siguientesPartidosStorageKey =>
+    'siguientes_$_contextStorageSuffix';
+
+String get _partidosFinalizadosStorageKey =>
+    'finalizados_$_contextStorageSuffix';
+    
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
       'finished_matches_history_v1';
