@@ -1,0 +1,152 @@
+Widget _buildContextLine() {
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        _buildContextToken(
+          text: temporadaSeleccionada.trim().isEmpty
+              ? 'Temporada'
+              : temporadaSeleccionada,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí temporada',
+            options: [
+              ...temporadasDinamicas,
+              '+ Crear temporada',
+            ],
+            currentValue: temporadaSeleccionada,
+            onSelected: (value) async {
+              if (value == '+ Crear temporada') {
+                await _crearTemporada();
+                return;
+              }
+
+              setState(() {
+                temporadaSeleccionada = value;
+              });
+
+              await _saveActiveContext();
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        _buildContextToken(
+          text: competenciaSeleccionada.trim().isEmpty
+              ? 'Competencia'
+              : competenciaSeleccionada,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí competencia',
+            options: [
+              ...competenciasDisponibles,
+              '+ Crear competencia',
+            ],
+            currentValue: competenciaSeleccionada,
+            onSelected: (value) async {
+              if (value == '+ Crear competencia') {
+                await _crearCompetencia();
+                return;
+              }
+
+              _setCompetencia(value);
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        _buildContextToken(
+          text: torneoSeleccionado.trim().isEmpty ? 'Torneo' : torneoSeleccionado,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí torneo',
+            options: [
+              ...torneosDisponibles,
+              '+ Crear torneo',
+            ],
+            currentValue: torneoSeleccionado,
+            onSelected: (value) async {
+              if (value == '+ Crear torneo') {
+                await _crearTorneo();
+                return;
+              }
+
+              _setTorneo(value);
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        _buildContextToken(
+          text: categoriaSeleccionada.trim().isEmpty
+              ? 'Categoría'
+              : categoriaSeleccionada,
+          removable: false,
+          onTap: () => _showContextPicker(
+            title: 'Elegí categoría',
+            options: [
+              ...categoriasDinamicas,
+              '+ Crear categoría',
+            ],
+            currentValue: categoriaSeleccionada,
+            onSelected: (value) async {
+              if (value == '+ Crear categoría') {
+                await _crearCategoria();
+                return;
+              }
+
+              setState(() {
+                categoriaSeleccionada = value;
+              });
+
+              await _saveActiveContext();
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+List<String> get competenciasDisponibles {
+  return competenciasDinamicas.map((e) => e.name).toList();
+}
+
+  List<String> get torneosDisponibles {
+  if (competenciaSeleccionada.trim().isEmpty) return const [];
+
+  final selected = competenciasDinamicas
+      .where((e) => e.name == competenciaSeleccionada)
+      .toList();
+
+  if (selected.isEmpty) return const [];
+
+  return selected.first.tournaments;
+}
+
+  void _setCompetencia(String competencia) {
+  final selected = competenciasDinamicas
+      .where((e) => e.name == competencia)
+      .toList();
+
+  final torneos = selected.isEmpty ? const <String>[] : selected.first.tournaments;
+
+  setState(() {
+    competenciaSeleccionada = competencia;
+    torneoSeleccionado = torneos.isEmpty ? '' : torneos.first;
+  });
+
+  _saveActiveContext();
+}
+
+  void _setTorneo(String torneo) {
+  setState(() {
+    torneoSeleccionado = torneo;
+  });
+
+  _saveActiveContext();
+}
+  
+en HomeScreenState existe
+
+Future<void> _crearTemporada() async {
+Future<void> _crearCategoria() async {
+Future<void> _crearTorneo() async {
+Future<void> _crearCompetencia() async {

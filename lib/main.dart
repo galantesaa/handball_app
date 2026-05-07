@@ -1243,7 +1243,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String torneoSeleccionado = '';
   String categoriaSeleccionada = '';
 
-  String _contextStep = 'competencia';
+  String _contextStep = '';
 
   final SettingsRepository _settingsRepository = SettingsRepository();
 
@@ -1253,6 +1253,13 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> temporadasDinamicas = [];
   List<String> categoriasDinamicas = [];
   List<structure.CompetitionConfig> competenciasDinamicas = [];
+  bool _seasonEditorVisible = false;
+  final TextEditingController _seasonController = TextEditingController();
+  final TextEditingController _competitionController = TextEditingController();
+  final TextEditingController _tournamentController = TextEditingController();
+  final TextEditingController _categoryController = TextEditingController();
+
+
 
   List<String> get contexto => <String>[
     temporadaSeleccionada,
@@ -1265,6 +1272,225 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadActiveContext();
   }
+
+  @override
+  void dispose() {
+    _seasonController.dispose();
+    _competitionController.dispose();
+    _tournamentController.dispose();
+    _categoryController.dispose();
+    super.dispose();
+  }
+
+  void _openContextStep(String step) {
+    setState(() {
+      _contextStep = step;
+
+      if (step == 'temporada') {
+        competenciaSeleccionada = '';
+        torneoSeleccionado = '';
+        categoriaSeleccionada = '';
+      }
+
+      if (step == 'competencia') {
+        torneoSeleccionado = '';
+        categoriaSeleccionada = '';
+      }
+
+      if (step == 'torneo') {
+        categoriaSeleccionada = '';
+      }
+    });
+
+    _saveActiveContext();
+  }
+
+  Future<void> _selectSeasonFlow(String season) async {
+    final clean = season.trim();
+    if (clean.isEmpty) return;
+
+    setState(() {
+      temporadaSeleccionada = clean;
+      competenciaSeleccionada = '';
+      torneoSeleccionado = '';
+      categoriaSeleccionada = '';
+      _contextStep = 'competencia';
+      _seasonController.clear();
+    });
+
+    await _saveActiveContext();
+  }
+
+  Future<void> _createOrSelectSeasonFlow() async {
+    final value = _seasonController.text.trim();
+
+    if (value.isEmpty) {
+      await _showMessage('Ingresá una temporada válida.');
+      return;
+    }
+
+    final exists = temporadasDinamicas.any(
+      (e) => e.trim().toLowerCase() == value.toLowerCase(),
+    );
+
+    if (!exists) {
+      final created = await _structureRepository.addSeason(value);
+
+      if (!mounted) return;
+
+      if (!created) {
+        await _showMessage('La temporada ya existe o no es válida.');
+        return;
+      }
+
+      await _loadStructureData();
+
+      if (!mounted) return;
+    }
+
+    await _selectSeasonFlow(value);
+  }
+
+  Future<void> _selectCompetitionFlow(String competition) async {
+    final clean = competition.trim();
+    if (clean.isEmpty) return;
+
+    setState(() {
+      competenciaSeleccionada = clean;
+      torneoSeleccionado = '';
+      categoriaSeleccionada = '';
+      _contextStep = 'torneo';
+      _competitionController.clear();
+    });
+
+    await _saveActiveContext();
+  }
+
+  Future<void> _createOrSelectCompetitionFlow() async {
+    final value = _competitionController.text.trim();
+
+    if (value.isEmpty) {
+      await _showMessage('Ingresá una competencia válida.');
+      return;
+    }
+
+    final exists = competenciasDinamicas.any(
+      (e) => e.name.trim().toLowerCase() == value.toLowerCase(),
+    );
+
+    if (!exists) {
+      final isLocal = value.toLowerCase() == 'local';
+
+      final created = await _structureRepository.addCompetition(
+        name: value,
+        type: isLocal ? 'local' : 'single',
+        tournaments: isLocal ? const ['Apertura', 'Clausura'] : const ['Único'],
+      );
+
+      if (!mounted) return;
+
+      if (!created) {
+        await _showMessage('La competencia ya existe o no es válida.');
+        return;
+      }
+
+      await _loadStructureData();
+
+      if (!mounted) return;
+    }
+
+    await _selectCompetitionFlow(value);
+  }
+
+  Future<void> _selectTournamentFlow(String tournament) async {
+    final clean = tournament.trim();
+    if (clean.isEmpty) return;
+
+    setState(() {
+      torneoSeleccionado = clean;
+      categoriaSeleccionada = '';
+      _contextStep = 'categoria';
+      _tournamentController.clear();
+    });
+
+    await _saveActiveContext();
+  }
+
+  Future<void> _createOrSelectTournamentFlow() async {
+    final value = _tournamentController.text.trim();
+
+    if (value.isEmpty) {
+      await _showMessage('Ingresá un torneo válido.');
+      return;
+    }
+
+    final exists = torneosDisponibles.any(
+      (e) => e.trim().toLowerCase() == value.toLowerCase(),
+    );
+
+    if (!exists) {
+      final created = await _structureRepository.addTournamentToCompetition(
+        competitionName: competenciaSeleccionada,
+        tournament: value,
+      );
+
+      if (!mounted) return;
+
+      if (!created) {
+        await _showMessage('El torneo ya existe o no es válido.');
+        return;
+      }
+
+      await _loadStructureData();
+
+      if (!mounted) return;
+    }
+
+    await _selectTournamentFlow(value);
+  }
+
+  Future<void> _selectCategoryFlow(String category) async {
+    final clean = category.trim();
+    if (clean.isEmpty) return;
+
+    setState(() {
+      categoriaSeleccionada = clean;
+      _contextStep = '';
+      _categoryController.clear();
+    });
+
+    await _saveActiveContext();
+  }
+
+  Future<void> _createOrSelectCategoryFlow() async {
+  final value = _categoryController.text.trim();
+
+  if (value.isEmpty) {
+    await _showMessage('Ingresá una categoría válida.');
+    return;
+  }
+
+  final exists = categoriasDinamicas.any(
+    (e) => e.trim().toLowerCase() == value.toLowerCase(),
+  );
+
+  if (!exists) {
+    final created = await _structureRepository.addCategory(value);
+
+    if (!mounted) return;
+
+    if (!created) {
+      await _showMessage('La categoría ya existe o no es válida.');
+      return;
+    }
+
+    await _loadStructureData();
+
+    if (!mounted) return;
+  }
+
+  await _selectCategoryFlow(value);
+}
 
   Future<void> _loadActiveContext() async {
     final activeContext = await _settingsRepository.getActiveContext();
@@ -1315,6 +1541,351 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Future<String?> _showTextInputDialog({
+  required String title,
+  required String label,
+  required String hint,
+}) async {
+  final controller = TextEditingController();
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+            hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF263244)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+            ),
+          ),
+          onSubmitted: (_) {
+            Navigator.pop(dialogContext, controller.text.trim());
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, controller.text.trim());
+            },
+            child: const Text('Crear'),
+          ),
+        ],
+      );
+    },
+  );
+
+  controller.dispose();
+
+  final clean = result?.trim();
+  if (clean == null || clean.isEmpty) return null;
+
+  return clean;
+}
+
+  Future<void> _showMessage(String message) async {
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message)),
+  );
+}
+
+  Future<void> _selectSeasonInline(String value) async {
+  final clean = value.trim();
+  if (clean.isEmpty) return;
+
+  setState(() {
+    temporadaSeleccionada = clean;
+    _seasonEditorVisible = false;
+    _seasonController.clear();
+  });
+
+  await _saveActiveContext();
+}
+
+  Future<void> _createOrSelectSeasonInline() async {
+  final value = _seasonController.text.trim();
+
+  if (value.isEmpty) {
+    await _showMessage('Ingresá una temporada válida.');
+    return;
+  }
+
+  final exists = temporadasDinamicas.any(
+    (e) => e.trim().toLowerCase() == value.toLowerCase(),
+  );
+
+  if (!exists) {
+    final created = await _structureRepository.addSeason(value);
+
+    if (!mounted) return;
+
+    if (!created) {
+      await _showMessage('La temporada ya existe o no es válida.');
+      return;
+    }
+
+    await _loadStructureData();
+
+    if (!mounted) return;
+  }
+
+  setState(() {
+    temporadaSeleccionada = value;
+    _seasonEditorVisible = false;
+    _seasonController.clear();
+  });
+
+  await _saveActiveContext();
+}
+
+  
+  Future<String?> _crearTemporada() async {
+  final value = await _showTextInputDialog(
+    title: 'Crear temporada',
+    label: 'Temporada',
+    hint: 'Ejemplo: 2027',
+  );
+
+  if (value == null) return null;
+
+  final created = await _structureRepository.addSeason(value);
+
+  if (!mounted) return null;
+
+  if (!created) {
+    await _showMessage(
+      'La temporada ya existe o no es válida.',
+    );
+    return null;
+  }
+
+  return value;
+}
+  
+  Future<void> _crearCategoria() async {
+  final value = await _showTextInputDialog(
+    title: 'Crear categoría',
+    label: 'Categoría',
+    hint: 'Ejemplo: Juniors',
+  );
+
+  if (value == null) return;
+
+  final created = await _structureRepository.addCategory(value);
+
+  if (!mounted) return;
+
+  if (!created) {
+    await _showMessage('La categoría ya existe o no es válida.');
+    return;
+  }
+
+  await _loadStructureData();
+
+  if (!mounted) return;
+
+  setState(() {
+    categoriaSeleccionada = value;
+  });
+
+  await _saveActiveContext();
+}
+
+  Future<void> _crearTorneo() async {
+  if (competenciaSeleccionada.trim().isEmpty) {
+    await _showMessage('Primero seleccioná una competencia.');
+    return;
+  }
+
+  final value = await _showTextInputDialog(
+    title: 'Crear torneo',
+    label: 'Torneo',
+    hint: 'Ejemplo: Copa Oro',
+  );
+
+  if (value == null) return;
+
+  final created = await _structureRepository.addTournamentToCompetition(
+    competitionName: competenciaSeleccionada,
+    tournament: value,
+  );
+
+  if (!mounted) return;
+
+  if (!created) {
+    await _showMessage('El torneo ya existe o no es válido.');
+    return;
+  }
+
+  await _loadStructureData();
+
+  if (!mounted) return;
+
+  setState(() {
+    torneoSeleccionado = value;
+  });
+
+  await _saveActiveContext();
+}
+
+  Future<void> _crearCompetencia() async {
+  String selectedType = 'single';
+
+  final nameController = TextEditingController();
+
+  final result = await showDialog<Map<String, String>>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F1722),
+            title: const Text(
+              'Crear competencia',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.done,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Nombre',
+                    hintText: 'Ejemplo: Nacional C',
+                    labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+                    hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF263244)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  dropdownColor: const Color(0xFF0F1722),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Tipo',
+                    labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF263244)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'local',
+                      child: Text('Local'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'single',
+                      child: Text('Único / Nacional / Amistoso'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() {
+                      selectedType = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext, {
+                    'name': nameController.text.trim(),
+                    'type': selectedType,
+                  });
+                },
+                child: const Text('Crear'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  nameController.dispose();
+
+  if (result == null) return;
+
+  final name = result['name']?.trim() ?? '';
+  final type = result['type']?.trim() ?? 'single';
+
+  if (name.isEmpty) {
+    await _showMessage('El nombre de la competencia no puede estar vacío.');
+    return;
+  }
+
+  final created = await _structureRepository.addCompetition(
+    name: name,
+    type: type,
+    tournaments: type == 'local'
+        ? const ['Apertura', 'Clausura']
+        : const ['Único'],
+  );
+
+  if (!mounted) return;
+
+  if (!created) {
+    await _showMessage('La competencia ya existe o no es válida.');
+    return;
+  }
+
+  await _loadStructureData();
+
+  if (!mounted) return;
+
+  setState(() {
+    competenciaSeleccionada = name;
+    torneoSeleccionado = type == 'local' ? 'Apertura' : 'Único';
+  });
+
+  await _saveActiveContext();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -1587,41 +2158,55 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<String> get competenciasDisponibles {
-    if (competenciasDinamicas.isEmpty) {
-      return ['Local'];
-    }
-
-    return competenciasDinamicas.map((e) => e.name).toList();
-  }
+  return competenciasDinamicas.map((e) => e.name).toList();
+}
 
   List<String> get torneosDisponibles {
-    final selected = competenciasDinamicas.firstWhere(
-      (e) => e.name == competenciaSeleccionada,
-      orElse: () => const structure.CompetitionConfig(
-        name: 'Local',
-        type: 'local',
-        tournaments: ['Apertura', 'Clausura'],
-      ),
-    );
+  if (competenciaSeleccionada.trim().isEmpty) return const [];
 
-    return selected.tournaments;
-  }
+  final selected = competenciasDinamicas
+      .where((e) => e.name == competenciaSeleccionada)
+      .toList();
 
-  void _setCompetencia(String competencia) {
+  if (selected.isEmpty) return const [];
+
+  return selected.first.tournaments;
+}
+
+  Future<void> _setCompetencia(String competencia) async {
+  final selected = competenciasDinamicas
+      .where((e) => e.name == competencia)
+      .toList();
+
+  final torneos =
+      selected.isEmpty ? const <String>[] : selected.first.tournaments;
+
+  setState(() {
+    competenciaSeleccionada = competencia;
+    torneoSeleccionado = torneos.isEmpty ? '' : torneos.first;
+  });
+
+  await _saveActiveContext();
+}
+
+  Future<void> _setTorneo(String torneo) async {
+  setState(() {
+    torneoSeleccionado = torneo;
+  });
+
+  await _saveActiveContext();
+}
+
+  void _cancelContextStep() {
+    FocusScope.of(context).unfocus();
+
     setState(() {
-      competenciaSeleccionada = competencia;
-      torneoSeleccionado = torneosDisponibles.first;
+      _contextStep = '';
+      _seasonController.clear();
+      _competitionController.clear();
+      _tournamentController.clear();
+      _categoryController.clear();
     });
-
-    _saveActiveContext();
-  }
-
-  void _setTorneo(String torneo) {
-    setState(() {
-      torneoSeleccionado = torneo;
-    });
-
-    _saveActiveContext();
   }
 
   Widget _buildSelectableChip({
@@ -1768,53 +2353,103 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEstadoSinInstitucion(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.68,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'No hay una institucion creada',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 22),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                tieneInstitucion = true;
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4F8CFF),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+  return SizedBox(
+    height: MediaQuery.of(context).size.height * 0.72,
+    child: Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.82),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFF4F8CFF).withOpacity(0.28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInstitutionBadge(),
+            const SizedBox(height: 18),
+            const Text(
+              'No hay institución creada',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
               ),
             ),
-            child: const Text(
-              'Crear institucion',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            const SizedBox(height: 8),
+            const Text(
+              'Creá una institución nueva o importá un backup existente.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.35,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: _importarBackupDesdeEstadoVacio,
-            child: const Text(
-              'Importar datos',
-              style: TextStyle(color: Color(0xFFD7DCE3), fontSize: 15),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  setState(() {
+                    tieneInstitucion = true;
+                    institucionNombre = 'San Fernando Handball';
+                    temporadaSeleccionada = '';
+                    competenciaSeleccionada = '';
+                    torneoSeleccionado = '';
+                    categoriaSeleccionada = '';
+                    _contextStep = 'temporada';
+                  });
+
+                  await _saveActiveContext();
+                },
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Crear institución'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F8CFF),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _importarBackupDesdeEstadoVacio,
+                icon: const Icon(Icons.upload_file_rounded),
+                label: const Text('Importar backup'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFD7DCE3),
+                  side: BorderSide(color: Colors.white.withOpacity(0.10)),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEstadoConInstitucion() {
     return Padding(
@@ -1920,147 +2555,428 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInstitutionBadge() {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      padding: const EdgeInsets.all(8),
-      child: Center(
-        child: Image.asset(
-          'assets/images/san_fernando.png',
-          fit: BoxFit.contain,
-          alignment: Alignment.center,
-        ),
-      ),
-    );
-  }
+  final institution = institucionNombre.trim().toLowerCase();
+
+  final useSanFernandoLogo = tieneInstitucion &&
+      institution == 'san fernando handball';
+
+  return Container(
+    width: 48,
+    height: 48,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white,
+    ),
+    padding: const EdgeInsets.all(8),
+    child: Center(
+      child: useSanFernandoLogo
+          ? Image.asset(
+              'assets/images/san_fernando.png',
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.shield_outlined,
+                color: Color(0xFF1C2B44),
+                size: 26,
+              ),
+            )
+          : const Icon(
+              Icons.add_business_rounded,
+              color: Color(0xFF1C2B44),
+              size: 26,
+            ),
+    ),
+  );
+}
 
   Widget _buildContextSection() {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: const Color(0xFF111A28).withOpacity(0.55),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Colors.white.withOpacity(0.04)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildContextLine(),
+        if (_contextStep.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildContextStepEditor(),
+        ],
+      ],
+    ),
+  );
+}
+
+  Widget _buildContextLine() {
+    final items = <Widget>[];
+
+    void addItem({
+      required String value,
+      required String fallback,
+      required String step,
+    }) {
+      final text = value.trim().isEmpty ? fallback : value.trim();
+
+      if (items.isNotEmpty) {
+        items.add(
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              '/',
+              style: TextStyle(
+                color: Color(0xFF8FA3BF),
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        );
+      }
+
+      items.add(
+        GestureDetector(
+          onTap: () => _openContextStep(step),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: value.trim().isEmpty
+                  ? const Color(0xFF8FA3BF)
+                  : Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      );
+    }
+
+    addItem(
+      value: temporadaSeleccionada,
+      fallback: 'Temporada',
+      step: 'temporada',
+    );
+
+    if (temporadaSeleccionada.trim().isNotEmpty) {
+      addItem(
+        value: competenciaSeleccionada,
+        fallback: 'Competencia',
+        step: 'competencia',
+      );
+    }
+
+    if (competenciaSeleccionada.trim().isNotEmpty) {
+      addItem(
+        value: torneoSeleccionado,
+        fallback: 'Torneo',
+        step: 'torneo',
+      );
+    }
+
+    if (torneoSeleccionado.trim().isNotEmpty) {
+      addItem(
+        value: categoriaSeleccionada,
+        fallback: 'Categoría',
+        step: 'categoria',
+      );
+    }
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color(0xFF111A28).withOpacity(0.55),
+        color: const Color(0xFF182338),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.03)),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
-      child: _buildContextLine(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: items),
+      ),
     );
   }
 
-  Widget _buildContextLine() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
+  Widget _buildContextStepEditor() {
+    if (_contextStep == 'temporada') {
+      return _buildInlinePickerEditor(
+        title: 'Elegí temporada',
+        options: temporadasDinamicas,
+        selectedValue: temporadaSeleccionada,
+        controller: _seasonController,
+        hintText: 'Nueva temporada, ejemplo: 2028',
+        buttonText: 'Crear / seleccionar temporada',
+        onSelect: _selectSeasonFlow,
+        onCreate: _createOrSelectSeasonFlow,
+      );
+    }
+
+    if (_contextStep == 'competencia') {
+      return _buildInlinePickerEditor(
+        title: 'Elegí competencia',
+        options: competenciasDisponibles,
+        selectedValue: competenciaSeleccionada,
+        controller: _competitionController,
+        hintText: 'Nueva competencia, ejemplo: Nacional C',
+        buttonText: 'Crear / seleccionar competencia',
+        onSelect: _selectCompetitionFlow,
+        onCreate: _createOrSelectCompetitionFlow,
+      );
+    }
+
+    if (_contextStep == 'torneo') {
+      final isLocal = competenciaSeleccionada.trim().toLowerCase() == 'local';
+
+      return _buildInlinePickerEditor(
+        title: 'Elegí torneo',
+        options: torneosDisponibles,
+        selectedValue: torneoSeleccionado,
+        controller: _tournamentController,
+        hintText: isLocal
+            ? 'Local usa Apertura / Clausura'
+            : 'Nuevo torneo, ejemplo: Único',
+        buttonText: 'Crear / seleccionar torneo',
+        onSelect: _selectTournamentFlow,
+        onCreate: isLocal ? null : _createOrSelectTournamentFlow,
+      );
+    }
+
+    return _buildInlinePickerEditor(
+      title: 'Elegí categoría',
+      options: categoriasDinamicas,
+      selectedValue: categoriaSeleccionada,
+      controller: _categoryController,
+      hintText: 'Nueva categoría, ejemplo: Juniors',
+      buttonText: 'Crear / seleccionar categoría',
+      onSelect: _selectCategoryFlow,
+      onCreate: _createOrSelectCategoryFlow,
+    );
+  }
+
+  Widget _buildInlinePickerEditor({
+    required String title,
+    required List<String> options,
+    required String selectedValue,
+    required TextEditingController controller,
+    required String hintText,
+    required String buttonText,
+    required Future<void> Function(String) onSelect,
+    required Future<void> Function()? onCreate,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF07111F).withOpacity(0.96),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF4F8CFF).withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.28),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildContextToken(
-            text: temporadaSeleccionada,
-            removable: false,
-            onTap: () => _showContextPicker(
-              title: 'Elegí temporada',
-              options: [
-                ...(temporadasDinamicas.isEmpty
-                    ? ['2026']
-                    : temporadasDinamicas),
-                '+ Crear temporada',
-              ],
-              currentValue: temporadaSeleccionada,
-              onSelected: (value) {
-                if (value.startsWith('+')) return;
-                setState(() => temporadaSeleccionada = value);
-                _saveActiveContext();
-              },
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(width: 4),
-          _buildContextToken(
-            text: competenciaSeleccionada,
-            removable: false,
-            onTap: () => _showContextPicker(
-              title: 'Elegí competencia',
-              options: const [
-                'Local',
-                'Nacional A',
-                'Nacional B',
-                //'Nacional C',//
-                'Amistoso',
-                '+ Crear competencia',
-              ],
-              currentValue: competenciaSeleccionada,
-              onSelected: (value) {
-                if (value.startsWith('+')) return;
-                _setCompetencia(value);
-              },
-            ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: options.map((item) {
+              final selected = item == selectedValue;
+
+              return GestureDetector(
+                onTap: () => onSelect(item),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFF4F8CFF)
+                        : const Color(0xFF182338),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFF7DB7FF)
+                          : Colors.white.withOpacity(0.06),
+                    ),
+                  ),
+                  child: Text(
+                    item,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
-          const SizedBox(width: 4),
-          _buildContextToken(
-            text: torneoSeleccionado,
-            removable: false,
-            onTap: () => _showContextPicker(
-              title: 'Elegí torneo',
-              options: [...torneosDisponibles, '+ Crear torneo'],
-              currentValue: torneoSeleccionado,
-              onSelected: (value) {
-                if (value.startsWith('+')) return;
-                _setTorneo(value);
-              },
+          if (onCreate != null) ...[
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              textInputAction: TextInputAction.done,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: hintText,
+                hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                filled: true,
+                fillColor: const Color(0xFF0F1722),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFF263244)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                ),
+              ),
+              onSubmitted: (_) => onCreate(),
             ),
-          ),
-          const SizedBox(width: 4),
-          _buildContextToken(
-            text: categoriaSeleccionada,
-            removable: false,
-            onTap: () => _showContextPicker(
-              title: 'Elegí categoría',
-              options: [
-                ...(categoriasDinamicas.isEmpty
-                    ? ['Cadetes', 'Juveniles']
-                    : categoriasDinamicas),
-                '+ Crear categoría',
-              ],
-              currentValue: categoriaSeleccionada,
-              onSelected: (value) {
-                if (value.startsWith('+')) return;
-                setState(() => categoriaSeleccionada = value);
-                _saveActiveContext();
-              },
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: onCreate,
+                icon: const Icon(Icons.add_rounded, size: 19),
+                label: Text(buttonText),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F8CFF),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: TextButton(
+                onPressed: _cancelContextStep,
+                child: const Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    color: Color(0xFFAAB4C3),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  void _showContextPicker({
-    required String title,
-    required List<String> options,
-    required String currentValue,
-    required ValueChanged<String> onSelected,
-  }) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return SafeArea(
-          child: Container(
-            margin: const EdgeInsets.all(14),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F1722),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.06)),
+  Widget _buildContextToken({
+  required String label,
+  required String value,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: RichText(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$label: ',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  TextSpan(
+                    text: value,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.white70,
+            size: 18,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  
+  Future<void> _showSeasonPicker() async {
+  final controller = TextEditingController();
+
+  final selectedValue = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1722),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
+                const Text(
+                  'Seleccionar temporada',
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -2070,15 +2986,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: options.map((option) {
-                    final selected = option == currentValue;
-                    final isCreate = option.startsWith('+');
+                  children: temporadasDinamicas.map((season) {
+                    final selected = season == temporadaSeleccionada;
 
                     return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        onSelected(option);
-                      },
+                      onTap: () => Navigator.of(dialogContext).pop(season),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -2096,67 +3008,208 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         child: Text(
-                          option,
-                          style: TextStyle(
-                            color: isCreate
-                                ? const Color(0xFF7DB7FF)
-                                : Colors.white,
+                          season,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 14,
-                            fontWeight: selected
-                                ? FontWeight.w900
-                                : FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                     );
                   }).toList(),
                 ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Crear temporada',
+                    hintText: 'Ejemplo: 2027',
+                    labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+                    hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF263244)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                    ),
+                  ),
+                  onSubmitted: (_) {
+                    final value = controller.text.trim();
+                    if (value.isEmpty) return;
+                    Navigator.of(dialogContext).pop(value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final value = controller.text.trim();
+                      if (value.isEmpty) return;
+                      Navigator.of(dialogContext).pop(value);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F8CFF),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Crear / seleccionar',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
               ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  controller.dispose();
+
+  if (!mounted) return;
+  if (selectedValue == null || selectedValue.trim().isEmpty) return;
+
+  final value = selectedValue.trim();
+
+  if (!temporadasDinamicas.contains(value)) {
+    final created = await _structureRepository.addSeason(value);
+
+    if (!mounted) return;
+
+    if (!created) {
+      await _showMessage('La temporada ya existe o no es válida.');
+      return;
+    }
+
+    await _loadStructureData();
+
+    if (!mounted) return;
+  }
+
+  setState(() {
+    temporadaSeleccionada = value;
+  });
+
+  await _saveActiveContext();
+}
+
+  void _showContextPicker({
+  required String title,
+  required List<String> options,
+  required String currentValue,
+  required Future<void> Function(String) onSelected,
+}) {
+  Future<void> openPicker() async {
+    final selectedValue = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 24,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1722),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 520),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: options.map((option) {
+                        final selected = option == currentValue;
+                        final isCreate = option.startsWith('+');
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.of(dialogContext).pop(option);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? const Color(0xFF4F8CFF)
+                                  : const Color(0xFF182338),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: selected
+                                    ? const Color(0xFF4F8CFF)
+                                    : Colors.white.withOpacity(0.06),
+                              ),
+                            ),
+                            child: Text(
+                              option,
+                              style: TextStyle(
+                                color: isCreate
+                                    ? const Color(0xFF7DB7FF)
+                                    : Colors.white,
+                                fontSize: 14,
+                                fontWeight: selected
+                                    ? FontWeight.w900
+                                    : FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
       },
     );
+
+    if (!mounted) return;
+    if (selectedValue == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await onSelected(selectedValue);
+    });
   }
 
-  Widget _buildContextToken({
-    required String text,
-    required bool removable,
-    VoidCallback? onRemove,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF182338).withOpacity(0.9),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.035)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFFDCE4EF),
-                fontWeight: FontWeight.w600,
-                height: 1.0,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 15,
-              color: Color(0xFFC9D3E0),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  openPicker();
+}
 
   Widget _buildContextDropdown({
     required String value,
@@ -2204,7 +3257,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
+  
   Widget _buildSwitcherRow() {
     List<String> opciones = <String>[];
     String titulo = '';

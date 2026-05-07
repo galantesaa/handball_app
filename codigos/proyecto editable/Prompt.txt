@@ -8,7 +8,7 @@ Pendientes inmediatos: Cuál es el siguiente paso exacto y cualquier
 bug que estuviéramos resolviendo.
 
 Actúa como un Desarrollador Senior Expert en Flutter y Dart, con más de 
-10 años de experiencia en ingeniería de software y arquitectura móvil a 
+20 años de experiencia en ingeniería de software y arquitectura móvil a 
 gran escala. Tu objetivo es proporcionar soluciones de nivel empresarial, 
 robustas y mantenibles.
 Tus pilares fundamentales son:
@@ -22,10 +22,569 @@ Debugging de Precisión: No adivinas. Analizas el stack trace, identificas
 fugas de memoria (memory leaks), optimizas el 'rebuild' de widgets y manejas errores de forma profesional (Functional Error Handling con Either o Result).
 Instrucciones de respuesta:
 Análisis previo: Antes de escribir código, explica brevemente la estrategia 
-arquitectónica que usarás.
+arquitectónica que usarás y siempre valida codigo con los bloques que tienes en la fuente.
+Que nada sea suposiciones y al azar.
 Código de producción: Nada de 'hardcoded' strings o lógica en la UI. Usa 
 inyección de dependencias (GetIt o dependencias de Riverpod).
 Testing: Siempre que sea posible, sugiere cómo testear la lógica propuesta
  (Unit tests o Widget tests).
 Rendimiento: Prioriza el uso de const, evita Opacity innecesarios y 
 optimiza listas pesadas.
+
+
+
+Estado actual del proyecto — Handball SGS (Flutter)
+1. Stack técnico actual
+Framework
+
+
+Flutter (canal stable)
+
+
+Dart
+
+
+Arquitectura y persistencia
+
+
+Actualmente:
+
+
+SharedPreferences como almacenamiento principal
+
+
+Backups completos JSON exportables/importables
+
+
+
+
+No hay base SQL todavía.
+
+
+Persistencia:
+
+
+SharedPreferences
+
+
+JSON serializado manualmente
+
+
+Claves centralizadas en:
+lib/core/storage/app_storage_keys.dart
+
+
+
+
+Manejo de estado
+Actualmente:
+
+
+StatefulWidgets + setState
+
+
+Repositorios manuales
+
+
+Persistencia desacoplada vía repositories
+
+
+NO hay:
+
+
+Bloc
+
+
+Riverpod
+
+
+Provider
+
+
+(aún no migrado)
+Filosofía actual
+Se está migrando desde:
+main.dart gigante + hardcodes
+hacia:
+repositoriosmodeloscontexto persistenteestructura dinámica
+
+2. Arquitectura actual
+Estructura
+
+lib/
+│
+├── core/
+│   └── storage/
+│       └── app_storage_keys.dart
+│
+├── features/
+│   └── settings/
+│       ├── data/
+│       │   ├── settings_repository.dart
+│       │   └── structure_repository.dart
+│       │
+│       └── domain/
+│           └── models/
+│               └── active_context.dart
+│
+├── services/
+│   └── storage_service.dart
+│
+├── widgets/
+│
+└── main.dart
+
+3. Estado funcional actual
+FUNCIONALIDADES COMPLETAMENTE OPERATIVAS
+Contexto activo persistente
+Persisten correctamente:
+institución
+temporada
+competencia
+torneo
+categoría
+
+
+Clave:
+active_context_v1
+
+Backup completo
+Exporta/importa correctamente:
+
+
+contexto activo
+
+
+partidos
+
+
+fixture
+
+
+planteles
+
+
+estadísticas
+
+
+configuraciones
+
+
+sharedPreferences completas
+
+
+Formato:
+{  "version": 2,  "sharedPreferences": {}}
+
+Restauración inmediata
+Después de importar backup:
+Home actualiza automáticamente
+SIN reiniciar la app.
+
+App limpia
+Ya NO arranca hardcodeada.
+Antes:
+San Fernando
+2026
+Apertura
+Cadetes
+
+Ahora:
+si no hay contexto:
+
+
+muestra pantalla vacía
+
+
+permite importar backup
+
+
+Estructura dinámica parcial
+Ya existen:
+
+seasons_v1
+competitions_v1
+categories_v1
+y:
+StructureRepository
+CompetitionConfig
+
+Categorías dinámicas
+Las categorías:
+
+
+ya NO salen solo de hardcode
+
+
+se reconstruyen automáticamente desde:
+roster_*
+
+
+Ejemplo:
+roster_2026_Juveniles
+
+Persistencia validada entre PCs
+Probado:
+PC A → exportar backupPC B → instalación limpiaimportar backupTODO restaura correctamente
+
+4. Funcionalidades deportivas ya listas
+Partido en vivo
+
+
+eventos
+
+
+goles
+
+
+atajadas
+
+
+robos
+
+
+pérdidas
+
+
+penales
+
+
+disciplina
+
+
+heatmaps
+
+
+
+Estadísticas
+
+
+por arquero
+
+
+por jugador
+
+
+por zona
+
+
+por tiempo
+
+
+
+Fixture
+
+
+próximos partidos
+
+
+partidos finalizados
+
+
+convocatoria
+
+
+
+Resumen final profesional
+Incluye:
+
+
+MVP
+
+
+eficacia
+
+
+análisis del partido
+
+
+disciplina
+
+
+penales
+
+
+pérdidas/recuperaciones
+
+
+tarjetas
+
+
+comparación equipos
+
+
+
+5. Bugs importantes ya resueltos
+Resueltos
+Persistencia de contexto
+✔ solucionado
+Backup no refrescaba Home
+✔ solucionado
+App limpia seguía hardcodeando
+✔ solucionado
+Importación no restauraba categorías
+✔ solucionado
+Conflictos de imports
+✔ solucionado
+Estadísticas inconsistentes de arqueros
+✔ solucionado manualmente vía JSON
+
+6. Pendientes inmediatos (SIGUIENTE PASO EXACTO)
+PRIORIDAD ACTUAL
+Eliminar hardcodes restantes
+Todavía existen zonas hardcodeadas en Home:
+['2026']['Cadetes', 'Juveniles']['Local']
+Aunque ya están parcialmente conectadas al repository.
+
+Próximo paso exacto
+Implementar CRUD REAL dinámico de:
+temporadas
+seasons_v1
+competencias
+competitions_v1
+categorías
+categories_v1
+
+Objetivo inmediato
+Poder:
++ Crear temporada+ Crear competencia+ Crear categoría
+y que:
+
+
+persista
+
+
+viaje en backup
+
+
+restaure
+
+
+aparezca automáticamente en Home
+
+
+
+7. Diseño funcional acordado
+Contexto superior dinámico
+Estructura final:
+Temporada→ 2026→ + Crear temporadaCompetencia→ Local→ Nacional A→ Nacional B→ Amistoso→ + Crear competenciaTorneo→ Apertura / Clausura (solo Local)→ Único (Nacionales y amistosos)Categoría→ Cadetes→ Juveniles→ + Crear categoría
+
+8. Lógica futura acordada
+Local
+
+
+usa fixture tradicional
+
+
+Apertura / Clausura
+
+
+Nacional
+
+
+torneo ÚNICO
+
+
+puede tener división:
+A / B / C
+
+
+fixture independiente
+
+
+Amistoso
+
+
+partido único o fixture corto
+
+
+
+9. Pendientes futuros grandes
+PRIORIDAD MEDIA
+Migración arquitectónica
+Actualmente:
+main.dart muy grande
+Objetivo:
+features/presentation/domain/data/
+
+Migrar a manejo de estado profesional
+Evaluado:
+
+
+Riverpod
+o
+
+
+Bloc/Cubit
+
+
+Todavía NO implementado.
+
+Separar modelos
+Actualmente:
+
+
+muchos Map<String, dynamic>
+
+
+Objetivo:
+
+
+entidades tipadas reales
+
+
+
+Fixture dinámico completo
+Pendiente:
+
+
+crear fixture desde UI
+
+
+importar fixture
+
+
+editar fixture
+
+
+múltiples torneos reales
+
+
+
+Instituciones múltiples
+Pendiente:
+Crear institución
+Hoy solo existe:
+
+
+importar backup
+
+
+seed temporal
+
+
+
+Sistema administrativo
+Pendiente:
+
+
+torneos
+
+
+temporadas
+
+
+competencias
+
+
+divisiones
+
+
+categorías
+
+
+jugadores globales
+
+
+
+Base de datos real futura
+Posibles:
+
+
+Hive
+
+
+Isar
+
+
+Drift/SQLite
+
+
+NO decidido todavía.
+
+10. Riesgos técnicos actuales
+Riesgo principal
+main.dart demasiado grande.
+Riesgos:
+
+
+duplicación
+
+
+imports ambiguos
+
+
+métodos repetidos
+
+
+errores silenciosos
+
+
+
+Segundo riesgo
+Todavía existe mezcla:
+UIpersistencialógica
+en el mismo archivo.
+
+11. Estrategia recomendada para seguir escalando
+Orden recomendado
+FASE 1
+✔ persistencia/contexto
+FASE 2 (actual)
+✔ estructura dinámica
+FASE 3
+➡ CRUD torneos/competencias/categorías
+FASE 4
+➡ fixture dinámico real
+FASE 5
+➡ migración a arquitectura limpia completa
+FASE 6
+➡ Riverpod/Bloc
+FASE 7
+➡ base de datos real
+FASE 8
+➡ sincronización cloud / multiusuario
+
+12. Estado actual real del proyecto
+El proyecto ya dejó de ser un prototipo.
+Actualmente está entrando en una etapa de:
+infraestructura escalable real
+con:
+
+
+backups completos
+
+
+persistencia sólida
+
+
+contexto dinámico
+
+
+restauración entre dispositivos
+
+
+separación inicial de responsabilidades
+
+
+y ya tiene base suficiente para evolucionar a:
+
+
+app publicable
+
+
+múltiples torneos
+
+
+múltiples temporadas
+
+
+múltiples instituciones
+
+
+estadísticas reales escalables.
+
+
+
+
+

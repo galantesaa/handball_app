@@ -1,0 +1,1127 @@
+          ok\lib\main_pro.dart:12643:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12668:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12670:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12794:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12845:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12868:58 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12870:66 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12881:68 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12883:69 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:12915:63 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13155:61 - deprecated_member_use
+   info - Unnecessary use of 'toList' in a spread - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13182:61 - unnecessary_to_list_in_spreads
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13202:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13204:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13236:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13238:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13280:33 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - codigos\proyecto arquero          ok\lib\main_pro.dart:13413:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13664:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:13706:58 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - codigos\proyecto arquero          ok\lib\main_pro.dart:13838:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:14096:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\main_pro.dart:14134:58 - deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead -
+          codigos\proyecto arquero ok\lib\main_pro.dart:14252:9 -
+          deprecated_member_use
+   info - 'shareXFiles' is deprecated and shouldn't be used. Use
+          SharePlus.instance.share() instead - codigos\proyecto arquero
+          ok\lib\main_pro.dart:14252:15 - deprecated_member_use
+warning - Unnecessary cast - codigos\proyecto arquero
+       ok\lib\partido_repository_v2.dart:86:45 - unnecessary_cast
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\widgets\match_card.dart:35:42 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\widgets\match_card.dart:37:50 - deprecated_member_use
+   info - Unnecessary use of multiple underscores - codigos\proyecto arquero
+          ok\lib\widgets\match_card.dart:162:35 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores - codigos\proyecto arquero
+          ok\lib\widgets\match_card.dart:162:39 - unnecessary_underscores
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - codigos\proyecto arquero
+          ok\lib\widgets\match_card.dart:176:22 - deprecated_member_use
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because          all of the used elements are also provided by the import of
+          'package:flutter/material.dart' - lib\main.dart:15:8 -
+          unnecessary_import
+warning - Unused import: 'services/stats_service.dart' - lib\main.dart:18:8 -
+       unused_import
+warning - The declaration '_ordenCategorias' isn't referenced -
+       lib\main.dart:828:20 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1020:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1100:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1102:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1145:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1149:49 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1150:38 -
+          deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use
+          activeThumbColor instead. This feature was deprecated after
+          v3.31.0-2.0.pre - lib\main.dart:1210:27 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1333:61 -
+          deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated
+          'mounted' check - lib\main.dart:1451:44 -
+          use_build_context_synchronously
+warning - The declaration '_toggleCategoria' isn't referenced -
+       lib\main.dart:1565:8 - unused_element
+warning - The declaration '_toggleTorneo' isn't referenced -
+       lib\main.dart:1573:8 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1640:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1645:32 -
+          deprecated_member_use
+warning - The declaration '_buildCompetenciaYTorneoSelector' isn't referenced -
+       lib\main.dart:1660:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1665:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1667:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1830:46 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1833:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1891:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1946:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:1948:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2055:54 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2095:48 -
+          deprecated_member_use
+warning - A value for optional parameter 'onRemove' isn't ever given -
+       lib\main.dart:2125:19 - unused_element_parameter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2133:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2135:50 -
+          deprecated_member_use
+warning - The declaration '_buildContextDropdown' isn't referenced -
+       lib\main.dart:2161:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2172:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2174:48 -
+          deprecated_member_use
+warning - The declaration '_buildSwitcherRow' isn't referenced -
+       lib\main.dart:2208:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2246:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2248:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2316:51 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2317:51 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2322:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2353:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2355:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2389:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2391:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2394:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2406:48 -
+          deprecated_member_use
+warning - The declaration '_buildSecondaryButton' isn't referenced -
+       lib\main.dart:2446:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2456:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2458:50 -
+          deprecated_member_use
+warning - The declaration '_buildActionTile' isn't referenced -
+       lib\main.dart:2475:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2488:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2492:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2497:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:2591:40 -
+          deprecated_member_use
+warning - The declaration '_partidoEnVivoV2' isn't referenced -
+       lib\main.dart:2629:15 - unused_element
+warning - The value of the field '_liveMatchStorageKey' isn't used -
+       lib\main.dart:2664:23 - unused_field
+warning - The declaration '_defaultProximoPartido' isn't referenced -
+       lib\main.dart:2794:24 - unused_element
+warning - The declaration '_defaultSiguientesPartidos' isn't referenced -
+       lib\main.dart:3035:30 - unused_element
+warning - The declaration '_resetPartidosDePrueba' isn't referenced -
+       lib\main.dart:3168:16 - unused_element
+warning - The declaration '_abrirResumenUltimoFinalizado' isn't referenced -
+       lib\main.dart:3532:8 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3563:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3773:44 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3775:52 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3867:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3869:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3887:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3889:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3892:33 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3948:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3950:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:3974:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4044:46 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4095:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4174:26 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4197:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4199:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4289:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4327:48 -
+          deprecated_member_use
+warning - The declaration '_buildShareMiniStat' isn't referenced -
+       lib\main.dart:4441:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4445:29 -
+          deprecated_member_use
+warning - The declaration '_buildSharePeriodRow' isn't referenced -
+       lib\main.dart:4473:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4478:29 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4591:45 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:4630:34 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5075:48 -
+          deprecated_member_use
+   info - Instances of 'Color' should be created using an 8-digit hexadecimal
+          integer (such as '0xFFFFFFFF') - lib\main.dart:5168:40 -
+          use_full_hex_values_for_flutter_colors
+   info - Instances of 'Color' should be created using an 8-digit hexadecimal
+          integer (such as '0xFFFFFFFF') - lib\main.dart:5183:40 -
+          use_full_hex_values_for_flutter_colors
+   info - Instances of 'Color' should be created using an 8-digit hexadecimal
+          integer (such as '0xFFFFFFFF') - lib\main.dart:5214:40 -
+          use_full_hex_values_for_flutter_colors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5480:29 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5486:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5513:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5563:31 -
+          deprecated_member_use
+warning - The declaration '_buildShareInfoPanel' isn't referenced -
+       lib\main.dart:5596:10 - unused_element
+warning - The declaration '_buildShareTwoTeamPanel' isn't referenced -
+       lib\main.dart:5651:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5771:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5776:44 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:5802:50 -
+          deprecated_member_use
+warning - The declaration '_tirosPorModo' isn't referenced -
+       lib\main.dart:5837:7 - unused_element
+warning - The declaration '_tirosAtajadosPorModo' isn't referenced -
+       lib\main.dart:5850:7 - unused_element
+warning - The declaration '_eficaciaArqueroV2' isn't referenced -
+       lib\main.dart:5877:14 - unused_element
+warning - The declaration '_atajadasV2' isn't referenced - lib\main.dart:5879:11       - unused_element
+warning - The declaration '_golesRecibidosV2' isn't referenced -
+       lib\main.dart:5881:11 - unused_element
+warning - The declaration '_penales' isn't referenced - lib\main.dart:6273:11 -
+       unused_element
+warning - The declaration '_exclusiones2Min' isn't referenced -
+       lib\main.dart:6276:11 - unused_element
+warning - The declaration '_amarillas' isn't referenced - lib\main.dart:6277:11
+       - unused_element
+warning - The declaration '_rojas' isn't referenced - lib\main.dart:6278:11 -
+       unused_element
+warning - The declaration '_golesAFavor' isn't referenced -
+       lib\main.dart:6289:11 - unused_element
+warning - The declaration '_golesEnContra' isn't referenced -
+       lib\main.dart:6291:11 - unused_element
+warning - The declaration '_fechaTexto' isn't referenced - lib\main.dart:6323:10       - unused_element
+warning - The declaration '_horaTexto' isn't referenced - lib\main.dart:6324:10
+       - unused_element
+warning - The declaration '_torneoTexto' isn't referenced -
+       lib\main.dart:6326:10 - unused_element
+warning - The declaration '_categoriaTexto' isn't referenced -
+       lib\main.dart:6327:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:6481:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:6547:62 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:6550:53 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:6637:39 -
+          deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:6685:9 -
+          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:6687:51 -
+          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:6691:9 -
+          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:6693:50 -
+          use_build_context_synchronously
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead -
+          lib\main.dart:6696:13 - deprecated_member_use
+   info - 'shareXFiles' is deprecated and shouldn't be used. Use
+          SharePlus.instance.share() instead - lib\main.dart:6696:19 -
+          deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead -
+          lib\main.dart:6708:13 - deprecated_member_use
+   info - 'share' is deprecated and shouldn't be used. Use
+          SharePlus.instance.share() instead - lib\main.dart:6708:19 -
+          deprecated_member_use
+warning - The declaration '_buildStoryGoalkeeperRow' isn't referenced -
+       lib\main.dart:6960:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7164:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7165:30 -
+          deprecated_member_use
+warning - The declaration '_buildShareImageCard' isn't referenced -
+       lib\main.dart:7264:10 - unused_element
+warning - The declaration '_buildShareKpiRow' isn't referenced -
+       lib\main.dart:7588:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7621:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7623:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7636:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7735:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7737:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7769:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:7771:48 -
+          deprecated_member_use
+warning - The declaration '_shareTopPerdidasText' isn't referenced -
+       lib\main.dart:7929:8 - unused_element
+warning - The value of the local variable 'maxGoles' isn't used -
+       lib\main.dart:8063:11 - unused_local_variable
+warning - The value of the local variable 'maxAtajadas' isn't used -
+       lib\main.dart:8068:11 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8085:30 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8090:30 -
+          deprecated_member_use
+warning - The value of the local variable 'center' isn't used -
+       lib\main.dart:8129:13 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8162:24 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8163:24 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8164:24 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8199:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8200:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8201:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8202:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8219:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8220:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8221:25 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8244:28 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8245:28 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8246:28 -
+          deprecated_member_use
+warning - The declaration '_drawZoneValue' isn't referenced -
+       lib\main.dart:8257:8 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8266:31 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8280:49 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8739:61 -
+          deprecated_member_use
+warning - The operand can't be 'null', so the condition is always 'true' -
+       lib\main.dart:8798:44 - unnecessary_null_comparison
+warning - The declaration '_buildStatusChip' isn't referenced -
+       lib\main.dart:8830:10 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:8836:26 -
+          deprecated_member_use
+warning - The declaration '_buildInfoRow' isn't referenced -
+       lib\main.dart:8850:10 - unused_element
+warning - The declaration '_buildOpenButton' isn't referenced -
+       lib\main.dart:8881:10 - unused_element
+warning - The declaration '_atajadasV2' isn't referenced - lib\main.dart:8933:11       - unused_element
+warning - The declaration '_golesRecibidosV2' isn't referenced -
+       lib\main.dart:8934:11 - unused_element
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:9023:7 -
+          use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9256:61 -
+          deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use
+          activeThumbColor instead. This feature was deprecated after
+          v3.31.0-2.0.pre - lib\main.dart:9293:25 - deprecated_member_use
+   info - Don't invoke 'print' in production code - lib\main.dart:9348:5 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9349:5 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9350:5 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9353:7 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9364:7 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9365:7 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9366:7 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9367:7 -
+          avoid_print
+   info - Don't invoke 'print' in production code - lib\main.dart:9368:7 -
+          avoid_print
+warning - The declaration '_marcarEsteFinalizadoComoReal' isn't referenced -
+       lib\main.dart:9377:16 - unused_element
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:9382:28 -
+          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:9423:28 -
+          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:9442:26 -
+          use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9466:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9468:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9579:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9630:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9631:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9635:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9636:32 -
+          deprecated_member_use
+warning - The value of the local variable 'eficaciaArquero' isn't used -
+       lib\main.dart:9663:18 - unused_local_variable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9671:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:9673:48 -
+          deprecated_member_use
+warning - The declaration '_isArgentinosJuniorsOfficialMatch' isn't referenced -       lib\main.dart:9954:12 - unused_element
+warning - The declaration '_debeMostrarSelectorJugadorParaAtaque' isn't
+       referenced - lib\main.dart:9998:8 - unused_element
+warning - The declaration '_nombreLocalEnVivo' isn't referenced -
+       lib\main.dart:10307:14 - unused_element
+warning - The declaration '_nombreVisitanteEnVivo' isn't referenced -
+       lib\main.dart:10311:14 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10339:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10341:48 -
+          deprecated_member_use
+   info - 'WillPopScope' is deprecated and shouldn't be used. Use PopScope
+          instead. The Android predictive back feature will not work with
+          WillPopScope. This feature was deprecated after v3.12.0-1.0.pre -
+          lib\main.dart:10383:12 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10462:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10581:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10599:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10601:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10676:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10684:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10702:44 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10704:52 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10733:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10737:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:10782:26 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:11046:31 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:11053:33 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:11277:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:11278:30 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:11282:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:11283:32 -
+          deprecated_member_use
+warning - The declaration '_debugPrintEventSummary' isn't referenced -
+       lib\main.dart:11444:8 - unused_element
+warning - The declaration '_countByResult' isn't referenced -
+       lib\main.dart:11481:7 - unused_element
+warning - The declaration '_countShotsToZone' isn't referenced -
+       lib\main.dart:11485:7 - unused_element
+warning - The declaration '_countShotsToGoalZone' isn't referenced -
+       lib\main.dart:11489:7 - unused_element
+warning - The value of the local variable 'actor' isn't used -
+       lib\main.dart:11823:18 - unused_local_variable
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:11888:31 -          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:11925:31 -          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:11961:31 -          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:11996:31 -          use_build_context_synchronously
+warning - The value of the local variable 'actor' isn't used -
+       lib\main.dart:12011:18 - unused_local_variable
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:12057:31 -          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:12077:31 -          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:12097:31 -          use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:12116:31 -          use_build_context_synchronously
+warning - The declaration '_showFieldPlayerSelector' isn't referenced -
+       lib\main.dart:12238:16 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:12790:44 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:12792:52 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:12840:42 -
+          deprecated_member_use
+warning - The declaration '_confirmarFinalizarPartido' isn't referenced -
+       lib\main.dart:13129:8 - unused_element
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13386:27 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13388:29 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13391:30 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13393:29 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13575:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13600:62 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13711:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13896:30 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13901:30 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13906:30 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:13939:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14018:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14019:26 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14024:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14025:26 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14069:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14070:26 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14075:37 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14076:26 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14218:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14304:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14306:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14398:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14400:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14508:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14560:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14562:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14565:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14577:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14667:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14742:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14744:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14781:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14786:32 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14813:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14815:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14818:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14830:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14929:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14962:60 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:14965:51 -
+          deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:15058:28 -          use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15312:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15314:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15317:33 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15329:46 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15648:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15650:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15673:45 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15681:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15695:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15775:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15825:62 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15828:53 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15832:55 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15849:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15852:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15886:59 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15904:57 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15915:67 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15949:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:15962:57 -
+          deprecated_member_use
+   info - Unnecessary use of 'toList' in a spread - lib\main.dart:15972:26 -
+          unnecessary_to_list_in_spreads
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16131:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16370:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16372:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16374:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16376:43 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16440:33 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16441:33 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16442:36 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16446:41 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16451:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16465:47 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16478:51 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16489:51 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16514:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16516:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16640:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16694:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16717:58 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16720:49 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16734:39 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16737:52 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:16773:63 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17039:61 -
+          deprecated_member_use
+   info - Unnecessary use of 'toList' in a spread - lib\main.dart:17066:61 -
+          unnecessary_to_list_in_spreads
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17086:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17088:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17120:40 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17122:48 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17164:33 -
+          deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:17297:28 -          use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17548:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17590:58 -
+          deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\main.dart:17722:28 -          use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:17980:61 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\main.dart:18018:58 -
+          deprecated_member_use
+   info - 'Share' is deprecated and shouldn't be used. Use SharePlus instead -
+          lib\main.dart:18171:9 - deprecated_member_use
+   info - 'shareXFiles' is deprecated and shouldn't be used. Use
+          SharePlus.instance.share() instead - lib\main.dart:18171:15 -
+          deprecated_member_use
+warning - Unnecessary cast - lib\partido_repository_v2.dart:86:45 -
+       unnecessary_cast
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:37:42 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:39:50 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:50:39 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:186:35 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:187:24 -
+          deprecated_member_use
+   info - Unnecessary use of multiple underscores -
+          lib\widgets\match_card.dart:257:35 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores -
+          lib\widgets\match_card.dart:257:39 - unnecessary_underscores
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:301:27 -
+          deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues()
+          to avoid precision loss - lib\widgets\match_card.dart:302:34 -
+          deprecated_member_use
+   info - The imported package 'proyecto_arquero_ok' isn't a dependency of the
+          importing package - test\widget_test.dart:2:8 -
+          depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:proyecto_arquero_ok/main.dart' -         test\widget_test.dart:2:8 - uri_does_not_exist
+  error - The name 'GoalKeeperApp' isn't a class - test\widget_test.dart:6:35 -
+         creation_with_non_type
+
+
+PS C:\appflutter\handball_app> flutter test
+00:00 +0: loading C:/appflutter/handball_app/test/widget_test.dart             Error: Couldn't resolve the package 'proyecto_arquero_ok' in
+'package:proyecto_arquero_ok/main.dart'.
+test/widget_test.dart:2:8: Error: Not found:
+'package:proyecto_arquero_ok/main.dart'
+import 'package:proyecto_arquero_ok/main.dart';
+       ^
+00:03 +0: loading C:/appflutter/handball_app/test/widget_test.dart             test/widget_test.dart:6:35: Error: Couldn't find constructor 'GoalKeeperApp'.
+    await tester.pumpWidget(const GoalKeeperApp());
+                                  ^^^^^^^^^^^^^
+00:09 +0 -1: loading C:/appflutter/handball_app/test/widget_test.dart [E]      
+  Failed to load "C:/appflutter/handball_app/test/widget_test.dart":
+  Compilation failed for testPath=C:/appflutter/handball_app/test/widget_test.dart: Error: Couldn't resolve the package 'proyecto_arquero_ok' in 'package:proyecto_arquero_ok/main.dart'.
+  test/widget_test.dart:2:8: Error: Not found: 'package:proyecto_arquero_ok/main.dart'
+  import 'package:proyecto_arquero_ok/main.dart';
+         ^
+  test/widget_test.dart:6:35: Error: Couldn't find constructor 'GoalKeeperApp'.
+      await tester.pumpWidget(const GoalKeeperApp());
+                                    ^^^^^^^^^^^^^
+  .
+
+To run this test again: C:\flutter\bin\cache\dart-sdk\bin\dart.exe test C:/appflutter/handball_app/test/widget_test.dart -p vm --plain-name "loading C:/appflutter/handball_app/test/widget_test.dart"
+00:09 +0 -1: Some tests failed.  
+
+
+
+name: handball_app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  share_plus: ^13.1.0
+  path_provider: ^2.1.5
+  file_selector: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package
