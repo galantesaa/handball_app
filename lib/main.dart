@@ -1,4 +1,4 @@
-import 'features/settings/data/settings_repository.dart';
+import 'features/settings/data/structure_repository.dart' as structure;
 import 'features/settings/domain/models/active_context.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +17,7 @@ import 'package:file_selector/file_selector.dart';
 import 'models/match_model.dart';
 import 'services/stats_service.dart';
 import 'package:flutter/rendering.dart';
+import 'features/settings/data/settings_repository.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -1246,6 +1247,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final SettingsRepository _settingsRepository = SettingsRepository();
 
+  final structure.StructureRepository _structureRepository =
+      structure.StructureRepository();
+
+  List<String> temporadasDinamicas = [];
+  List<String> categoriasDinamicas = [];
+  List<structure.CompetitionConfig> competenciasDinamicas = [];
+
   List<String> get contexto => <String>[
     temporadaSeleccionada,
     competenciaSeleccionada,
@@ -1254,39 +1262,60 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
   @override
   void initState() {
-  super.initState();
-  _loadActiveContext();
-}
+    super.initState();
+    _loadActiveContext();
+  }
 
   Future<void> _loadActiveContext() async {
-  final activeContext = await _settingsRepository.getActiveContext();
+    final activeContext = await _settingsRepository.getActiveContext();
 
-  if (!mounted) return;
+    if (!mounted) return;
+    await _structureRepository.ensureInitialStructureFromActiveContext(
+      season: activeContext.season,
+      competition: activeContext.competition,
+      tournament: activeContext.tournament,
+      category: activeContext.category,
+    );
 
-  setState(() {
-    tieneInstitucion = activeContext.hasInstitution;
-    institucionNombre = activeContext.institutionName;
-    temporadaSeleccionada = activeContext.season;
-    competenciaSeleccionada = activeContext.competition;
-    torneoSeleccionado = activeContext.tournament;
-    categoriaSeleccionada = activeContext.category;
-    _isLoadingContext = false;
-  });
-}
+    await _loadStructureData();
+    setState(() {
+      tieneInstitucion = activeContext.hasInstitution;
+      institucionNombre = activeContext.institutionName;
+      temporadaSeleccionada = activeContext.season;
+      competenciaSeleccionada = activeContext.competition;
+      torneoSeleccionado = activeContext.tournament;
+      categoriaSeleccionada = activeContext.category;
+      _isLoadingContext = false;
+    });
+  }
+
+  Future<void> _loadStructureData() async {
+    final seasons = await _structureRepository.getSeasons();
+    final categories = await _structureRepository.getCategories();
+    final competitions = await _structureRepository.getCompetitions();
+
+    if (!mounted) return;
+
+    setState(() {
+      temporadasDinamicas = seasons;
+      categoriasDinamicas = categories;
+      competenciasDinamicas = competitions;
+    });
+  }
 
   Future<void> _saveActiveContext() async {
-  await _settingsRepository.saveActiveContext(
-    ActiveContext(
-      hasInstitution: tieneInstitucion,
-      institutionName: institucionNombre,
-      season: temporadaSeleccionada,
-      competition: competenciaSeleccionada,
-      tournament: torneoSeleccionado,
-      category: categoriaSeleccionada,
-    ),
-  );
-}
-  
+    await _settingsRepository.saveActiveContext(
+      ActiveContext(
+        hasInstitution: tieneInstitucion,
+        institutionName: institucionNombre,
+        season: temporadaSeleccionada,
+        competition: competenciaSeleccionada,
+        tournament: torneoSeleccionado,
+        category: categoriaSeleccionada,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1309,17 +1338,17 @@ class _HomeScreenState extends State<HomeScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 46, 20, 24),
               child: _isLoadingContext
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopIdentityRow(),
-                  const SizedBox(height: 30),
-                  tieneInstitucion
-                      ? _buildEstadoConInstitucion()
-                      : _buildEstadoSinInstitucion(context),
-                ],
-              ),
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTopIdentityRow(),
+                        const SizedBox(height: 30),
+                        tieneInstitucion
+                            ? _buildEstadoConInstitucion()
+                            : _buildEstadoSinInstitucion(context),
+                      ],
+                    ),
             ),
           ),
         ],
@@ -1558,42 +1587,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<String> get competenciasDisponibles {
-    return ['Local', 'Nacional A', 'Nacional B', /*'Nacional C',*/ 'Amistoso'];
+    if (competenciasDinamicas.isEmpty) {
+      return ['Local'];
+    }
+
+    return competenciasDinamicas.map((e) => e.name).toList();
   }
 
   List<String> get torneosDisponibles {
-    if (competenciaSeleccionada == 'Local') {
-      return ['Apertura', 'Clausura'];
-    }
+    final selected = competenciasDinamicas.firstWhere(
+      (e) => e.name == competenciaSeleccionada,
+      orElse: () => const structure.CompetitionConfig(
+        name: 'Local',
+        type: 'local',
+        tournaments: ['Apertura', 'Clausura'],
+      ),
+    );
 
-    if (competenciaSeleccionada.startsWith('Nacional')) {
-      return ['Único'];
-    }
-
-    if (competenciaSeleccionada == 'Amistoso') {
-      return ['Amistoso'];
-    }
-
-    return ['Único'];
+    return selected.tournaments;
   }
 
   void _setCompetencia(String competencia) {
-  setState(() {
-    competenciaSeleccionada = competencia;
-    torneoSeleccionado = torneosDisponibles.first;
-  });
+    setState(() {
+      competenciaSeleccionada = competencia;
+      torneoSeleccionado = torneosDisponibles.first;
+    });
 
-  _saveActiveContext();
-}
-  
+    _saveActiveContext();
+  }
+
   void _setTorneo(String torneo) {
-  setState(() {
-    torneoSeleccionado = torneo;
-  });
+    setState(() {
+      torneoSeleccionado = torneo;
+    });
 
-  _saveActiveContext();
-}
-  
+    _saveActiveContext();
+  }
+
   Widget _buildSelectableChip({
     required String text,
     required bool selected,
@@ -1726,16 +1756,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _importarBackupDesdeEstadoVacio() async {
-  setState(() {
-    _isLoadingContext = true;
-  });
+    setState(() {
+      _isLoadingContext = true;
+    });
 
-  await importarBackupDesdeArchivo(context);
+    await importarBackupDesdeArchivo(context);
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  await _loadActiveContext();
-}
+    await _loadActiveContext();
+  }
 
   Widget _buildEstadoSinInstitucion(BuildContext context) {
     return SizedBox(
@@ -1808,7 +1838,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildContextSection(),
-                
+
                 const SizedBox(height: 12),
                 _buildPrimaryOutlineAction(
                   text: 'Ver fixture actual',
@@ -1922,200 +1952,211 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContextLine() {
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        _buildContextToken(
-          text: temporadaSeleccionada,
-          removable: false,
-          onTap: () => _showContextPicker(
-            title: 'Elegí temporada',
-            options: const ['2026', '+ Crear temporada'],
-            currentValue: temporadaSeleccionada,
-            onSelected: (value) {
-              if (value.startsWith('+')) return;
-              setState(() => temporadaSeleccionada = value);
-              _saveActiveContext();
-            },
-          ),
-        ),
-        const SizedBox(width: 4),
-        _buildContextToken(
-          text: competenciaSeleccionada,
-          removable: false,
-          onTap: () => _showContextPicker(
-            title: 'Elegí competencia',
-            options: const [
-              'Local',
-              'Nacional A',
-              'Nacional B',
-              //'Nacional C',//
-              'Amistoso',
-              '+ Crear competencia',
-            ],
-            currentValue: competenciaSeleccionada,
-            onSelected: (value) {
-              if (value.startsWith('+')) return;
-              _setCompetencia(value);
-            },
-          ),
-        ),
-        const SizedBox(width: 4),
-        _buildContextToken(
-          text: torneoSeleccionado,
-          removable: false,
-          onTap: () => _showContextPicker(
-            title: 'Elegí torneo',
-            options: [...torneosDisponibles, '+ Crear torneo'],
-            currentValue: torneoSeleccionado,
-            onSelected: (value) {
-              if (value.startsWith('+')) return;
-              _setTorneo(value);
-            },
-          ),
-        ),
-        const SizedBox(width: 4),
-        _buildContextToken(
-          text: categoriaSeleccionada,
-          removable: false,
-          onTap: () => _showContextPicker(
-            title: 'Elegí categoría',
-            options: const ['Cadetes', 'Juveniles', '+ Crear categoría'],
-            currentValue: categoriaSeleccionada,
-            onSelected: (value) {
-              if (value.startsWith('+')) return;
-              setState(() => categoriaSeleccionada = value);
-              _saveActiveContext();
-            },
-          ),
-        ),
-      ],
-    ),
-  );
-}
-  
-  void _showContextPicker({
-  required String title,
-  required List<String> options,
-  required String currentValue,
-  required ValueChanged<String> onSelected,
-}) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return SafeArea(
-        child: Container(
-          margin: const EdgeInsets.all(14),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1722),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: options.map((option) {
-                  final selected = option == currentValue;
-                  final isCreate = option.startsWith('+');
-
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      onSelected(option);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF4F8CFF)
-                            : const Color(0xFF182338),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: selected
-                              ? const Color(0xFF4F8CFF)
-                              : Colors.white.withOpacity(0.06),
-                        ),
-                      ),
-                      child: Text(
-                        option,
-                        style: TextStyle(
-                          color: isCreate
-                              ? const Color(0xFF7DB7FF)
-                              : Colors.white,
-                          fontSize: 14,
-                          fontWeight:
-                              selected ? FontWeight.w900 : FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-  Widget _buildContextToken({
-  required String text,
-  required bool removable,
-  VoidCallback? onRemove,
-  VoidCallback? onTap,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF182338).withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.035)),
-      ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFFDCE4EF),
-              fontWeight: FontWeight.w600,
-              height: 1.0,
+          _buildContextToken(
+            text: temporadaSeleccionada,
+            removable: false,
+            onTap: () => _showContextPicker(
+              title: 'Elegí temporada',
+              options: [
+                ...(temporadasDinamicas.isEmpty
+                    ? ['2026']
+                    : temporadasDinamicas),
+                '+ Crear temporada',
+              ],
+              currentValue: temporadaSeleccionada,
+              onSelected: (value) {
+                if (value.startsWith('+')) return;
+                setState(() => temporadaSeleccionada = value);
+                _saveActiveContext();
+              },
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 15,
-            color: Color(0xFFC9D3E0),
+          _buildContextToken(
+            text: competenciaSeleccionada,
+            removable: false,
+            onTap: () => _showContextPicker(
+              title: 'Elegí competencia',
+              options: const [
+                'Local',
+                'Nacional A',
+                'Nacional B',
+                //'Nacional C',//
+                'Amistoso',
+                '+ Crear competencia',
+              ],
+              currentValue: competenciaSeleccionada,
+              onSelected: (value) {
+                if (value.startsWith('+')) return;
+                _setCompetencia(value);
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+          _buildContextToken(
+            text: torneoSeleccionado,
+            removable: false,
+            onTap: () => _showContextPicker(
+              title: 'Elegí torneo',
+              options: [...torneosDisponibles, '+ Crear torneo'],
+              currentValue: torneoSeleccionado,
+              onSelected: (value) {
+                if (value.startsWith('+')) return;
+                _setTorneo(value);
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+          _buildContextToken(
+            text: categoriaSeleccionada,
+            removable: false,
+            onTap: () => _showContextPicker(
+              title: 'Elegí categoría',
+              options: [
+                ...(categoriasDinamicas.isEmpty
+                    ? ['Cadetes', 'Juveniles']
+                    : categoriasDinamicas),
+                '+ Crear categoría',
+              ],
+              currentValue: categoriaSeleccionada,
+              onSelected: (value) {
+                if (value.startsWith('+')) return;
+                setState(() => categoriaSeleccionada = value);
+                _saveActiveContext();
+              },
+            ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
+
+  void _showContextPicker({
+    required String title,
+    required List<String> options,
+    required String currentValue,
+    required ValueChanged<String> onSelected,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1722),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: options.map((option) {
+                    final selected = option == currentValue;
+                    final isCreate = option.startsWith('+');
+
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        onSelected(option);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFF4F8CFF)
+                              : const Color(0xFF182338),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFF4F8CFF)
+                                : Colors.white.withOpacity(0.06),
+                          ),
+                        ),
+                        child: Text(
+                          option,
+                          style: TextStyle(
+                            color: isCreate
+                                ? const Color(0xFF7DB7FF)
+                                : Colors.white,
+                            fontSize: 14,
+                            fontWeight: selected
+                                ? FontWeight.w900
+                                : FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContextToken({
+    required String text,
+    required bool removable,
+    VoidCallback? onRemove,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF182338).withOpacity(0.9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.035)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFDCE4EF),
+                fontWeight: FontWeight.w600,
+                height: 1.0,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 15,
+              color: Color(0xFFC9D3E0),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildContextDropdown({
     required String value,
@@ -2165,137 +2206,139 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSwitcherRow() {
-  List<String> opciones = <String>[];
-  String titulo = '';
+    List<String> opciones = <String>[];
+    String titulo = '';
 
-  if (_contextStep == 'temporada') {
-    titulo = 'Elegí temporada';
-    opciones = ['2026', '+ Crear temporada'];
-  } else if (_contextStep == 'competencia') {
-    titulo = 'Elegí competencia';
-    opciones = [
-      'Local',
-      'Nacional A',
-      'Nacional B',
-      /*'Nacional C',*/
-      'Amistoso',
-      '+ Crear competencia',
-    ];
-  } else if (_contextStep == 'torneo') {
-    titulo = 'Elegí torneo';
+    if (_contextStep == 'temporada') {
+      titulo = 'Elegí temporada';
+      opciones = ['2026', '+ Crear temporada'];
+    } else if (_contextStep == 'competencia') {
+      titulo = 'Elegí competencia';
+      opciones = [
+        'Local',
+        'Nacional A',
+        'Nacional B',
+        /*'Nacional C',*/
+        'Amistoso',
+        '+ Crear competencia',
+      ];
+    } else if (_contextStep == 'torneo') {
+      titulo = 'Elegí torneo';
 
-    if (competenciaSeleccionada == 'Local') {
-      opciones = ['Apertura', 'Clausura', '+ Crear torneo'];
-    } else if (competenciaSeleccionada.startsWith('Nacional')) {
-      opciones = ['Único', '+ Crear torneo'];
-    } else if (competenciaSeleccionada == 'Amistoso') {
-      opciones = ['Amistoso', '+ Crear torneo'];
+      if (competenciaSeleccionada == 'Local') {
+        opciones = ['Apertura', 'Clausura', '+ Crear torneo'];
+      } else if (competenciaSeleccionada.startsWith('Nacional')) {
+        opciones = ['Único', '+ Crear torneo'];
+      } else if (competenciaSeleccionada == 'Amistoso') {
+        opciones = ['Amistoso', '+ Crear torneo'];
+      } else {
+        opciones = ['Único', '+ Crear torneo'];
+      }
     } else {
-      opciones = ['Único', '+ Crear torneo'];
+      titulo = 'Elegí categoría';
+      opciones = ['Cadetes', 'Juveniles', '+ Crear categoría'];
     }
-  } else {
-    titulo = 'Elegí categoría';
-    opciones = ['Cadetes', 'Juveniles', '+ Crear categoría'];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.78),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            titulo,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: opciones.map((opcion) {
+              final bool selected =
+                  opcion == temporadaSeleccionada ||
+                  opcion == competenciaSeleccionada ||
+                  opcion == torneoSeleccionado ||
+                  opcion == categoriaSeleccionada;
+
+              return GestureDetector(
+                onTap: () {
+                  if (opcion.startsWith('+')) {
+                    debugPrint(opcion);
+                    return;
+                  }
+
+                  setState(() {
+                    if (_contextStep == 'temporada') {
+                      temporadaSeleccionada = opcion;
+                      _contextStep = 'competencia';
+                    } else if (_contextStep == 'competencia') {
+                      competenciaSeleccionada = opcion;
+
+                      if (competenciaSeleccionada == 'Local') {
+                        torneoSeleccionado = 'Apertura';
+                      } else if (competenciaSeleccionada.startsWith(
+                        'Nacional',
+                      )) {
+                        torneoSeleccionado = 'Único';
+                      } else if (competenciaSeleccionada == 'Amistoso') {
+                        torneoSeleccionado = 'Amistoso';
+                      } else {
+                        torneoSeleccionado = 'Único';
+                      }
+
+                      _contextStep = 'torneo';
+                    } else if (_contextStep == 'torneo') {
+                      torneoSeleccionado = opcion;
+                      _contextStep = 'categoria';
+                    } else {
+                      categoriaSeleccionada = opcion;
+                      _contextStep = 'completo';
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFF4F8CFF).withOpacity(0.95)
+                        : const Color(0xFF182338).withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFF4F8CFF)
+                          : Colors.white.withOpacity(0.05),
+                    ),
+                  ),
+                  child: Text(
+                    opcion,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: const Color(0xFF0F1722).withOpacity(0.78),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: Colors.white.withOpacity(0.04)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: opciones.map((opcion) {
-            final bool selected =
-                opcion == temporadaSeleccionada ||
-                opcion == competenciaSeleccionada ||
-                opcion == torneoSeleccionado ||
-                opcion == categoriaSeleccionada;
-
-            return GestureDetector(
-              onTap: () {
-                if (opcion.startsWith('+')) {
-                  debugPrint(opcion);
-                  return;
-                }
-
-                setState(() {
-                  if (_contextStep == 'temporada') {
-                    temporadaSeleccionada = opcion;
-                    _contextStep = 'competencia';
-                  } else if (_contextStep == 'competencia') {
-                    competenciaSeleccionada = opcion;
-
-                    if (competenciaSeleccionada == 'Local') {
-                      torneoSeleccionado = 'Apertura';
-                    } else if (competenciaSeleccionada.startsWith('Nacional')) {
-                      torneoSeleccionado = 'Único';
-                    } else if (competenciaSeleccionada == 'Amistoso') {
-                      torneoSeleccionado = 'Amistoso';
-                    } else {
-                      torneoSeleccionado = 'Único';
-                    }
-
-                    _contextStep = 'torneo';
-                  } else if (_contextStep == 'torneo') {
-                    torneoSeleccionado = opcion;
-                    _contextStep = 'categoria';
-                  } else {
-                    categoriaSeleccionada = opcion;
-                    _contextStep = 'completo';
-                  }
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? const Color(0xFF4F8CFF).withOpacity(0.95)
-                      : const Color(0xFF182338).withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: selected
-                        ? const Color(0xFF4F8CFF)
-                        : Colors.white.withOpacity(0.05),
-                  ),
-                ),
-                child: Text(
-                  opcion,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    ),
-  );
-}
-  
   Widget _buildPrimaryOutlineAction({
     required String text,
     required IconData icon,
@@ -18030,7 +18073,7 @@ Future<String> generarBackupCompleto() async {
   };
 
   return const JsonEncoder.withIndent('  ').convert(backup);
-  }
+}
 
 /// ===============================
 /// SANEAR TEXTO IMPORTADO
