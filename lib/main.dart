@@ -3837,19 +3837,20 @@ String get _contextStorageSuffix {
   /// Compara contra V2 y contra historial legado ya mergeado.
   /// ===============================
   bool _estaFinalizadoGlobal(Map<String, dynamic> partido) {
-    if (!_esPartidoValido(partido)) return false;
+  if (!_esPartidoValido(partido)) return false;
 
-    final identidad = _identityFromMap(partido);
+  final identidad = _identityFromMap(partido);
 
-    final enV2 = _estaFinalizadoV2(partido);
-    final enLegacy = partidosFinalizados.any((p) {
-      return buildNormalizedMatchIdentity(p) == identidad ||
-          _partidoIdentity(p) == _partidoIdentity(partido);
-    });
+  final enV2 = _estaFinalizadoV2(partido);
 
-    return enV2 || enLegacy;
-  }
+  final enLegacy = partidosFinalizados.any((p) {
+    return PartidoRepositoryV2.buildMatchIdentityFromMap(p) == identidad ||
+        _partidoIdentity(p) == _partidoIdentity(partido);
+  });
 
+  return enV2 || enLegacy;
+}
+  
   /// ===============================
   /// RECALCULAR PRoXIMO PARTIDO DESDE FIXTURE BASE
   /// Si el proximo actual quedo inválido, toma el primer pendiente real
