@@ -1,3 +1,4 @@
+import 'core/context/app_context_key.dart';
 import 'features/settings/data/structure_repository.dart' as structure;
 import 'features/settings/domain/models/active_context.dart';
 import 'package:flutter/material.dart';
@@ -3761,24 +3762,20 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   List<Map<String, dynamic>> siguientesPartidos = [];
   List<Map<String, dynamic>> partidosFinalizados = [];
 
-  String _storageSafe(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll(' ', '_')
-        .replaceAll('/', '_')
-        .replaceAll('\\', '_')
-        .replaceAll(RegExp(r'[^a-z0-9_áéíóúñü-]'), '');
-  }
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
 
-  String get _contextStorageSuffix {
-    return [
-      widget.temporada,
-      widget.competencia,
-      widget.torneo,
-      widget.categoria,
-    ].map(_storageSafe).join('_');
-  }
+String get _contextStorageSuffix {
+  return AppContextKey.fromActiveContext(_activeContext);
+}
 
   String get _proximoPartidoStorageKey =>
       'proximo_partido_$_contextStorageSuffix';
@@ -3904,27 +3901,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
+  return AppContextKey.matchesMap(
+    data: partido,
+    context: _activeContext,
+  );
+}
+  
   @override
   void initState() {
     super.initState();
@@ -14749,32 +14731,28 @@ class _HistorialScreenState extends State<HistorialScreen> {
     });
   }
 
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
+
   bool _matchesCurrentContext(Map<String, dynamic> item) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
+  final partido = item['partido'] is Map
+      ? Map<String, dynamic>.from(item['partido'] as Map)
+      : item;
 
-    final partido = item['partido'] is Map
-        ? Map<String, dynamic>.from(item['partido'] as Map)
-        : item;
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
+  return AppContextKey.matchesMap(
+    data: partido,
+    context: _activeContext,
+  );
+}
+  
   void _aplicarFiltros() {
     final q = _busqueda.trim().toLowerCase();
 
@@ -15371,28 +15349,24 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     _future = _loadPartidosReales();
   }
 
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
+
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
+  return AppContextKey.matchesMap(
+    data: partido,
+    context: _activeContext,
+  );
+}
+  
   Future<List<Map<String, dynamic>>> _loadPartidosReales() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('finished_matches_history_v1');
