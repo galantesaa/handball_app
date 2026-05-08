@@ -15375,22 +15375,24 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
             <String, dynamic>{},
       );
 
-      final categoriaPartido = (base['categoria'] ?? '').toString().trim();
+      final merged = {
+  ...base,
+  'matchIdentity': map['matchIdentity'],
+  'archivedAt': map['archivedAt'] ?? map['timestamp'],
+  'golesSanFernando':
+      map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
+  'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
+  'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
+  'golesRecibidos':
+      map['golesRecibidos'] ?? base['golesRecibidos'] ?? 0,
+  'eventos': map['eventos'] ?? base['eventos'] ?? <dynamic>[],
+};
 
-      if (categoriaPartido != widget.categoria) {
-        continue;
-      }
+if (!_matchesCurrentContext(merged)) {
+  continue;
+}
 
-      partidos.add({
-        ...base,
-        'matchIdentity': map['matchIdentity'],
-        'archivedAt': map['archivedAt'] ?? map['timestamp'],
-        'golesSanFernando':
-            map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
-        'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
-        'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
-        'eventos': map['eventos'] ?? base['eventos'] ?? const [],
-      });
+partidos.add(merged);
     }
 
     partidos.sort((a, b) {
@@ -15764,6 +15766,15 @@ class EquiposScreen extends StatelessWidget {
                     'Gestion de estructura deportiva',
                     style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$temporada · $competencia · $torneo · $categoriaInicial',
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildEquipoActionCard(
                     context: context,
@@ -15777,6 +15788,8 @@ class EquiposScreen extends StatelessWidget {
                           builder: (_) => PlantelScreen(
                             categoriaInicial: categoriaInicial,
                             temporada: temporada,
+                            competencia: competencia,
+                            torneo: torneo,
                           ),
                         ),
                       );
@@ -15870,11 +15883,15 @@ class EquiposScreen extends StatelessWidget {
 class PlantelScreen extends StatefulWidget {
   final String categoriaInicial;
   final String temporada;
+  final String competencia;
+  final String torneo;
 
   const PlantelScreen({
     super.key,
     required this.categoriaInicial,
     required this.temporada,
+    required this.competencia,
+    required this.torneo,
   });
 
   @override
@@ -15884,11 +15901,16 @@ class PlantelScreen extends StatefulWidget {
 class _PlantelScreenState extends State<PlantelScreen> {
   late String categoriaSeleccionada;
 
+  bool get _usaPlantelLegacy {
+    final temporada = widget.temporada.trim();
+    final competencia = widget.competencia.trim().toLowerCase();
+
+    return temporada == '2026' && competencia == 'local';
+  }
+
   @override
   void initState() {
     super.initState();
-
-    /// La categoría inicial viene desde el contexto activo del Home.
     categoriaSeleccionada = widget.categoriaInicial;
   }
 
@@ -15923,57 +15945,122 @@ class _PlantelScreenState extends State<PlantelScreen> {
                     'Estructura del plantel por categoría',
                     style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildCategoriaSelector(),
                   const SizedBox(height: 18),
-                  _buildPlantelCard(
-                    icon: Icons.sports_handball_rounded,
-                    title: 'Jugadores',
-                    subtitle: 'Jugadores de campo de $categoriaSeleccionada',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => JugadoresCampoScreen(
-                            categoria: categoriaSeleccionada,
+                  if (!_usaPlantelLegacy)
+                    _buildEmptyContextState()
+                  else ...[
+                    _buildPlantelCard(
+                      icon: Icons.sports_handball_rounded,
+                      title: 'Jugadores',
+                      subtitle: 'Jugadores de campo de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JugadoresCampoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPlantelCard(
-                    icon: Icons.shield_rounded,
-                    title: 'Arqueros',
-                    subtitle: 'Arqueros de $categoriaSeleccionada',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ArquerosScreen(categoria: categoriaSeleccionada),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPlantelCard(
-                    icon: Icons.badge_rounded,
-                    title: 'Cuerpo tecnico',
-                    subtitle: 'Estructura tecnica de $categoriaSeleccionada',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CuerpoTecnicoScreen(
-                            categoria: categoriaSeleccionada,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlantelCard(
+                      icon: Icons.shield_rounded,
+                      title: 'Arqueros',
+                      subtitle: 'Arqueros de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ArquerosScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlantelCard(
+                      icon: Icons.badge_rounded,
+                      title: 'Cuerpo tecnico',
+                      subtitle: 'Estructura tecnica de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CuerpoTecnicoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyContextState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.groups_2_outlined,
+            color: Color(0xFF8FA3BF),
+            size: 36,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No hay plantel cargado para este contexto',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'La edición de planteles por competencia/torneo se migrará en el próximo paso, sin tocar la convocatoria del partido.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF8FA3BF),
+              fontSize: 12,
+              height: 1.35,
             ),
           ),
         ],

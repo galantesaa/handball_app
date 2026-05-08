@@ -1,0 +1,515 @@
+# Handball SGS - Migración segura de Equipo sin tocar RosterStorage
+
+Objetivo:
+- No tocar RosterStorage.
+- No tocar MatchSquadScreen.
+- No tocar partido en vivo.
+- Hacer que Equipo respete el contexto de Home.
+- Mantener 2026 / Local funcionando igual que antes.
+- Mostrar pantalla vacía/controlada para contextos nuevos como 2027 / Nacional C / Único / Juveniles.
+
+============================================================
+1) REEMPLAZAR COMPLETA class EquiposScreen
+============================================================
+
+class EquiposScreen extends StatelessWidget {
+  final String categoriaInicial;
+  final String temporada;
+  final String competencia;
+  final String torneo;
+
+  const EquiposScreen({
+    super.key,
+    required this.categoriaInicial,
+    required this.temporada,
+    required this.competencia,
+    required this.torneo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Equipo'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gestion de estructura deportiva',
+                    style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$temporada · $competencia · $torneo · $categoriaInicial',
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildEquipoActionCard(
+                    context: context,
+                    icon: Icons.groups_rounded,
+                    title: 'Plantel',
+                    subtitle: 'Jugadores, arqueros y cuerpo tecnico',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PlantelScreen(
+                            categoriaInicial: categoriaInicial,
+                            temporada: temporada,
+                            competencia: competencia,
+                            torneo: torneo,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEquipoActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.88),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFF182338).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFAAB4C3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDCE4EF),
+              size: 26,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+============================================================
+2) REEMPLAZAR COMPLETA class PlantelScreen
+============================================================
+
+class PlantelScreen extends StatefulWidget {
+  final String categoriaInicial;
+  final String temporada;
+  final String competencia;
+  final String torneo;
+
+  const PlantelScreen({
+    super.key,
+    required this.categoriaInicial,
+    required this.temporada,
+    required this.competencia,
+    required this.torneo,
+  });
+
+  @override
+  State<PlantelScreen> createState() => _PlantelScreenState();
+}
+
+class _PlantelScreenState extends State<PlantelScreen> {
+  late String categoriaSeleccionada;
+
+  bool get _usaPlantelLegacy {
+    final temporada = widget.temporada.trim();
+    final competencia = widget.competencia.trim().toLowerCase();
+
+    return temporada == '2026' && competencia == 'local';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    categoriaSeleccionada = widget.categoriaInicial;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Plantel'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Estructura del plantel por categoría',
+                    style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildCategoriaSelector(),
+                  const SizedBox(height: 18),
+                  if (!_usaPlantelLegacy)
+                    _buildEmptyContextState()
+                  else ...[
+                    _buildPlantelCard(
+                      icon: Icons.sports_handball_rounded,
+                      title: 'Jugadores',
+                      subtitle: 'Jugadores de campo de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JugadoresCampoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlantelCard(
+                      icon: Icons.shield_rounded,
+                      title: 'Arqueros',
+                      subtitle: 'Arqueros de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ArquerosScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlantelCard(
+                      icon: Icons.badge_rounded,
+                      title: 'Cuerpo tecnico',
+                      subtitle: 'Estructura tecnica de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CuerpoTecnicoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyContextState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.groups_2_outlined,
+            color: Color(0xFF8FA3BF),
+            size: 36,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No hay plantel cargado para este contexto',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'La edición de planteles por competencia/torneo se migrará en el próximo paso, sin tocar la convocatoria del partido.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF8FA3BF),
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoriaSelector() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.03)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.category_rounded, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          const Text(
+            'Categoría',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          _buildCategoriaChip('Cadetes'),
+          const SizedBox(width: 8),
+          _buildCategoriaChip('Juveniles'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoriaChip(String categoria) {
+    final bool activa = categoriaSeleccionada == categoria;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          categoriaSeleccionada = categoria;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: activa
+              ? const Color(0xFF4F8CFF)
+              : const Color(0xFF182338).withOpacity(0.95),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: activa
+                ? const Color(0xFF4F8CFF)
+                : Colors.white.withOpacity(0.04),
+          ),
+        ),
+        child: Text(
+          categoria,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlantelCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.88),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.03)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFF182338).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFFAAB4C3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFDCE4EF),
+              size: 26,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+============================================================
+3) PRUEBA
+============================================================
+
+flutter test
+flutter run
+
+Validar:
+- 2027 / Nacional C / Único / Juveniles → Equipo → Plantel
+  Resultado esperado: "No hay plantel cargado para este contexto"
+
+- 2026 / Local / Apertura / Cadetes → Equipo → Plantel
+  Resultado esperado: muestra cards Jugadores / Arqueros / Cuerpo técnico igual que antes.
+
+IMPORTANTE:
+No tocar:
+- RosterStorage
+- MatchSquadScreen
+- JugadoresCampoScreen
+- ArquerosScreen
+- CuerpoTecnicoScreen
