@@ -37,29 +37,31 @@ class PartidoRepositoryV2 {
   /// Construye la identidad única de un partido.
   /// ===============================
   static String buildMatchIdentityFromModel(PartidoModel partido) {
-    return [
-      normalizeValue(partido.torneo),
-      normalizeValue(partido.categoria),
-      normalizeValue(partido.fecha),
-      normalizeValue(partido.rival),
-      normalizeValue(partido.condicion),
-    ].join('|');
-  }
-
+  return [
+    normalizeValue(partido.temporada),
+    normalizeValue(partido.competencia),
+    normalizeValue(partido.torneo),
+    normalizeValue(partido.categoria),
+    normalizeValue(partido.fecha),
+    normalizeValue(partido.rival),
+    normalizeValue(partido.condicion),
+  ].join('|');
+}
   /// ===============================
   /// MATCH IDENTITY DESDE MAP
   /// Compatible con la estructura actual de la app.
   /// ===============================
   static String buildMatchIdentityFromMap(Map<String, dynamic> partido) {
-    return [
-      normalizeValue(partido['torneo']),
-      normalizeValue(partido['categoria']),
-      normalizeValue(partido['fecha']),
-      normalizeValue(partido['rival']),
-      normalizeValue(partido['condicion']),
-    ].join('|');
-  }
-
+  return [
+    normalizeValue(partido['temporada'] ?? '2026'),
+    normalizeValue(partido['competencia'] ?? 'Local'),
+    normalizeValue(partido['torneo']),
+    normalizeValue(partido['categoria']),
+    normalizeValue(partido['fecha']),
+    normalizeValue(partido['rival']),
+    normalizeValue(partido['condicion']),
+  ].join('|');
+}
   /// ===============================
   /// READ LIVE MATCH SEGURO
   /// No rompe si live_match_current_v1 está null/corrupto.

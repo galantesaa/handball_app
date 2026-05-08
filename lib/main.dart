@@ -9495,6 +9495,21 @@ class _FixtureScreenState extends State<FixtureScreen> {
     _loadFinalizadosV2();
   }
 
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
+
+  String get _contextStorageSuffix {
+  return AppContextKey.fromActiveContext(_activeContext);
+}
+
   /// ===============================
   /// LOAD FINALIZADOS V2
   /// Lee partidos finalizados desde repository 2.0
@@ -15753,10 +15768,17 @@ class EquiposScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Equipo'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+          title: const Text(
+            'Equipo',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -15932,7 +15954,14 @@ class _PlantelScreenState extends State<PlantelScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Plantel'),
+        title: const Text(
+          'Plantel',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),

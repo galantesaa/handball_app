@@ -163,6 +163,8 @@ class PartidoModel {
   final String condicion;
   final String torneo;
   final String categoria;
+  final String temporada;
+  final String competencia;
 
   final String estado;
   final String estadoPartido;
@@ -220,12 +222,16 @@ class PartidoModel {
     this.escudoRival,
     this.archivedAt,
     this.matchSquad,
+    this.temporada = '2026',
+    this.competencia = 'Local',
   });
 
   factory PartidoModel.fromMap(Map<String, dynamic> map) {
     final eventosRaw = (map['eventos'] as List?) ?? const [];
 
     return PartidoModel(
+      temporada: (map['temporada'] ?? '2026').toString(),
+      competencia: (map['competencia'] ?? 'Local').toString(),
       rival: (map['rival'] ?? 'Rival').toString(),
       fechaNumero: map['fechaNumero'] as int?,
       fecha: (map['fecha'] ?? '').toString(),
@@ -261,6 +267,7 @@ class PartidoModel {
       matchSquad: map['matchSquad'] is Map
           ? MatchSquadModel.fromMap(
               Map<String, dynamic>.from(map['matchSquad'] as Map),
+              
             )
           : null,
     );
@@ -268,6 +275,8 @@ class PartidoModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'temporada': temporada,
+      'competencia': competencia,
       'rival': rival,
       'fechaNumero': fechaNumero,
       'fecha': fecha,
