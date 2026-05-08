@@ -14799,6 +14799,47 @@ class _HistorialScreenState extends State<HistorialScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
+  Widget _buildContextPathLabel() {
+  final path = [
+    widget.temporada,
+    widget.competencia,
+    widget.torneo,
+    widget.categoria,
+  ].where((e) => e.trim().isNotEmpty).join(' · ');
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.85),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.white.withOpacity(0.05)),
+    ),
+    child: Row(
+      children: [
+        const Icon(
+          Icons.route_rounded,
+          color: Color(0xFFAAB4C3),
+          size: 18,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            path.isEmpty ? 'Contexto no seleccionado' : path,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFD4DCE7),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -14851,37 +14892,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown<String>(
-                              value: _categoriaSeleccionada,
-                              items: const ['Todas', 'Cadetes', 'Juveniles'],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _categoriaSeleccionada = value;
-                                  _aplicarFiltros();
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildDropdown<String>(
-                              value: _torneoSeleccionado,
-                              items: const ['Todos', 'Apertura', 'Clausura'],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _torneoSeleccionado = value;
-                                  _aplicarFiltros();
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildContextPathLabel(),
                     ],
                   ),
                 ),
