@@ -4166,41 +4166,41 @@ String get _contextStorageSuffix {
   }
 
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
-    final fixture = _buildFixtureCompleto(categoria: widget.categoria);
+  final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
-    final identidadesFinalizadas = partidosFinalizados
-        .map((p) => _partidoIdentity(p))
-        .toSet();
+  final identidadesFinalizadas = partidosFinalizados
+      .map((p) => _identityFromMap(p))
+      .toSet();
 
-    final pendientes = fixture.where((p) {
-      return p['torneo'] == widget.torneo &&
-          p['categoria'] == widget.categoria &&
-          !identidadesFinalizadas.contains(_partidoIdentity(p));
-    }).toList();
+  final pendientes = fixture.where((p) {
+    return p['torneo'] == widget.torneo &&
+        p['categoria'] == widget.categoria &&
+        !identidadesFinalizadas.contains(_identityFromMap(p));
+  }).toList();
 
-    if (pendientes.isEmpty) return [];
+  if (pendientes.isEmpty) return [];
 
-    final identidadProximo = _partidoIdentity(proximoPartido);
+  final identidadProximo = _identityFromMap(proximoPartido);
 
-    final siguientes = pendientes
-        .where((p) => _partidoIdentity(p) != identidadProximo)
-        .toList();
+  final siguientes = pendientes
+      .where((p) => _identityFromMap(p) != identidadProximo)
+      .toList();
 
-    return siguientes.take(3).map((p) {
-      return {
-        'rival': p['rival'],
-        'fecha': p['fecha'],
-        'hora': p['hora'],
-        'condicion': p['condicion'],
-        'torneo': p['torneo'],
-        'categoria': p['categoria'],
-        'fechaNumero': p['fechaNumero'],
-        'escudoRival': p['escudoRival'],
-        'estado': p['estado'],
-      };
-    }).toList();
-  }
-
+  return siguientes.take(3).map((p) {
+    return {
+      'rival': p['rival'],
+      'fecha': p['fecha'],
+      'hora': p['hora'],
+      'condicion': p['condicion'],
+      'torneo': p['torneo'],
+      'categoria': p['categoria'],
+      'fechaNumero': p['fechaNumero'],
+      'escudoRival': p['escudoRival'],
+      'estado': p['estado'],
+    };
+  }).toList();
+}
+  
   Future<void> _loadFixtureState() async {
     final prefs = await SharedPreferences.getInstance();
 
