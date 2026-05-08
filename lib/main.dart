@@ -4847,7 +4847,7 @@ String get _contextStorageSuffix {
               final identidad = _identityFromMap(proximoPartido);
 
               final finalizado = _finalizadosV2.firstWhere(
-                (p) => buildNormalizedMatchIdentity(p.toMap()) == identidad,
+                (p) => PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
               );
 
               Navigator.push(
@@ -9967,13 +9967,14 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
-    final identidad = buildNormalizedMatchIdentity(partido);
+    final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 
     final PartidoModel? finalizadoV2 = _finalizadosV2
         .cast<PartidoModel?>()
         .firstWhere(
           (p) =>
-              p != null && buildNormalizedMatchIdentity(p.toMap()) == identidad,
+              p != null &&
+              PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
           orElse: () => null,
         );
 
