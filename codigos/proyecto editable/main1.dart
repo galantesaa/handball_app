@@ -686,21 +686,69 @@ class RosterRepository {
 /// Si no hay datos guardados, usa RosterRepository hardcodeado.
 /// ===============================
 class RosterStorage {
-  static String _key({required String categoria, required String temporada}) {
+  static String _safeKeyPart(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll('/', '_')
+        .replaceAll('\\', '_')
+        .replaceAll(RegExp(r'[^a-z0-9_áéíóúñü-]'), '');
+  }
+
+  static String _legacyKey({
+    required String categoria,
+    required String temporada,
+  }) {
     return 'roster_${temporada}_$categoria';
+  }
+
+  static String _contextKey({
+    required String categoria,
+    required String temporada,
+    required String competencia,
+    required String torneo,
+  }) {
+    return [
+      'roster',
+      _safeKeyPart(temporada),
+      _safeKeyPart(competencia),
+      _safeKeyPart(torneo),
+      _safeKeyPart(categoria),
+    ].join('_');
   }
 
   static Future<List<PlayerProfile>> readRosterForCategory({
     required String categoria,
     required String temporada,
+    required String competencia,
+    required String torneo,
     bool includeStaff = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(
-      _key(categoria: categoria, temporada: temporada),
+
+    final contextRaw = prefs.getString(
+      _contextKey(
+        categoria: categoria,
+        temporada: temporada,
+        competencia: competencia,
+        torneo: torneo,
+      ),
     );
 
+    final raw =
+        contextRaw ??
+        prefs.getString(_legacyKey(categoria: categoria, temporada: temporada));
+
     if (raw == null || raw.isEmpty) {
+      final isLegacyLocal2026 =
+          temporada.trim() == '2026' &&
+          competencia.trim().toLowerCase() == 'local';
+
+      if (!isLegacyLocal2026) {
+        return <PlayerProfile>[];
+      }
+
       return RosterRepository.rosterForCategory(
         categoria: categoria,
         temporada: temporada,
@@ -734,6 +782,8 @@ class RosterStorage {
   static Future<void> saveRosterForCategory({
     required String categoria,
     required String temporada,
+    required String competencia,
+    required String torneo,
     required List<PlayerProfile> players,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -741,7 +791,12 @@ class RosterStorage {
     final data = players.map((p) => p.toMap()).toList();
 
     await prefs.setString(
-      _key(categoria: categoria, temporada: temporada),
+      _contextKey(
+        categoria: categoria,
+        temporada: temporada,
+        competencia: competencia,
+        torneo: torneo,
+      ),
       jsonEncode(data),
     );
   }
@@ -749,20 +804,46 @@ class RosterStorage {
   static Future<void> seedCategoryIfEmpty({
     required String categoria,
     required String temporada,
+    required String competencia,
+    required String torneo,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = _key(categoria: categoria, temporada: temporada);
 
-    if (prefs.containsKey(key)) return;
+    final contextKey = _contextKey(
+      categoria: categoria,
+      temporada: temporada,
+      competencia: competencia,
+      torneo: torneo,
+    );
+
+    if (prefs.containsKey(contextKey)) return;
+
+    final legacyRaw = prefs.getString(
+      _legacyKey(categoria: categoria, temporada: temporada),
+    );
+
+    if (legacyRaw != null && legacyRaw.isNotEmpty) {
+      await prefs.setString(contextKey, legacyRaw);
+      return;
+    }
+
+    final isLegacyLocal2026 =
+        temporada.trim() == '2026' &&
+        competencia.trim().toLowerCase() == 'local';
+
+    if (!isLegacyLocal2026) return;
 
     final base = RosterRepository.rosterForCategory(
       categoria: categoria,
       temporada: temporada,
       includeStaff: true,
     );
+
     await saveRosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      competencia: competencia,
+      torneo: torneo,
       players: base,
     );
   }
@@ -856,11 +937,15 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: categoria,
       temporada: temporada,
+      competencia: widget.competencia,
+      torneo: widget.torneo,
     );
 
     final principal = await RosterStorage.readRosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      competencia: widget.competencia,
+      torneo: widget.torneo,
       includeStaff: false,
     );
 
@@ -868,13 +953,17 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
 
     for (final cat in _categoriasInferioresHabilitadas) {
       await RosterStorage.seedCategoryIfEmpty(
-        categoria: cat,
+        categoria: categoria,
         temporada: temporada,
+        competencia: widget.competencia,
+        torneo: widget.torneo,
       );
 
       final rosterCat = await RosterStorage.readRosterForCategory(
-        categoria: cat,
+        categoria: categoria,
         temporada: temporada,
+        competencia: widget.competencia,
+        torneo: widget.torneo,
         includeStaff: false,
       );
 
@@ -3864,28 +3953,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     hayPartido = true;
   }
 
-  bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
   @override
   void initState() {
     super.initState();
@@ -4251,6 +4318,28 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     }
 
     hayPartido = _esPartidoValido(proximoPartido);
+  }
+
+  bool _matchesCurrentContext(Map<String, dynamic> partido) {
+    String clean(dynamic value) {
+      return (value ?? '').toString().trim().toLowerCase();
+    }
+
+    final temporada = clean(partido['temporada']).isEmpty
+        ? '2026'
+        : clean(partido['temporada']);
+
+    final competencia = clean(partido['competencia']).isEmpty
+        ? 'local'
+        : clean(partido['competencia']);
+
+    final torneo = clean(partido['torneo']);
+    final categoria = clean(partido['categoria']);
+
+    return temporada == clean(widget.temporada) &&
+        competencia == clean(widget.competencia) &&
+        torneo == clean(widget.torneo) &&
+        categoria == clean(widget.categoria);
   }
 
   Future<void> _persistFixtureState() async {
@@ -9801,6 +9890,49 @@ class _FixtureScreenState extends State<FixtureScreen> {
     };
   }
 
+  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
+    final competencia = widget.competencia.trim().toLowerCase();
+    final torneo = widget.torneo.trim().toLowerCase();
+
+    final esLocal = competencia == 'local';
+
+    if (!esLocal) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    if (torneo == 'apertura') {
+      return _buildAperturaBase(
+        categoria: widget.categoria,
+      ).map(_convertirAFixturePartido).toList();
+    }
+
+    if (torneo == 'clausura') {
+      return _buildClausuraBase(
+        categoria: widget.categoria,
+      ).map(_convertirAFixturePartido).toList();
+    }
+
+    return const <Map<String, dynamic>>[];
+  }
+
+  Future<void> _abrirPartido(
+    BuildContext context,
+    Map<String, dynamic> partido,
+  ) async {
+    final partidoReal = await _resolverPartidoConEstadoReal(
+      Map<String, dynamic>.from(partido),
+    );
+
+    if (!context.mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PartidoEnJuegoScreen(partido: partidoReal),
+      ),
+    );
+  }
+
   Widget _buildEmptyFixtureState() {
     return Container(
       width: double.infinity,
@@ -9838,47 +9970,6 @@ class _FixtureScreenState extends State<FixtureScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    final competencia = widget.competencia.trim().toLowerCase();
-    final torneo = widget.torneo.trim().toLowerCase();
-
-    if (competencia != 'local') {
-      return const <Map<String, dynamic>>[];
-    }
-
-    if (torneo == 'apertura') {
-      return _buildAperturaBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
-    }
-
-    if (torneo == 'clausura') {
-      return _buildClausuraBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
-    }
-
-    return const <Map<String, dynamic>>[];
-  }
-
-  Future<void> _abrirPartido(
-    BuildContext context,
-    Map<String, dynamic> partido,
-  ) async {
-    final partidoReal = await _resolverPartidoConEstadoReal(
-      Map<String, dynamic>.from(partido),
-    );
-
-    if (!context.mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PartidoEnJuegoScreen(partido: partidoReal),
       ),
     );
   }
@@ -14606,6 +14697,32 @@ class _HistorialScreenState extends State<HistorialScreen> {
   String _torneoSeleccionado = 'Todos';
   String _busqueda = '';
 
+  bool _matchesCurrentContext(Map<String, dynamic> item) {
+    String clean(dynamic value) {
+      return (value ?? '').toString().trim().toLowerCase();
+    }
+
+    final partido = item['partido'] is Map
+        ? Map<String, dynamic>.from(item['partido'] as Map)
+        : item;
+
+    final temporada = clean(partido['temporada']).isEmpty
+        ? '2026'
+        : clean(partido['temporada']);
+
+    final competencia = clean(partido['competencia']).isEmpty
+        ? 'local'
+        : clean(partido['competencia']);
+
+    final torneo = clean(partido['torneo']);
+    final categoria = clean(partido['categoria']);
+
+    return temporada == clean(widget.temporada) &&
+        competencia == clean(widget.competencia) &&
+        torneo == clean(widget.torneo) &&
+        categoria == clean(widget.categoria);
+  }
+
   int _toInt(dynamic value) {
     if (value == null) return 0;
     if (value is int) return value;
@@ -14708,32 +14825,6 @@ class _HistorialScreenState extends State<HistorialScreen> {
       _todos = items;
       _aplicarFiltros();
     });
-  }
-
-  bool _matchesCurrentContext(Map<String, dynamic> item) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
-
-    final partido = item['partido'] is Map
-        ? Map<String, dynamic>.from(item['partido'] as Map)
-        : item;
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
   }
 
   void _aplicarFiltros() {
@@ -15375,13 +15466,7 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
             <String, dynamic>{},
       );
 
-      final categoriaPartido = (base['categoria'] ?? '').toString().trim();
-
-      if (categoriaPartido != widget.categoria) {
-        continue;
-      }
-
-      partidos.add({
+      final merged = {
         ...base,
         'matchIdentity': map['matchIdentity'],
         'archivedAt': map['archivedAt'] ?? map['timestamp'],
@@ -15389,8 +15474,16 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
             map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
         'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
         'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
-        'eventos': map['eventos'] ?? base['eventos'] ?? const [],
-      });
+        'golesRecibidos': map['golesRecibidos'] ?? base['golesRecibidos'] ?? 0,
+        'eventos': map['eventos'] ?? base['eventos'] ?? <dynamic>[],
+      };
+
+      if (!_matchesCurrentContext(merged)) {
+        continue;
+      }
+
+      partidos.add(merged);
+      continue;
     }
 
     partidos.sort((a, b) {
@@ -15777,6 +15870,8 @@ class EquiposScreen extends StatelessWidget {
                           builder: (_) => PlantelScreen(
                             categoriaInicial: categoriaInicial,
                             temporada: temporada,
+                            competencia: competencia,
+                            torneo: torneo,
                           ),
                         ),
                       );
@@ -15870,11 +15965,15 @@ class EquiposScreen extends StatelessWidget {
 class PlantelScreen extends StatefulWidget {
   final String categoriaInicial;
   final String temporada;
+  final String competencia;
+  final String torneo;
 
   const PlantelScreen({
     super.key,
     required this.categoriaInicial,
     required this.temporada,
+    required this.competencia,
+    required this.torneo,
   });
 
   @override
