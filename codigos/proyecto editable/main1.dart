@@ -1,3 +1,4 @@
+import 'core/context/app_context_key.dart';
 import 'features/settings/data/structure_repository.dart' as structure;
 import 'features/settings/domain/models/active_context.dart';
 import 'package:flutter/material.dart';
@@ -1258,6 +1259,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _competitionController = TextEditingController();
   final TextEditingController _tournamentController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _institutionController = TextEditingController();
 
   List<String> get contexto => <String>[
     temporadaSeleccionada,
@@ -1274,11 +1276,34 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _seasonController.dispose();
+    _institutionController.dispose();
     _competitionController.dispose();
     _tournamentController.dispose();
     _categoryController.dispose();
     super.dispose();
   }
+
+  Future<void> _createInstitutionFromEmptyState() async {
+  final name = _institutionController.text.trim();
+
+  if (name.isEmpty) {
+    await _showMessage('Ingresá el nombre de la institución.');
+    return;
+  }
+
+  setState(() {
+    tieneInstitucion = true;
+    institucionNombre = name;
+    temporadaSeleccionada = '';
+    competenciaSeleccionada = '';
+    torneoSeleccionado = '';
+    categoriaSeleccionada = '';
+    _contextStep = 'temporada';
+    _institutionController.clear();
+  });
+
+  await _saveActiveContext();
+}
 
   void _openContextStep(String step) {
     setState(() {
@@ -2363,105 +2388,120 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEstadoSinInstitucion(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.72,
-      child: Center(
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1722).withOpacity(0.82),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: const Color(0xFF4F8CFF).withOpacity(0.28),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInstitutionBadge(),
-              const SizedBox(height: 18),
-              const Text(
-                'No hay institución creada',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Creá una institución nueva o importá un backup existente.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: Color(0xFFAAB4C3),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    setState(() {
-                      tieneInstitucion = true;
-                      institucionNombre = 'San Fernando Handball';
-                      temporadaSeleccionada = '';
-                      competenciaSeleccionada = '';
-                      torneoSeleccionado = '';
-                      categoriaSeleccionada = '';
-                      _contextStep = 'temporada';
-                    });
-
-                    await _saveActiveContext();
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Crear institución'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F8CFF),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _importarBackupDesdeEstadoVacio,
-                  icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text('Importar backup'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFD7DCE3),
-                    side: BorderSide(color: Colors.white.withOpacity(0.10)),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+  return SizedBox(
+    height: MediaQuery.of(context).size.height * 0.72,
+    child: Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.82),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: const Color(0xFF4F8CFF).withOpacity(0.28),
           ),
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInstitutionBadge(),
+            const SizedBox(height: 18),
+            const Text(
+              'No hay institución creada',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Creá una institución nueva o importá un backup existente.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.35,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _institutionController,
+              textInputAction: TextInputAction.done,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Nombre de la institución',
+                hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                filled: true,
+                fillColor: const Color(0xFF111A28),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                ),
+              ),
+              onSubmitted: (_) => _createInstitutionFromEmptyState(),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _createInstitutionFromEmptyState,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Crear institución'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F8CFF),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _importarBackupDesdeEstadoVacio,
+                icon: const Icon(Icons.upload_file_rounded),
+                label: const Text('Importar backup'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFD7DCE3),
+                  side: BorderSide(color: Colors.white.withOpacity(0.10)),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEstadoConInstitucion() {
     return Padding(
@@ -3722,24 +3762,20 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   List<Map<String, dynamic>> siguientesPartidos = [];
   List<Map<String, dynamic>> partidosFinalizados = [];
 
-  String _storageSafe(String value) {
-    return value
-        .trim()
-        .toLowerCase()
-        .replaceAll(' ', '_')
-        .replaceAll('/', '_')
-        .replaceAll('\\', '_')
-        .replaceAll(RegExp(r'[^a-z0-9_áéíóúñü-]'), '');
-  }
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
 
-  String get _contextStorageSuffix {
-    return [
-      widget.temporada,
-      widget.competencia,
-      widget.torneo,
-      widget.categoria,
-    ].map(_storageSafe).join('_');
-  }
+String get _contextStorageSuffix {
+  return AppContextKey.fromActiveContext(_activeContext);
+}
 
   String get _proximoPartidoStorageKey =>
       'proximo_partido_$_contextStorageSuffix';
@@ -3759,7 +3795,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Permiten comparar Map actual con PartidoModel
   /// ===============================
   String _identityFromMap(Map<String, dynamic> partido) {
-    return buildNormalizedMatchIdentity(partido);
+  return PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
   }
 
   bool _estaFinalizadoV2(Map<String, dynamic> partido) {
@@ -3865,27 +3901,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
+  return AppContextKey.matchesMap(
+    data: partido,
+    context: _activeContext,
+  );
+}
+  
   @override
   void initState() {
     super.initState();
@@ -9474,6 +9495,21 @@ class _FixtureScreenState extends State<FixtureScreen> {
     _loadFinalizadosV2();
   }
 
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
+
+  String get _contextStorageSuffix {
+  return AppContextKey.fromActiveContext(_activeContext);
+}
+
   /// ===============================
   /// LOAD FINALIZADOS V2
   /// Lee partidos finalizados desde repository 2.0
@@ -14710,32 +14746,28 @@ class _HistorialScreenState extends State<HistorialScreen> {
     });
   }
 
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
+
   bool _matchesCurrentContext(Map<String, dynamic> item) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
+  final partido = item['partido'] is Map
+      ? Map<String, dynamic>.from(item['partido'] as Map)
+      : item;
 
-    final partido = item['partido'] is Map
-        ? Map<String, dynamic>.from(item['partido'] as Map)
-        : item;
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
+  return AppContextKey.matchesMap(
+    data: partido,
+    context: _activeContext,
+  );
+}
+  
   void _aplicarFiltros() {
     final q = _busqueda.trim().toLowerCase();
 
@@ -15332,28 +15364,24 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     _future = _loadPartidosReales();
   }
 
+  ActiveContext get _activeContext {
+  return ActiveContext(
+    hasInstitution: true,
+    institutionName: '',
+    season: widget.temporada,
+    competition: widget.competencia,
+    tournament: widget.torneo,
+    category: widget.categoria,
+  );
+}
+
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    String clean(dynamic value) {
-      return (value ?? '').toString().trim().toLowerCase();
-    }
-
-    final temporada = clean(partido['temporada']).isEmpty
-        ? '2026'
-        : clean(partido['temporada']);
-
-    final competencia = clean(partido['competencia']).isEmpty
-        ? 'local'
-        : clean(partido['competencia']);
-
-    final torneo = clean(partido['torneo']);
-    final categoria = clean(partido['categoria']);
-
-    return temporada == clean(widget.temporada) &&
-        competencia == clean(widget.competencia) &&
-        torneo == clean(widget.torneo) &&
-        categoria == clean(widget.categoria);
-  }
-
+  return AppContextKey.matchesMap(
+    data: partido,
+    context: _activeContext,
+  );
+}
+  
   Future<List<Map<String, dynamic>>> _loadPartidosReales() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('finished_matches_history_v1');
@@ -15740,10 +15768,17 @@ class EquiposScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Equipo'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+          title: const Text(
+            'Equipo',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -15766,6 +15801,15 @@ class EquiposScreen extends StatelessWidget {
                     'Gestion de estructura deportiva',
                     style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$temporada · $competencia · $torneo · $categoriaInicial',
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildEquipoActionCard(
                     context: context,
@@ -15779,6 +15823,8 @@ class EquiposScreen extends StatelessWidget {
                           builder: (_) => PlantelScreen(
                             categoriaInicial: categoriaInicial,
                             temporada: temporada,
+                            competencia: competencia,
+                            torneo: torneo,
                           ),
                         ),
                       );
@@ -15872,11 +15918,15 @@ class EquiposScreen extends StatelessWidget {
 class PlantelScreen extends StatefulWidget {
   final String categoriaInicial;
   final String temporada;
+  final String competencia;
+  final String torneo;
 
   const PlantelScreen({
     super.key,
     required this.categoriaInicial,
     required this.temporada,
+    required this.competencia,
+    required this.torneo,
   });
 
   @override
@@ -15886,11 +15936,16 @@ class PlantelScreen extends StatefulWidget {
 class _PlantelScreenState extends State<PlantelScreen> {
   late String categoriaSeleccionada;
 
+  bool get _usaPlantelLegacy {
+    final temporada = widget.temporada.trim();
+    final competencia = widget.competencia.trim().toLowerCase();
+
+    return temporada == '2026' && competencia == 'local';
+  }
+
   @override
   void initState() {
     super.initState();
-
-    /// La categoría inicial viene desde el contexto activo del Home.
     categoriaSeleccionada = widget.categoriaInicial;
   }
 
@@ -15899,7 +15954,14 @@ class _PlantelScreenState extends State<PlantelScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Plantel'),
+        title: const Text(
+          'Plantel',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -15925,57 +15987,122 @@ class _PlantelScreenState extends State<PlantelScreen> {
                     'Estructura del plantel por categoría',
                     style: TextStyle(color: Color(0xFFD4DCE7), fontSize: 14),
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildCategoriaSelector(),
                   const SizedBox(height: 18),
-                  _buildPlantelCard(
-                    icon: Icons.sports_handball_rounded,
-                    title: 'Jugadores',
-                    subtitle: 'Jugadores de campo de $categoriaSeleccionada',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => JugadoresCampoScreen(
-                            categoria: categoriaSeleccionada,
+                  if (!_usaPlantelLegacy)
+                    _buildEmptyContextState()
+                  else ...[
+                    _buildPlantelCard(
+                      icon: Icons.sports_handball_rounded,
+                      title: 'Jugadores',
+                      subtitle: 'Jugadores de campo de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JugadoresCampoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPlantelCard(
-                    icon: Icons.shield_rounded,
-                    title: 'Arqueros',
-                    subtitle: 'Arqueros de $categoriaSeleccionada',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ArquerosScreen(categoria: categoriaSeleccionada),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPlantelCard(
-                    icon: Icons.badge_rounded,
-                    title: 'Cuerpo tecnico',
-                    subtitle: 'Estructura tecnica de $categoriaSeleccionada',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CuerpoTecnicoScreen(
-                            categoria: categoriaSeleccionada,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlantelCard(
+                      icon: Icons.shield_rounded,
+                      title: 'Arqueros',
+                      subtitle: 'Arqueros de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ArquerosScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildPlantelCard(
+                      icon: Icons.badge_rounded,
+                      title: 'Cuerpo tecnico',
+                      subtitle: 'Estructura tecnica de $categoriaSeleccionada',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CuerpoTecnicoScreen(
+                              categoria: categoriaSeleccionada,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyContextState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.groups_2_outlined,
+            color: Color(0xFF8FA3BF),
+            size: 36,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No hay plantel cargado para este contexto',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'La edición de planteles por competencia/torneo se migrará en el próximo paso, sin tocar la convocatoria del partido.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF8FA3BF),
+              fontSize: 12,
+              height: 1.35,
             ),
           ),
         ],

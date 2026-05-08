@@ -3795,19 +3795,19 @@ String get _contextStorageSuffix {
   /// Permiten comparar Map actual con PartidoModel
   /// ===============================
   String _identityFromMap(Map<String, dynamic> partido) {
-    return buildNormalizedMatchIdentity(partido);
+  return PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
   }
 
   bool _estaFinalizadoV2(Map<String, dynamic> partido) {
-    if (!_esPartidoValido(partido)) return false;
+  if (!_esPartidoValido(partido)) return false;
 
-    final identidad = _identityFromMap(partido);
+  final identidad = _identityFromMap(partido);
 
-    return _finalizadosV2.any((p) {
-      return buildNormalizedMatchIdentity(p.toMap()) == identidad;
-    });
-  }
-
+  return _finalizadosV2.any((p) {
+    return PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad;
+  });
+}
+  
   /// ===============================
   /// VALIDACIÓN LOCAL DEL MAPA PARTIDO
   /// Evita pantallas con null/null cuando quedó un próximo corrupto en prefs.
