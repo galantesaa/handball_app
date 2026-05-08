@@ -4307,14 +4307,14 @@ String get _contextStorageSuffix {
 
     final Map<String, Map<String, dynamic>> finalizadosPorId = {
       for (final p in partidosFinalizados)
-        _partidoIdentity(p): Map<String, dynamic>.from(p),
+        _identityFromMap(p): Map<String, dynamic>.from(p),
     };
 
     final List<Map<String, dynamic>> pendientes = [];
     final List<Map<String, dynamic>> finalizadosConservados = [];
 
     for (final partido in fixture) {
-      final id = _partidoIdentity(partido);
+      final id = _identityFromMap(partido);
 
       if (finalizadosPorId.containsKey(id)) {
         final partidoFinalizado =
