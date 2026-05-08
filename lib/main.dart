@@ -4190,16 +4190,18 @@ String get _contextStorageSuffix {
 
   return siguientes.take(3).map((p) {
     return {
-      'rival': p['rival'],
-      'fecha': p['fecha'],
-      'hora': p['hora'],
-      'condicion': p['condicion'],
-      'torneo': p['torneo'],
-      'categoria': p['categoria'],
-      'fechaNumero': p['fechaNumero'],
-      'escudoRival': p['escudoRival'],
-      'estado': p['estado'],
-    };
+  'temporada': p['temporada'],
+  'competencia': p['competencia'],
+  'rival': p['rival'],
+  'fecha': p['fecha'],
+  'hora': p['hora'],
+  'condicion': p['condicion'],
+  'torneo': p['torneo'],
+  'categoria': p['categoria'],
+  'fechaNumero': p['fechaNumero'],
+  'escudoRival': p['escudoRival'],
+  'estado': p['estado'],
+};
   }).toList();
 }
   
