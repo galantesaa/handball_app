@@ -1258,6 +1258,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _competitionController = TextEditingController();
   final TextEditingController _tournamentController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _institutionController = TextEditingController();
 
   List<String> get contexto => <String>[
     temporadaSeleccionada,
@@ -1274,11 +1275,34 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _seasonController.dispose();
+    _institutionController.dispose();
     _competitionController.dispose();
     _tournamentController.dispose();
     _categoryController.dispose();
     super.dispose();
   }
+
+  Future<void> _createInstitutionFromEmptyState() async {
+  final name = _institutionController.text.trim();
+
+  if (name.isEmpty) {
+    await _showMessage('Ingresá el nombre de la institución.');
+    return;
+  }
+
+  setState(() {
+    tieneInstitucion = true;
+    institucionNombre = name;
+    temporadaSeleccionada = '';
+    competenciaSeleccionada = '';
+    torneoSeleccionado = '';
+    categoriaSeleccionada = '';
+    _contextStep = 'temporada';
+    _institutionController.clear();
+  });
+
+  await _saveActiveContext();
+}
 
   void _openContextStep(String step) {
     setState(() {
@@ -2363,105 +2387,120 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEstadoSinInstitucion(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.72,
-      child: Center(
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1722).withOpacity(0.82),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: const Color(0xFF4F8CFF).withOpacity(0.28),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInstitutionBadge(),
-              const SizedBox(height: 18),
-              const Text(
-                'No hay institución creada',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Creá una institución nueva o importá un backup existente.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.35,
-                  color: Color(0xFFAAB4C3),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    setState(() {
-                      tieneInstitucion = true;
-                      institucionNombre = 'San Fernando Handball';
-                      temporadaSeleccionada = '';
-                      competenciaSeleccionada = '';
-                      torneoSeleccionado = '';
-                      categoriaSeleccionada = '';
-                      _contextStep = 'temporada';
-                    });
-
-                    await _saveActiveContext();
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Crear institución'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F8CFF),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _importarBackupDesdeEstadoVacio,
-                  icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text('Importar backup'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFD7DCE3),
-                    side: BorderSide(color: Colors.white.withOpacity(0.10)),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+  return SizedBox(
+    height: MediaQuery.of(context).size.height * 0.72,
+    child: Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1722).withOpacity(0.82),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: const Color(0xFF4F8CFF).withOpacity(0.28),
           ),
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInstitutionBadge(),
+            const SizedBox(height: 18),
+            const Text(
+              'No hay institución creada',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Creá una institución nueva o importá un backup existente.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.35,
+                color: Color(0xFFAAB4C3),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _institutionController,
+              textInputAction: TextInputAction.done,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Nombre de la institución',
+                hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                filled: true,
+                fillColor: const Color(0xFF111A28),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                ),
+              ),
+              onSubmitted: (_) => _createInstitutionFromEmptyState(),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _createInstitutionFromEmptyState,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Crear institución'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F8CFF),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _importarBackupDesdeEstadoVacio,
+                icon: const Icon(Icons.upload_file_rounded),
+                label: const Text('Importar backup'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFD7DCE3),
+                  side: BorderSide(color: Colors.white.withOpacity(0.10)),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEstadoConInstitucion() {
     return Padding(
