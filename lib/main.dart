@@ -4117,6 +4117,8 @@ String get _contextStorageSuffix {
         : (raw['local'] ?? 'Rival').toString();
 
     return {
+      'temporada': widget.temporada,
+      'competencia': widget.competencia,
       'rival': rival,
       'fechaNumero': raw['fechaNumero'],
       'fecha': raw['fecha'],
@@ -4571,6 +4573,8 @@ String get _contextStorageSuffix {
     final String rival = (siguiente['rival'] ?? 'Rival').toString();
 
     return {
+      'temporada': (siguiente['temporada'] ?? widget.temporada).toString(),
+      'competencia': (siguiente['competencia'] ?? widget.competencia).toString(),      
       'rival': rival,
       'fechaNumero': siguiente['fechaNumero'],
       'fecha': (siguiente['fecha'] ?? '').toString(),
