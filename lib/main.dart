@@ -4541,7 +4541,8 @@ String get _contextStorageSuffix {
       final partido = Map<String, dynamic>.from(p)
         ..['estado'] = 'Finalizado'
         ..['estadoPartido'] = 'finalizado';
-      unicos[_partidoIdentity(partido)] = partido;
+
+      unicos[_identityFromMap(partido)] = partido;
     }
 
     final lista = unicos.values.toList();
@@ -4603,9 +4604,9 @@ String get _contextStorageSuffix {
   void _promoverSiguienteSiActualEstaFinalizado({bool saveAfter = true}) {
     if (!hayPartido || !_partidoEstaFinalizado(proximoPartido)) return;
 
-    final actualId = _partidoIdentity(proximoPartido);
+    final actualId = _identityFromMap(proximoPartido);
     final yaExiste = partidosFinalizados.any(
-      (p) => _partidoIdentity(p) == actualId,
+      (p) => _identityFromMap(p) == actualId,
     );
 
     if (!yaExiste) {
