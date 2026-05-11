@@ -5348,10 +5348,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         ),
         const SizedBox(height: 10),
         _buildOutlinedAction(
-  text: 'Editar partido',
-  onTap: _editarProximoPartido,
-),
+          text: 'Editar partido',
+          onTap: _editarProximoPartido,
         ),
+        
         const SizedBox(height: 12),
         _buildOutlinedAction(
           text: 'Eliminar partidos de prueba',
@@ -5412,10 +5412,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               ),
               const SizedBox(height: 18),
               _buildPrimaryAction(
-  text: 'Crear partido',
-  onTap: _crearPartidoManual,
-),
+                text: 'Crear partido',
+                onTap: _crearPartidoManual,
               ),
+              
             ],
           ),
         ),

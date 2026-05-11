@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/storage/app_context_key.dart';
+import '../../../../core/context/app_context_key.dart';
 import '../../../../core/storage/app_storage_keys.dart';
 import '../../../settings/domain/models/active_context.dart';
-import '../models/models_v2.dart';
-import '../models/partido_repository_v2.dart';
+import '../../../../models_v2.dart';
+import '../../../../partido_repository_v2.dart';
 
 class FixtureRepositoryV2 {
   const FixtureRepositoryV2();
@@ -33,8 +33,7 @@ class FixtureRepositoryV2 {
         if (item is! Map) continue;
 
         try {
-          final map = Map<String, dynamic>.from(item);
-          result.add(PartidoModel.fromMap(map));
+          result.add(PartidoModel.fromMap(Map<String, dynamic>.from(item)));
         } catch (_) {
           continue;
         }
@@ -53,35 +52,34 @@ class FixtureRepositoryV2 {
   ) async {
     final fixtures = await readFixtures();
 
-    return fixtures.where((partido) {
-      final map = partido.toMap();
-
+    final filtered = fixtures.where((partido) {
       return AppContextKey.matchesMap(
-        data: map,
+        data: partido.toMap(),
         context: context,
       );
-    }).toList()
-      ..sort(_sortByFechaNumero);
+    }).toList();
+
+    filtered.sort(_sortByFechaNumero);
+    return filtered;
   }
 
   Future<bool> saveFixture(PartidoModel partido) async {
     final prefs = await SharedPreferences.getInstance();
-
     final fixtures = await readFixtures();
-
     final normalized = _normalizePendingFixture(partido);
 
     final newIdentity =
         PartidoRepositoryV2.buildMatchIdentityFromModel(normalized);
 
     final exists = fixtures.any((item) {
-      final identity = PartidoRepositoryV2.buildMatchIdentityFromModel(item);
-      return identity == newIdentity;
+      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
+          newIdentity;
     });
 
     if (exists) return false;
 
-    final updated = [...fixtures, normalized]..sort(_sortByFechaNumero);
+    final updated = <PartidoModel>[...fixtures, normalized]
+      ..sort(_sortByFechaNumero);
 
     await prefs.setString(
       AppStorageKeys.fixtures,
@@ -93,22 +91,20 @@ class FixtureRepositoryV2 {
 
   Future<bool> updateFixture(PartidoModel partido) async {
     final prefs = await SharedPreferences.getInstance();
-
     final fixtures = await readFixtures();
-
     final normalized = _normalizePendingFixture(partido);
 
     final targetIdentity =
         PartidoRepositoryV2.buildMatchIdentityFromModel(normalized);
 
     final index = fixtures.indexWhere((item) {
-      final identity = PartidoRepositoryV2.buildMatchIdentityFromModel(item);
-      return identity == targetIdentity;
+      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
+          targetIdentity;
     });
 
     if (index < 0) return false;
 
-    final updated = [...fixtures];
+    final updated = <PartidoModel>[...fixtures];
     updated[index] = normalized;
     updated.sort(_sortByFechaNumero);
 
@@ -120,17 +116,64 @@ class FixtureRepositoryV2 {
     return true;
   }
 
+  Future<bool> replaceFixture({
+    required PartidoModel oldPartido,
+    required PartidoModel newPartido,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final fixtures = await readFixtures();
+
+    final oldIdentity =
+        PartidoRepositoryV2.buildMatchIdentityFromModel(oldPartido);
+
+    final normalizedNew = _normalizePendingFixture(newPartido);
+
+    final newIdentity =
+        PartidoRepositoryV2.buildMatchIdentityFromModel(normalizedNew);
+
+    final index = fixtures.indexWhere((item) {
+      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
+          oldIdentity;
+    });
+
+    if (index < 0) return false;
+
+    final duplicatedIndex = fixtures.indexWhere((item) {
+      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
+          newIdentity;
+    });
+
+    if (duplicatedIndex >= 0 && duplicatedIndex != index) return false;
+
+    final updated = <PartidoModel>[...fixtures];
+    updated[index] = normalizedNew;
+    updated.sort(_sortByFechaNumero);
+
+    await prefs.setString(
+      AppStorageKeys.fixtures,
+      jsonEncode(updated.map((e) => e.toMap()).toList()),
+    );
+
+    return true;
+  }
+
+  Future<void> upsertFixture(PartidoModel partido) async {
+    final saved = await saveFixture(partido);
+    if (saved) return;
+
+    await updateFixture(partido);
+  }
+
   Future<bool> deleteFixture(PartidoModel partido) async {
     final prefs = await SharedPreferences.getInstance();
-
     final fixtures = await readFixtures();
 
     final targetIdentity =
         PartidoRepositoryV2.buildMatchIdentityFromModel(partido);
 
     final updated = fixtures.where((item) {
-      final identity = PartidoRepositoryV2.buildMatchIdentityFromModel(item);
-      return identity != targetIdentity;
+      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) !=
+          targetIdentity;
     }).toList();
 
     if (updated.length == fixtures.length) return false;
@@ -170,10 +213,10 @@ class FixtureRepositoryV2 {
   }
 
   int _sortByFechaNumero(PartidoModel a, PartidoModel b) {
-    final aFecha = a.fechaNumero ?? 999999;
-    final bFecha = b.fechaNumero ?? 999999;
+    final byFecha = (a.fechaNumero ?? 999999).compareTo(
+      b.fechaNumero ?? 999999,
+    );
 
-    final byFecha = aFecha.compareTo(bFecha);
     if (byFecha != 0) return byFecha;
 
     return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
