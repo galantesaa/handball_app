@@ -310,6 +310,8 @@ class PartidoModel {
   }
 
   PartidoModel copyWith({
+    String? temporada,
+    String? competencia,
     String? rival,
     int? fechaNumero,
     String? fecha,
@@ -341,6 +343,8 @@ class PartidoModel {
     MatchSquadModel? matchSquad,
   }) {
     return PartidoModel(
+      temporada: temporada ?? this.temporada,
+      competencia: competencia ?? this.competencia,
       rival: rival ?? this.rival,
       fechaNumero: fechaNumero ?? this.fechaNumero,
       fecha: fecha ?? this.fecha,
@@ -377,7 +381,6 @@ class PartidoModel {
       matchSquad: matchSquad ?? this.matchSquad,
     );
   }
-
   bool get estaFinalizado => estadoPartido == 'finalizado';
 
   double get eficaciaArquero {
