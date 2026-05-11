@@ -46,6 +46,26 @@ class CompetitionStageConfig {
       stageType: (json['stageType'] ?? 'league').toString().trim(),
     );
   }
+
+  CompetitionStageConfig copyWith({
+    String? id,
+    String? name,
+    int? order,
+    bool? hasFixture,
+    bool? allowManualMatches,
+    bool? allowKnockoutRounds,
+    String? stageType,
+  }) {
+    return CompetitionStageConfig(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      order: order ?? this.order,
+      hasFixture: hasFixture ?? this.hasFixture,
+      allowManualMatches: allowManualMatches ?? this.allowManualMatches,
+      allowKnockoutRounds: allowKnockoutRounds ?? this.allowKnockoutRounds,
+      stageType: stageType ?? this.stageType,
+    );
+  }
 }
 
 class CompetitionConfig {
@@ -56,11 +76,10 @@ class CompetitionConfig {
   /// - single
   final String type;
 
-  /// Compatibilidad legacy:
-  /// antes representaba Apertura/Clausura/Único.
+  /// Compatibilidad legacy.
   final List<String> tournaments;
 
-  /// Nuevo modelo configurable:
+  /// Nuevo modelo:
   /// - loose_matches
   /// - single_fixture
   /// - split_fixture
@@ -139,32 +158,36 @@ class CompetitionConfig {
         ? json['allowKnockoutRounds'] == true
         : mode == 'single_fixture' || mode == 'phased_fixture';
 
+    final resolvedTournaments = tournaments.isEmpty
+        ? cleanType == 'local'
+            ? const ['Apertura', 'Clausura']
+            : mode == 'loose_matches'
+                ? const ['Partidos sueltos']
+                : const ['Único']
+        : tournaments;
+
     final rawStages = json['stages'];
 
     final stages = rawStages is List
         ? rawStages
             .whereType<Map>()
-            .map((e) => CompetitionStageConfig.fromJson(
-                  Map<String, dynamic>.from(e),
-                ))
+            .map(
+              (e) => CompetitionStageConfig.fromJson(
+                Map<String, dynamic>.from(e),
+              ),
+            )
             .where((e) => e.name.trim().isNotEmpty)
             .toList()
         : <CompetitionStageConfig>[];
 
-    final resolvedTournaments = tournaments.isEmpty
-        ? cleanType == 'local'
-            ? const ['Apertura', 'Clausura']
-            : const ['Único']
-        : tournaments;
-
     final resolvedStages = stages.isNotEmpty
         ? stages
         : List.generate(resolvedTournaments.length, (index) {
-            final name = resolvedTournaments[index];
+            final stageName = resolvedTournaments[index];
 
             return CompetitionStageConfig(
-              id: _stageIdFromName(name),
-              name: name,
+              id: StructureRepository.stageIdFromName(stageName),
+              name: stageName,
               order: index,
               hasFixture: hasFixture,
               allowManualMatches: allowManualMatches,
@@ -206,12 +229,23 @@ class CompetitionConfig {
       mode: mode ?? this.mode,
       hasFixture: hasFixture ?? this.hasFixture,
       allowManualMatches: allowManualMatches ?? this.allowManualMatches,
-      allowKnockoutRounds: allowKnockoutRounds ?? this.allowKnockoutRounds,
+      allowKnockoutRounds:
+          allowKnockoutRounds ?? this.allowKnockoutRounds,
       stages: stages ?? this.stages,
     );
   }
+}
 
-  static String _stageIdFromName(String value) {
+class StructureRepository {
+  String _cleanText(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _normalize(String value) {
+    return _cleanText(value).toLowerCase();
+  }
+
+  static String stageIdFromName(String value) {
     return value
         .trim()
         .toLowerCase()
@@ -223,16 +257,6 @@ class CompetitionConfig {
         .replaceAll('ñ', 'n')
         .replaceAll(RegExp(r'\s+'), '_')
         .replaceAll(RegExp(r'[^a-z0-9_]'), '');
-  }
-}
-
-class StructureRepository {
-  String _cleanText(String value) {
-    return value.trim().replaceAll(RegExp(r'\s+'), ' ');
-  }
-
-  String _normalize(String value) {
-    return _cleanText(value).toLowerCase();
   }
 
   List<String> _cleanStringList(List<String> values) {
@@ -268,6 +292,7 @@ class StructureRepository {
 
   Future<void> saveSeasons(List<String> seasons) async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setString(
       AppStorageKeys.seasons,
       jsonEncode(_cleanStringList(seasons)),
@@ -305,6 +330,7 @@ class StructureRepository {
 
   Future<void> saveCategories(List<String> categories) async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setString(
       AppStorageKeys.categories,
       jsonEncode(_cleanStringList(categories)),
@@ -374,13 +400,15 @@ class StructureRepository {
 
       if (exists) continue;
 
+      final cleanTournaments = _cleanStringList(competition.tournaments);
+
       result.add(
         competition.copyWith(
           name: cleanName,
           type: competition.type.trim().isEmpty ? 'single' : competition.type,
-          tournaments: _cleanStringList(competition.tournaments).isEmpty
+          tournaments: cleanTournaments.isEmpty
               ? const ['Único']
-              : _cleanStringList(competition.tournaments),
+              : cleanTournaments,
         ),
       );
     }
@@ -393,7 +421,7 @@ class StructureRepository {
     );
   }
 
-    Future<bool> addCompetition({
+  Future<bool> addCompetition({
     required String name,
     required String type,
     List<String>? tournaments,
@@ -427,9 +455,7 @@ class StructureRepository {
         : _cleanText(type);
 
     final resolvedHasFixture = hasFixture ?? cleanMode != 'loose_matches';
-
     final resolvedAllowManualMatches = allowManualMatches ?? true;
-
     final resolvedAllowKnockoutRounds =
         allowKnockoutRounds ?? cleanMode == 'single_fixture';
 
@@ -446,7 +472,7 @@ class StructureRepository {
             final stageName = resolvedTournaments[index];
 
             return CompetitionStageConfig(
-              id: CompetitionConfig._stageIdFromName(stageName),
+              id: stageIdFromName(stageName),
               name: stageName,
               order: index,
               hasFixture: resolvedHasFixture,
@@ -477,7 +503,7 @@ class StructureRepository {
 
     return true;
   }
-  
+
   Future<bool> addTournamentToCompetition({
     required String competitionName,
     required String tournament,
@@ -503,8 +529,27 @@ class StructureRepository {
 
     if (exists) return false;
 
+    final updatedTournaments = _cleanStringList([
+      ...current.tournaments,
+      cleanTournament,
+    ]);
+
+    final updatedStages = [
+      ...current.stages,
+      CompetitionStageConfig(
+        id: stageIdFromName(cleanTournament),
+        name: cleanTournament,
+        order: current.stages.length,
+        hasFixture: current.hasFixture,
+        allowManualMatches: current.allowManualMatches,
+        allowKnockoutRounds: current.allowKnockoutRounds,
+        stageType: current.isLooseMatches ? 'friendly' : 'league',
+      ),
+    ];
+
     final updated = current.copyWith(
-      tournaments: _cleanStringList([...current.tournaments, cleanTournament]),
+      tournaments: updatedTournaments,
+      stages: updatedStages,
     );
 
     final newList = [...competitions];
@@ -520,50 +565,52 @@ class StructureRepository {
     required String tournament,
     required String category,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-
     final cleanSeason = _cleanText(season);
     final cleanCompetition = _cleanText(competition);
     final cleanTournament = _cleanText(tournament);
     final cleanCategory = _cleanText(category);
 
     if (cleanSeason.isNotEmpty) {
-      await addSeason(cleanSeason);
-    }
-
-    final detectedCategories = <String>{};
-
-    if (cleanCategory.isNotEmpty) {
-      detectedCategories.add(cleanCategory);
-    }
-
-    for (final key in prefs.getKeys()) {
-      if (!key.startsWith('roster_')) continue;
-
-      final parts = key.split('_');
-      if (parts.length < 3) continue;
-
-      final detectedSeason = parts[1].trim();
-      final detectedCategory = parts.sublist(2).join('_').trim();
-
-      if (detectedSeason == cleanSeason && detectedCategory.isNotEmpty) {
-        detectedCategories.add(detectedCategory);
+      final seasons = await getSeasons();
+      final exists = seasons.any((e) => _normalize(e) == _normalize(cleanSeason));
+      if (!exists) {
+        await saveSeasons([...seasons, cleanSeason]);
       }
     }
 
-    final currentCategories = await getCategories();
-    await saveCategories([...currentCategories, ...detectedCategories]);
-
-    if (cleanCompetition.isNotEmpty) {
-      final isLocal = _normalize(cleanCompetition) == 'local';
-
-      await addCompetition(
-        name: cleanCompetition,
-        type: isLocal ? 'local' : 'single',
-        tournaments: isLocal
-            ? const ['Apertura', 'Clausura']
-            : [cleanTournament.isEmpty ? 'Único' : cleanTournament],
-      );
+    if (cleanCategory.isNotEmpty) {
+      final categories = await getCategories();
+      final exists = categories.any((e) => _normalize(e) == _normalize(cleanCategory));
+      if (!exists) {
+        await saveCategories([...categories, cleanCategory]);
+      }
     }
+
+    if (cleanCompetition.isEmpty) return;
+
+    final competitions = await getCompetitions();
+    final exists = competitions.any(
+      (c) => _normalize(c.name) == _normalize(cleanCompetition),
+    );
+
+    if (exists) return;
+
+    final isLocal = _normalize(cleanCompetition) == 'local';
+
+    final tournaments = isLocal
+        ? const ['Apertura', 'Clausura']
+        : [
+            cleanTournament.isEmpty ? 'Único' : cleanTournament,
+          ];
+
+    await addCompetition(
+      name: cleanCompetition,
+      type: isLocal ? 'local' : 'single',
+      tournaments: tournaments,
+      mode: isLocal ? 'split_fixture' : 'single_fixture',
+      hasFixture: true,
+      allowManualMatches: true,
+      allowKnockoutRounds: !isLocal,
+    );
   }
 }
