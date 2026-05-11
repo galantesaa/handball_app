@@ -4335,6 +4335,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         proximoPartido = pendientes.first;
         siguientesPartidos = pendientes.skip(1).map((p) {
           return {
+            'temporada': p['temporada'],
+            'competencia': p['competencia'],
             'rival': p['rival'],
             'fecha': p['fecha'],
             'hora': p['hora'],
@@ -4343,6 +4345,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'categoria': p['categoria'],
             'fechaNumero': p['fechaNumero'],
             'escudoRival': p['escudoRival'],
+            'estado': p['estado'],
           };
         }).toList();
         hayPartido = true;
