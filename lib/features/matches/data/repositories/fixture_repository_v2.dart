@@ -11,6 +11,28 @@ import '../../../../partido_repository_v2.dart';
 class FixtureRepositoryV2 {
   const FixtureRepositoryV2();
 
+  static String buildStableFixtureIdentity(PartidoModel partido) {
+    return [
+      PartidoRepositoryV2.normalizeValue(partido.temporada),
+      PartidoRepositoryV2.normalizeValue(partido.competencia),
+      PartidoRepositoryV2.normalizeValue(partido.torneo),
+      PartidoRepositoryV2.normalizeValue(partido.categoria),
+      PartidoRepositoryV2.normalizeValue(partido.rival),
+      PartidoRepositoryV2.normalizeValue(partido.condicion),
+    ].join('|');
+  }
+
+  static String buildStableFixtureIdentityFromMap(Map<String, dynamic> partido) {
+    return [
+      PartidoRepositoryV2.normalizeValue(partido['temporada'] ?? '2026'),
+      PartidoRepositoryV2.normalizeValue(partido['competencia'] ?? 'Local'),
+      PartidoRepositoryV2.normalizeValue(partido['torneo']),
+      PartidoRepositoryV2.normalizeValue(partido['categoria']),
+      PartidoRepositoryV2.normalizeValue(partido['rival']),
+      PartidoRepositoryV2.normalizeValue(partido['condicion']),
+    ].join('|');
+  }
+
   Future<List<PartidoModel>> readFixtures() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(AppStorageKeys.fixtures);
@@ -68,12 +90,10 @@ class FixtureRepositoryV2 {
     final fixtures = await readFixtures();
     final normalized = _normalizePendingFixture(partido);
 
-    final newIdentity =
-        PartidoRepositoryV2.buildMatchIdentityFromModel(normalized);
+    final newIdentity = buildStableFixtureIdentity(normalized);
 
     final exists = fixtures.any((item) {
-      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
-          newIdentity;
+      return buildStableFixtureIdentity(item) == newIdentity;
     });
 
     if (exists) return false;
@@ -94,12 +114,10 @@ class FixtureRepositoryV2 {
     final fixtures = await readFixtures();
     final normalized = _normalizePendingFixture(partido);
 
-    final targetIdentity =
-        PartidoRepositoryV2.buildMatchIdentityFromModel(normalized);
+    final targetIdentity = buildStableFixtureIdentity(normalized);
 
     final index = fixtures.indexWhere((item) {
-      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
-          targetIdentity;
+      return buildStableFixtureIdentity(item) == targetIdentity;
     });
 
     if (index < 0) return false;
@@ -123,24 +141,18 @@ class FixtureRepositoryV2 {
     final prefs = await SharedPreferences.getInstance();
     final fixtures = await readFixtures();
 
-    final oldIdentity =
-        PartidoRepositoryV2.buildMatchIdentityFromModel(oldPartido);
-
+    final oldIdentity = buildStableFixtureIdentity(oldPartido);
     final normalizedNew = _normalizePendingFixture(newPartido);
-
-    final newIdentity =
-        PartidoRepositoryV2.buildMatchIdentityFromModel(normalizedNew);
+    final newIdentity = buildStableFixtureIdentity(normalizedNew);
 
     final index = fixtures.indexWhere((item) {
-      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
-          oldIdentity;
+      return buildStableFixtureIdentity(item) == oldIdentity;
     });
 
     if (index < 0) return false;
 
     final duplicatedIndex = fixtures.indexWhere((item) {
-      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) ==
-          newIdentity;
+      return buildStableFixtureIdentity(item) == newIdentity;
     });
 
     if (duplicatedIndex >= 0 && duplicatedIndex != index) return false;
@@ -168,12 +180,10 @@ class FixtureRepositoryV2 {
     final prefs = await SharedPreferences.getInstance();
     final fixtures = await readFixtures();
 
-    final targetIdentity =
-        PartidoRepositoryV2.buildMatchIdentityFromModel(partido);
+    final targetIdentity = buildStableFixtureIdentity(partido);
 
     final updated = fixtures.where((item) {
-      return PartidoRepositoryV2.buildMatchIdentityFromModel(item) !=
-          targetIdentity;
+      return buildStableFixtureIdentity(item) != targetIdentity;
     }).toList();
 
     if (updated.length == fixtures.length) return false;

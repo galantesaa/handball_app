@@ -4207,58 +4207,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Usa solo el fixture base del torneo/categoría actual
   /// y filtra por partidos no finalizados segun V2.
   /// ===============================
-    String _stableFixtureIdentity(Map<String, dynamic> partido) {
-    return [
-      PartidoRepositoryV2.normalizeValue(partido['temporada'] ?? widget.temporada),
-      PartidoRepositoryV2.normalizeValue(partido['competencia'] ?? widget.competencia),
-      PartidoRepositoryV2.normalizeValue(partido['torneo'] ?? widget.torneo),
-      PartidoRepositoryV2.normalizeValue(partido['categoria'] ?? widget.categoria),
-      PartidoRepositoryV2.normalizeValue(partido['rival']),
-      PartidoRepositoryV2.normalizeValue(partido['condicion']),
-    ].join('|');
-  }
-
-  Future<void> _loadCustomFixturesV2() async {
-    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
-
-    if (!mounted) return;
-
-    _customFixturesV2 = data;
-  }
-
-  List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
-    List<Map<String, dynamic>> base,
-  ) {
-    final resultByStableId = <String, Map<String, dynamic>>{};
-
-    for (final item in base) {
-      final map = Map<String, dynamic>.from(item);
-      resultByStableId[_stableFixtureIdentity(map)] = map;
-    }
-
-    for (final custom in _customFixturesV2) {
-      final map = custom.toMap();
-      resultByStableId[_stableFixtureIdentity(map)] = map;
-    }
-
-    final result = resultByStableId.values.toList();
-
-    result.sort((a, b) {
-      final fa = (a['fechaNumero'] as int?) ?? 999999;
-      final fb = (b['fechaNumero'] as int?) ?? 999999;
-
-      final byFecha = fa.compareTo(fb);
-      if (byFecha != 0) return byFecha;
-
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
-    });
-
-    return result;
-  }
-
+  
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
@@ -4551,7 +4500,60 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
-    List<Map<String, dynamic>> _buildFixtureCompleto({
+  Future<void> _loadCustomFixturesV2() async {
+    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+
+    if (!mounted) return;
+
+    setState(() {
+      _customFixturesV2 = data;
+    });
+  }
+
+  String _stableFixtureIdentity(Map<String, dynamic> partido) {
+    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+      ...partido,
+      'temporada': partido['temporada'] ?? widget.temporada,
+      'competencia': partido['competencia'] ?? widget.competencia,
+      'torneo': partido['torneo'] ?? widget.torneo,
+      'categoria': partido['categoria'] ?? widget.categoria,
+    });
+  }
+
+  List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
+    List<Map<String, dynamic>> base,
+  ) {
+    final byStableId = <String, Map<String, dynamic>>{};
+
+    for (final item in base) {
+      final map = Map<String, dynamic>.from(item);
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    for (final custom in _customFixturesV2) {
+      final map = custom.toMap();
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    final result = byStableId.values.toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return result;
+  }
+  
+  List<Map<String, dynamic>> _buildFixtureCompleto({
     required String categoria,
   }) {
     final base = <Map<String, dynamic>>[];
@@ -4571,8 +4573,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return _mergeBaseWithCustomFixtures(base);
   }
-
-
+  
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -10034,11 +10035,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadFinalizadosV2();
-  }
+    final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+
+  List<PartidoModel> _customFixturesV2 = [];
 
   ActiveContext get _activeContext {
     return ActiveContext(
@@ -10051,6 +10050,17 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
+    @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadFinalizadosV2();
+      await _loadCustomFixturesV2();
+    });
+  }
+
+  
   String get _contextStorageSuffix {
     return AppContextKey.fromActiveContext(_activeContext);
   }
