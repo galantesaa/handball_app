@@ -1251,7 +1251,12 @@ class CompetitionCreationResult {
 }
 
 class CompetitionCreatorScreen extends StatefulWidget {
-  const CompetitionCreatorScreen({super.key});
+  final String initialName;
+
+  const CompetitionCreatorScreen({
+    super.key,
+    this.initialName = '',
+  });
 
   @override
   State<CompetitionCreatorScreen> createState() =>
@@ -1269,6 +1274,13 @@ class _CompetitionCreatorScreenState extends State<CompetitionCreatorScreen> {
   @override
   void initState() {
     super.initState();
+
+    final initialName = widget.initialName.trim();
+
+    if (initialName.isNotEmpty) {
+      _nameController.text = initialName;
+    }
+
     _syncDefaultStages();
   }
 
@@ -1862,7 +1874,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveActiveContext();
   }
 
-  Future<void> _createOrSelectCompetitionFlow() async {
+    Future<void> _createOrSelectCompetitionFlow() async {
     final value = _competitionController.text.trim();
 
     if (value.isNotEmpty) {
@@ -1874,9 +1886,12 @@ class _HomeScreenState extends State<HomeScreen> {
         await _selectCompetitionFlow(value);
         return;
       }
-    }
 
-    _competitionController.clear();
+      _competitionController.clear();
+
+      await _crearCompetencia(initialName: value);
+      return;
+    }
 
     await _crearCompetencia();
   }
@@ -2225,11 +2240,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveActiveContext();
   }
 
-    Future<void> _crearCompetencia() async {
+  Future<void> _crearCompetencia({String initialName = ''}) async {
     final result = await Navigator.push<CompetitionCreationResult>(
       context,
       MaterialPageRoute(
-        builder: (_) => const CompetitionCreatorScreen(),
+        builder: (_) => CompetitionCreatorScreen(
+          initialName: initialName,
+        ),
       ),
     );
 
@@ -2274,7 +2291,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _showMessage('Competencia creada correctamente.');
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
