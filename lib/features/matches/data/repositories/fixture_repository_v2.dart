@@ -2,34 +2,55 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/context/app_context_key.dart';
 import '../../../../core/storage/app_storage_keys.dart';
-import '../../../settings/domain/models/active_context.dart';
 import '../../../../models_v2.dart';
 import '../../../../partido_repository_v2.dart';
 
 class FixtureRepositoryV2 {
   const FixtureRepositoryV2();
 
+  static String normalize(dynamic value) {
+    return PartidoRepositoryV2.normalizeValue(value)
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  static bool isLooseStageAlias(String a, String b) {
+    final left = normalize(a);
+    final right = normalize(b);
+
+    if (left == right) return true;
+
+    const aliases = {
+      'partido suelto',
+      'partidos sueltos',
+      'amistoso',
+      'amistosos',
+    };
+
+    return aliases.contains(left) && aliases.contains(right);
+  }
+
   static String buildStableFixtureIdentity(PartidoModel partido) {
     return [
-      PartidoRepositoryV2.normalizeValue(partido.temporada),
-      PartidoRepositoryV2.normalizeValue(partido.competencia),
-      PartidoRepositoryV2.normalizeValue(partido.torneo),
-      PartidoRepositoryV2.normalizeValue(partido.categoria),
-      PartidoRepositoryV2.normalizeValue(partido.rival),
-      PartidoRepositoryV2.normalizeValue(partido.condicion),
+      normalize(partido.temporada),
+      normalize(partido.competencia),
+      normalize(partido.torneo),
+      normalize(partido.categoria),
+      normalize(partido.rival),
+      normalize(partido.condicion),
     ].join('|');
   }
 
   static String buildStableFixtureIdentityFromMap(Map<String, dynamic> partido) {
     return [
-      PartidoRepositoryV2.normalizeValue(partido['temporada'] ?? '2026'),
-      PartidoRepositoryV2.normalizeValue(partido['competencia'] ?? 'Local'),
-      PartidoRepositoryV2.normalizeValue(partido['torneo']),
-      PartidoRepositoryV2.normalizeValue(partido['categoria']),
-      PartidoRepositoryV2.normalizeValue(partido['rival']),
-      PartidoRepositoryV2.normalizeValue(partido['condicion']),
+      normalize(partido['temporada']),
+      normalize(partido['competencia']),
+      normalize(partido['torneo']),
+      normalize(partido['categoria']),
+      normalize(partido['rival']),
+      normalize(partido['condicion']),
     ].join('|');
   }
 
@@ -69,16 +90,24 @@ class FixtureRepositoryV2 {
     }
   }
 
-  Future<List<PartidoModel>> readFixturesByContext(
-    ActiveContext context,
-  ) async {
-    final fixtures = await readFixtures();
+  Future<List<PartidoModel>> readFixturesFlexible({
+    required String temporada,
+    required String competencia,
+    required String torneo,
+    required String categoria,
+  }) async {
+    final all = await readFixtures();
 
-    final filtered = fixtures.where((partido) {
-      return AppContextKey.matchesMap(
-        data: partido.toMap(),
-        context: context,
-      );
+    final filtered = all.where((partido) {
+      final sameBase =
+          normalize(partido.temporada) == normalize(temporada) &&
+          normalize(partido.competencia) == normalize(competencia) &&
+          normalize(partido.categoria) == normalize(categoria);
+
+      if (!sameBase) return false;
+
+      return normalize(partido.torneo) == normalize(torneo) ||
+          isLooseStageAlias(partido.torneo, torneo);
     }).toList();
 
     filtered.sort(_sortByFechaNumero);
@@ -169,11 +198,11 @@ class FixtureRepositoryV2 {
     return true;
   }
 
-  Future<void> upsertFixture(PartidoModel partido) async {
+  Future<bool> upsertFixture(PartidoModel partido) async {
     final saved = await saveFixture(partido);
-    if (saved) return;
+    if (saved) return true;
 
-    await updateFixture(partido);
+    return updateFixture(partido);
   }
 
   Future<bool> deleteFixture(PartidoModel partido) async {

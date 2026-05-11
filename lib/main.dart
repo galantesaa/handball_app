@@ -4601,13 +4601,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
-    ).where((p) => (p['torneo'] ?? '').toString() == widget.torneo).toList();
+    ).where(_matchesCurrentContext).toList();
 
     final pendientes = todos.where((p) => !_estaFinalizadoGlobal(p)).toList();
 
     pendientes.sort((a, b) {
-      final fa = (a['fechaNumero'] ?? 0) as int;
-      final fb = (b['fechaNumero'] ?? 0) as int;
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
       return fa.compareTo(fb);
     });
 
@@ -4618,10 +4618,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       return;
     }
 
-    final proximo = Map<String, dynamic>.from(pendientes.first);
+    proximoPartido = Map<String, dynamic>.from(pendientes.first);
 
-    final siguientes = pendientes.skip(1).map((p) {
+    siguientesPartidos = pendientes.skip(1).map((p) {
       return {
+        'temporada': p['temporada'],
+        'competencia': p['competencia'],
         'rival': p['rival'],
         'fechaNumero': p['fechaNumero'],
         'fecha': p['fecha'],
@@ -4630,19 +4632,37 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         'torneo': p['torneo'],
         'categoria': p['categoria'],
         'escudoRival': p['escudoRival'],
+        'estado': p['estado'],
+        'estadoPartido': p['estadoPartido'],
       };
     }).toList();
 
-    proximoPartido = proximo;
-    siguientesPartidos = siguientes;
     hayPartido = true;
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    return AppContextKey.matchesMap(data: partido, context: _activeContext);
-  }
+    final sameSeason =
+        _normalizeContextText(partido['temporada']) ==
+        _normalizeContextText(widget.temporada);
 
-     @override
+    final sameCompetition =
+        _normalizeContextText(partido['competencia']) ==
+        _normalizeContextText(widget.competencia);
+
+    final sameCategory =
+        _normalizeContextText(partido['categoria']) ==
+        _normalizeContextText(widget.categoria);
+
+    if (!sameSeason || !sameCompetition || !sameCategory) return false;
+
+    final partidoTorneo = _normalizeContextText(partido['torneo']);
+    final widgetTorneo = _normalizeContextText(widget.torneo);
+
+    return partidoTorneo == widgetTorneo ||
+        _sameLooseStage(partidoTorneo, widgetTorneo);
+  }
+ 
+  @override
   void initState() {
     super.initState();
 
@@ -4886,7 +4906,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
-    String _normalizeContextText(dynamic value) {
+  String _normalizeContextText(dynamic value) {
     return (value ?? '')
         .toString()
         .trim()
@@ -5586,7 +5606,34 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     });
   }
 
-  Future<void> _crearPartidoManual() async {
+  bool _sameContextForPartidoModel(PartidoModel partido) {
+    final sameSeason =
+        _normalizeContextText(partido.temporada) ==
+        _normalizeContextText(widget.temporada);
+
+    final sameCompetition =
+        _normalizeContextText(partido.competencia) ==
+        _normalizeContextText(widget.competencia);
+
+    final sameCategory =
+        _normalizeContextText(partido.categoria) ==
+        _normalizeContextText(widget.categoria);
+
+    if (!sameSeason || !sameCompetition || !sameCategory) return false;
+
+    final partidoTorneo = _normalizeContextText(partido.torneo);
+    final widgetTorneo = _normalizeContextText(widget.torneo);
+
+    return partidoTorneo == widgetTorneo ||
+        _sameLooseStage(partidoTorneo, widgetTorneo);
+  }
+
+  bool _sameFixtureStableIdentity(PartidoModel a, PartidoModel b) {
+    return FixtureRepositoryV2.buildStableFixtureIdentity(a) ==
+        FixtureRepositoryV2.buildStableFixtureIdentity(b);
+  }
+
+    Future<void> _crearPartidoManual() async {
     final result = await Navigator.push<PartidoModel>(
       context,
       MaterialPageRoute(
@@ -5602,33 +5649,66 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     if (!mounted || result == null) return;
 
     await _fixtureRepository.upsertFixture(result);
-    await _loadCustomFixturesV2();
 
-    final map = result.toMap();
+    final allFixtures = await _fixtureRepository.readFixtures();
+
+    final savedExists = allFixtures.any((item) {
+      return _sameFixtureStableIdentity(item, result);
+    });
+
+    if (!mounted) return;
+
+    if (!savedExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo guardar el partido en el fixture.'),
+        ),
+      );
+      return;
+    }
+
+    final filtered = allFixtures.where(_sameContextForPartidoModel).toList()
+      ..sort((a, b) {
+        final byFecha = (a.fechaNumero ?? 999999).compareTo(
+          b.fechaNumero ?? 999999,
+        );
+
+        if (byFecha != 0) return byFecha;
+
+        return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
+      });
 
     setState(() {
-      if (!hayPartido || !_esPartidoValido(proximoPartido)) {
-        proximoPartido = map;
-        hayPartido = true;
+      _customFixturesV2 = filtered;
+
+      final pendientes = filtered
+          .map((e) => e.toMap())
+          .where((p) => !_estaFinalizadoGlobal(p))
+          .toList();
+
+      if (pendientes.isEmpty) {
+        proximoPartido = {};
+        siguientesPartidos = [];
+        hayPartido = false;
       } else {
-        final newIdentity = PartidoRepositoryV2.buildMatchIdentityFromMap(map);
-
-        final existsInSiguientes = siguientesPartidos.any((item) {
-          return PartidoRepositoryV2.buildMatchIdentityFromMap(item) ==
-              newIdentity;
-        });
-
-        final currentIdentity =
-            PartidoRepositoryV2.buildMatchIdentityFromMap(proximoPartido);
-
-        if (!existsInSiguientes && currentIdentity != newIdentity) {
-          siguientesPartidos.add(map);
-          siguientesPartidos.sort((a, b) {
-            final fa = (a['fechaNumero'] as int?) ?? 999999;
-            final fb = (b['fechaNumero'] as int?) ?? 999999;
-            return fa.compareTo(fb);
-          });
-        }
+        proximoPartido = pendientes.first;
+        siguientesPartidos = pendientes.skip(1).map((p) {
+          return {
+            'temporada': p['temporada'],
+            'competencia': p['competencia'],
+            'rival': p['rival'],
+            'fechaNumero': p['fechaNumero'],
+            'fecha': p['fecha'],
+            'hora': p['hora'],
+            'condicion': p['condicion'],
+            'torneo': p['torneo'],
+            'categoria': p['categoria'],
+            'escudoRival': p['escudoRival'],
+            'estado': p['estado'],
+            'estadoPartido': p['estadoPartido'],
+          };
+        }).toList();
+        hayPartido = true;
       }
     });
 
@@ -10508,7 +10588,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
       'finished_matches_history_v1';
-
+  late Future<List<PartidoModel>> _fixturesFuture;
   /// ===============================
   /// PARTIDOS FINALIZADOS V2
 
@@ -10535,13 +10615,59 @@ class _FixtureScreenState extends State<FixtureScreen> {
   void initState() {
     super.initState();
 
+    _fixturesFuture = _fixtureRepository.readFixtures();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadFinalizadosV2();
       await _loadCustomFixturesV2();
     });
   }
-
   
+  List<Map<String, dynamic>> _obtenerFixtureDesdeCustomDirecto(
+    List<PartidoModel> fixtures,
+  ) {
+    final torneoActual = _normalizeContextText(widget.torneo);
+    final categoriaActual = _normalizeContextText(widget.categoria);
+    final temporadaActual = _normalizeContextText(widget.temporada);
+    final competenciaActual = _normalizeContextText(widget.competencia);
+
+    final result = fixtures.where((partido) {
+      final sameSeason =
+          _normalizeContextText(partido.temporada) == temporadaActual;
+
+      final sameCompetition =
+          _normalizeContextText(partido.competencia) == competenciaActual;
+
+      final sameCategory =
+          _normalizeContextText(partido.categoria) == categoriaActual;
+
+      if (!sameSeason || !sameCompetition || !sameCategory) {
+        return false;
+      }
+
+      final torneo = _normalizeContextText(partido.torneo);
+
+      return torneo == torneoActual || _sameLooseStage(torneo, torneoActual);
+    }).map((p) {
+      return p.toMap();
+    }).toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return result;
+  }
+
   String get _contextStorageSuffix {
     return AppContextKey.fromActiveContext(_activeContext);
   }
@@ -11122,53 +11248,68 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
-    final partidos = _obtenerFixturePorCategoriaYTorneo();
+    return FutureBuilder<List<PartidoModel>>(
+      future: _fixturesFuture,
+      builder: (context, snapshot) {
+        final customDirecto = snapshot.hasData
+            ? _obtenerFixtureDesdeCustomDirecto(snapshot.data!)
+            : <Map<String, dynamic>>[];
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Fixture'),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondohd.jpeg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
+        final partidos = customDirecto.isNotEmpty
+            ? customDirecto
+            : _obtenerFixturePorCategoriaYTorneo();
+
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const Text('Fixture'),
           ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              children: [
-                Text(
-                  '${widget.categoria} · ${widget.torneo}',
-                  style: const TextStyle(
-                    color: Color(0xFFD4DCE7),
-                    fontSize: 14,
-                  ),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/fondohd.jpeg',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
                 ),
-                const SizedBox(height: 18),
-                if (partidos.isEmpty)
-                  _buildEmptyFixtureState()
-                else
-                  ...partidos.map((p) => _buildFixtureCard(context, p)),
-              ],
-            ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF05080D).withOpacity(0.88),
+                ),
+              ),
+              SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  children: [
+                    Text(
+                      '${widget.categoria} · ${widget.torneo}',
+                      style: const TextStyle(
+                        color: Color(0xFFD4DCE7),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const Center(child: CircularProgressIndicator())
+                    else if (partidos.isEmpty)
+                      _buildEmptyFixtureState()
+                    else
+                      ...partidos.map((p) => _buildFixtureCard(context, p)),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
-  
+
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
     final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 
