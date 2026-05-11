@@ -10486,27 +10486,36 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    final competencia = widget.competencia.trim().toLowerCase();
-    final torneo = widget.torneo.trim().toLowerCase();
+    List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
+    final torneoActual = widget.torneo.trim().toLowerCase();
+    final categoriaActual = widget.categoria.trim().toLowerCase();
 
-    if (competencia != 'local') {
-      return const <Map<String, dynamic>>[];
-    }
+    final partidos = _buildFixtureCompleto(
+      categoria: widget.categoria,
+    ).where((partido) {
+      final torneo = (partido['torneo'] ?? '').toString().trim().toLowerCase();
+      final categoria = (partido['categoria'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
 
-    if (torneo == 'apertura') {
-      return _buildAperturaBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
-    }
+      return torneo == torneoActual && categoria == categoriaActual;
+    }).toList();
 
-    if (torneo == 'clausura') {
-      return _buildClausuraBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
-    }
+    partidos.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
 
-    return const <Map<String, dynamic>>[];
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return partidos;
   }
 
   Future<void> _abrirPartido(
@@ -10527,7 +10536,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     final partidos = _obtenerFixturePorCategoriaYTorneo();
 
@@ -10573,7 +10582,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
       ),
     );
   }
-
+  
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
     final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 
