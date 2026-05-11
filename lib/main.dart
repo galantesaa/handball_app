@@ -5197,160 +5197,30 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     // - finalizados_*
     return;
   }
-  
+
   Future<void> _resetPartidosDePrueba() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final fixture = _buildFixtureCompleto(
-      categoria: widget.categoria,
-    ).where((p) => p['torneo'] == widget.torneo).toList();
-
-    final Map<String, Map<String, dynamic>> finalizadosPorId = {
-      for (final p in partidosFinalizados)
-        _identityFromMap(p): Map<String, dynamic>.from(p),
-    };
-
-    final List<Map<String, dynamic>> pendientes = [];
-    final List<Map<String, dynamic>> finalizadosConservados = [];
-
-    for (final partido in fixture) {
-      final id = _identityFromMap(partido);
-
-      if (finalizadosPorId.containsKey(id)) {
-        final partidoFinalizado =
-            Map<String, dynamic>.from(finalizadosPorId[id]!)
-              ..['estado'] = 'Finalizado'
-              ..['estadoPartido'] = 'finalizado';
-        finalizadosConservados.add(partidoFinalizado);
-      } else {
-        pendientes.add(Map<String, dynamic>.from(partido));
-      }
-    }
-
-    setState(() {
-      partidosFinalizados = finalizadosConservados;
-
-      if (pendientes.isNotEmpty) {
-        proximoPartido = pendientes.first;
-        siguientesPartidos = pendientes.skip(1).map((p) {
-          return {
-            'temporada': p['temporada'],
-            'competencia': p['competencia'],
-            'rival': p['rival'],
-            'fecha': p['fecha'],
-            'hora': p['hora'],
-            'condicion': p['condicion'],
-            'torneo': p['torneo'],
-            'categoria': p['categoria'],
-            'fechaNumero': p['fechaNumero'],
-            'escudoRival': p['escudoRival'],
-            'estado': p['estado'],
-          };
-        }).toList();
-        hayPartido = true;
-      } else {
-        proximoPartido = {};
-        siguientesPartidos = [];
-        hayPartido = false;
-      }
-    });
-
-    if (hayPartido && proximoPartido.isNotEmpty) {
-      await prefs.setString(
-        _proximoPartidoStorageKey,
-        jsonEncode(proximoPartido),
-      );
-    } else {
-      await prefs.remove(_proximoPartidoStorageKey);
-    }
-
-    await prefs.setString(
-      _siguientesPartidosStorageKey,
-      jsonEncode(siguientesPartidos),
-    );
-
-    await prefs.setString(
-      _partidosFinalizadosStorageKey,
-      jsonEncode(partidosFinalizados),
-    );
+    // Método legacy desactivado.
+    // La fuente única actual para fixture/pendientes es fixtures_v1
+    // mediante FixtureRepositoryV2.
+    await _loadEstadoRealV2();
+    await _loadFixtureState();
   }
-
+  
   Future<void> _eliminarPartidosDePrueba() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    int eliminados = 0;
-
-    final rawFinished = prefs.getString(_finishedMatchesStorageKey);
-
-    if (rawFinished != null && rawFinished.isNotEmpty) {
-      final decoded = jsonDecode(rawFinished) as List<dynamic>;
-
-      final soloReales = decoded.where((item) {
-        if (item is! Map) return false;
-
-        final map = Map<String, dynamic>.from(item);
-
-        final partidoInterno = Map<String, dynamic>.from(
-          (map['partido'] as Map?)?.cast<String, dynamic>() ??
-              <String, dynamic>{},
-        );
-
-        return map['isReal'] == true ||
-            map['esPartidoReal'] == true ||
-            partidoInterno['isReal'] == true ||
-            partidoInterno['esPartidoReal'] == true;
-      }).toList();
-
-      eliminados = decoded.length - soloReales.length;
-
-      await prefs.setString(_finishedMatchesStorageKey, jsonEncode(soloReales));
-    }
-
-    await prefs.remove(_partidosFinalizadosStorageKey);
-
-    if (!mounted) return;
-
+    // Método legacy desactivado.
+    // No debe escribir proximo_partido_*, siguientes_* ni finalizados_*.
     await _loadEstadoRealV2();
     await _loadFixtureState();
 
     if (!mounted) return;
 
-    setState(() {
-      _recalcularProximoYSiguientesDesdeBase();
-    });
-
-    if (hayPartido && proximoPartido.isNotEmpty) {
-      await prefs.setString(
-        _proximoPartidoStorageKey,
-        jsonEncode(proximoPartido),
-      );
-    } else {
-      await prefs.remove(_proximoPartidoStorageKey);
-    }
-
-    await prefs.setString(
-      _siguientesPartidosStorageKey,
-      jsonEncode(siguientesPartidos),
-    );
-
-    await prefs.setString(
-      _partidosFinalizadosStorageKey,
-      jsonEncode(partidosFinalizados),
-    );
-
-    if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          eliminados == 1
-              ? 'Se eliminó 1 partido de prueba'
-              : 'Se eliminaron $eliminados partidos de prueba',
-        ),
+      const SnackBar(
+        content: Text('Limpieza legacy desactivada. No se modificaron datos.'),
       ),
     );
   }
-
+  
   Future<void> _confirmarEliminarPartidosDePrueba() async {
     final confirmar = await showDialog<bool>(
       context: context,
