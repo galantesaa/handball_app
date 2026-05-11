@@ -1253,10 +1253,7 @@ class CompetitionCreationResult {
 class CompetitionCreatorScreen extends StatefulWidget {
   final String initialName;
 
-  const CompetitionCreatorScreen({
-    super.key,
-    this.initialName = '',
-  });
+  const CompetitionCreatorScreen({super.key, this.initialName = ''});
 
   @override
   State<CompetitionCreatorScreen> createState() =>
@@ -1874,7 +1871,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveActiveContext();
   }
 
-    Future<void> _createOrSelectCompetitionFlow() async {
+  Future<void> _createOrSelectCompetitionFlow() async {
     final value = _competitionController.text.trim();
 
     if (value.isNotEmpty) {
@@ -1895,7 +1892,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _crearCompetencia();
   }
-  
+
   Future<void> _selectTournamentFlow(String tournament) async {
     final clean = tournament.trim();
     if (clean.isEmpty) return;
@@ -2244,9 +2241,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await Navigator.push<CompetitionCreationResult>(
       context,
       MaterialPageRoute(
-        builder: (_) => CompetitionCreatorScreen(
-          initialName: initialName,
-        ),
+        builder: (_) => CompetitionCreatorScreen(initialName: initialName),
       ),
     );
 
@@ -2545,6 +2540,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _abrirFixtureActual() {
+    if (!competenciaActualTieneFixture) {
+      _showMessage('Esta competencia usa partidos sueltos y no tiene fixture.');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -2596,6 +2596,33 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selected.isEmpty) return const [];
 
     return selected.first.tournaments;
+  }
+
+  structure.CompetitionConfig? get competenciaActualConfig {
+    final actual = competenciaSeleccionada.trim().toLowerCase();
+
+    if (actual.isEmpty) return null;
+
+    for (final competition in competenciasDinamicas) {
+      if (competition.name.trim().toLowerCase() == actual) {
+        return competition;
+      }
+    }
+
+    return null;
+  }
+
+  bool get competenciaActualTieneFixture {
+    final competition = competenciaActualConfig;
+
+    if (competenciaSeleccionada.trim().isEmpty) return false;
+
+    // Compatibilidad defensiva:
+    // si por algún motivo la competencia todavía no está cargada en memoria,
+    // no bloqueamos el flujo existente.
+    if (competition == null) return true;
+
+    return competition.hasFixture && !competition.isLooseMatches;
   }
 
   Future<void> _setCompetencia(String competencia) async {
@@ -2849,13 +2876,16 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildContextSection(),
 
-                const SizedBox(height: 12),
-                _buildPrimaryOutlineAction(
-                  text: 'Ver fixture actual',
-                  icon: Icons.calendar_month_rounded,
-                  onTap: _abrirFixtureActual,
-                ),
-                const SizedBox(height: 18),
+                if (competenciaActualTieneFixture) ...[
+                  const SizedBox(height: 12),
+                  _buildPrimaryOutlineAction(
+                    text: 'Ver fixture actual',
+                    icon: Icons.calendar_month_rounded,
+                    onTap: _abrirFixtureActual,
+                  ),
+                  const SizedBox(height: 18),
+                ] else
+                  const SizedBox(height: 12),
                 _buildHomeActionCard(
                   icon: Icons.sports_handball_rounded,
                   title: 'Proximo partido',
@@ -4026,9 +4056,9 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
   }
 
   void _showLocalMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -4218,9 +4248,7 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
         duration: const Duration(milliseconds: 160),
         height: 44,
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFF4F8CFF)
-              : const Color(0xFF182338),
+          color: selected ? const Color(0xFF4F8CFF) : const Color(0xFF182338),
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: selected
@@ -4395,7 +4423,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Usa solo el fixture base del torneo/categoría actual
   /// y filtra por partidos no finalizados segun V2.
   /// ===============================
-  
+
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
@@ -4412,10 +4440,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     if (pendientes.isEmpty) {
@@ -4478,8 +4505,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
       setState(() {});
     });
-  }  
-
+  }
 
   Map<String, dynamic> _defaultProximoPartido() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
@@ -4818,15 +4844,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return result;
   }
-  
+
   List<Map<String, dynamic>> _buildFixtureCompleto({
     required String categoria,
   }) {
@@ -4847,7 +4872,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return _mergeBaseWithCustomFixtures(base);
   }
-  
+
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -4916,17 +4941,21 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     for (final item in baseMaps) {
       if (!_matchesCurrentContext(item)) continue;
 
-      mergedByIdentity[
-        FixtureRepositoryV2.buildStableFixtureIdentityFromMap(item)
-      ] = Map<String, dynamic>.from(item);
+      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+        item,
+      )] = Map<String, dynamic>.from(
+        item,
+      );
     }
 
     for (final item in customMaps) {
       if (!_matchesCurrentContext(item)) continue;
 
-      mergedByIdentity[
-        FixtureRepositoryV2.buildStableFixtureIdentityFromMap(item)
-      ] = Map<String, dynamic>.from(item);
+      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+        item,
+      )] = Map<String, dynamic>.from(
+        item,
+      );
     }
 
     final todos = mergedByIdentity.values.toList();
@@ -4938,10 +4967,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     final pendientes = todos.where((p) {
@@ -4982,7 +5010,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       hayPartido = true;
     });
   }
-  
+
   Future<void> _persistFixtureState() async {
     // Fuente única actual:
     // - fixtures_v1 para pendientes / fixture / partidos sueltos.
@@ -5003,7 +5031,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     await _loadEstadoRealV2();
     await _loadFixtureState();
   }
-  
+
   Future<void> _eliminarPartidosDePrueba() async {
     // Método legacy desactivado.
     // No debe escribir proximo_partido_*, siguientes_* ni finalizados_*.
@@ -5018,7 +5046,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       ),
     );
   }
-  
+
   Future<void> _confirmarEliminarPartidosDePrueba() async {
     final confirmar = await showDialog<bool>(
       context: context,
@@ -5325,7 +5353,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       const SnackBar(content: Text('Partido creado correctamente.')),
     );
   }
-  
+
   Future<void> _editarProximoPartido() async {
     if (!_esPartidoValido(proximoPartido)) {
       await _showEditError('No hay un partido válido para editar.');
@@ -5364,9 +5392,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
       if (!saved && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo actualizar el partido.'),
-          ),
+          const SnackBar(content: Text('No se pudo actualizar el partido.')),
         );
         return;
       }
@@ -5380,13 +5406,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       const SnackBar(content: Text('Partido actualizado correctamente.')),
     );
   }
-  
+
   Future<void> _showEditError(String message) async {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -5587,7 +5613,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           text: 'Editar partido',
           onTap: _editarProximoPartido,
         ),
-        
+
         const SizedBox(height: 12),
         _buildOutlinedAction(
           text: 'Eliminar partidos de prueba',
@@ -5651,7 +5677,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 text: 'Crear partido',
                 onTap: _crearPartidoManual,
               ),
-              
             ],
           ),
         ),
@@ -10198,6 +10223,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   static const String _finishedMatchesStorageKey =
       'finished_matches_history_v1';
   late Future<List<PartidoModel>> _fixturesFuture;
+
   /// ===============================
   /// PARTIDOS FINALIZADOS V2
 
@@ -10205,7 +10231,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
 
-    final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+  final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
 
   List<PartidoModel> _customFixturesV2 = [];
 
@@ -10220,7 +10246,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-    @override
+  @override
   void initState() {
     super.initState();
 
@@ -10231,7 +10257,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
       await _loadCustomFixturesV2();
     });
   }
-  
+
   List<Map<String, dynamic>> _obtenerFixtureDesdeCustomDirecto(
     List<PartidoModel> fixtures,
   ) {
@@ -10240,26 +10266,30 @@ class _FixtureScreenState extends State<FixtureScreen> {
     final temporadaActual = _normalizeContextText(widget.temporada);
     final competenciaActual = _normalizeContextText(widget.competencia);
 
-    final result = fixtures.where((partido) {
-      final sameSeason =
-          _normalizeContextText(partido.temporada) == temporadaActual;
+    final result = fixtures
+        .where((partido) {
+          final sameSeason =
+              _normalizeContextText(partido.temporada) == temporadaActual;
 
-      final sameCompetition =
-          _normalizeContextText(partido.competencia) == competenciaActual;
+          final sameCompetition =
+              _normalizeContextText(partido.competencia) == competenciaActual;
 
-      final sameCategory =
-          _normalizeContextText(partido.categoria) == categoriaActual;
+          final sameCategory =
+              _normalizeContextText(partido.categoria) == categoriaActual;
 
-      if (!sameSeason || !sameCompetition || !sameCategory) {
-        return false;
-      }
+          if (!sameSeason || !sameCompetition || !sameCategory) {
+            return false;
+          }
 
-      final torneo = _normalizeContextText(partido.torneo);
+          final torneo = _normalizeContextText(partido.torneo);
 
-      return torneo == torneoActual || _sameLooseStage(torneo, torneoActual);
-    }).map((p) {
-      return p.toMap();
-    }).toList();
+          return torneo == torneoActual ||
+              _sameLooseStage(torneo, torneoActual);
+        })
+        .map((p) {
+          return p.toMap();
+        })
+        .toList();
 
     result.sort((a, b) {
       final fa = (a['fechaNumero'] as int?) ?? 999999;
@@ -10268,10 +10298,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return result;
@@ -10372,8 +10401,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
     }).toList();
 
     filtered.sort((a, b) {
-      final byFecha =
-          (a.fechaNumero ?? 999999).compareTo(b.fechaNumero ?? 999999);
+      final byFecha = (a.fechaNumero ?? 999999).compareTo(
+        b.fechaNumero ?? 999999,
+      );
 
       if (byFecha != 0) return byFecha;
 
@@ -10421,10 +10451,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return result;
@@ -10450,7 +10479,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     return _mergeBaseWithCustomFixtures(base);
   }
-  
+
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
@@ -10809,9 +10838,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
     final torneoActual = _normalizeContextText(widget.torneo);
     final categoriaActual = _normalizeContextText(widget.categoria);
 
-    final partidos = _buildFixtureCompleto(
-      categoria: widget.categoria,
-    ).where((partido) {
+    final partidos = _buildFixtureCompleto(categoria: widget.categoria).where((
+      partido,
+    ) {
       final torneo = _normalizeContextText(partido['torneo']);
       final categoria = _normalizeContextText(partido['categoria']);
 
@@ -10829,17 +10858,15 @@ class _FixtureScreenState extends State<FixtureScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return partidos;
   }
 
   Future<void> _abrirPartido(
-    
     BuildContext context,
     Map<String, dynamic> partido,
   ) async {
