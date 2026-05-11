@@ -4890,16 +4890,80 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
+    String _normalizeContextText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool _sameLooseStage(String a, String b) {
+    final left = _normalizeContextText(a);
+    final right = _normalizeContextText(b);
+
+    if (left == right) return true;
+
+    const looseAliases = {
+      'partido suelto',
+      'partidos sueltos',
+      'amistoso',
+      'amistosos',
+    };
+
+    return looseAliases.contains(left) && looseAliases.contains(right);
+  }
+
+  bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
+    final temporada = _normalizeContextText(partido.temporada);
+    final competencia = _normalizeContextText(partido.competencia);
+    final torneo = _normalizeContextText(partido.torneo);
+    final categoria = _normalizeContextText(partido.categoria);
+
+    final widgetTemporada = _normalizeContextText(widget.temporada);
+    final widgetCompetencia = _normalizeContextText(widget.competencia);
+    final widgetTorneo = _normalizeContextText(widget.torneo);
+    final widgetCategoria = _normalizeContextText(widget.categoria);
+
+    final sameBase =
+        temporada == widgetTemporada &&
+        competencia == widgetCompetencia &&
+        categoria == widgetCategoria;
+
+    if (!sameBase) return false;
+
+    return torneo == widgetTorneo || _sameLooseStage(torneo, widgetTorneo);
+  }
+
   Future<void> _loadCustomFixturesV2() async {
-    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+    final data = await _fixtureRepository.readFixtures();
+
+    final filtered = data.where(_customFixtureMatchesCurrentContext).toList();
+
+    filtered.sort((a, b) {
+      final byFecha = (a.fechaNumero ?? 999999).compareTo(
+        b.fechaNumero ?? 999999,
+      );
+
+      if (byFecha != 0) return byFecha;
+
+      return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
+    });
 
     if (!mounted) return;
 
     setState(() {
-      _customFixturesV2 = data;
+      _customFixturesV2 = filtered;
     });
   }
-
+  
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
     return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
       ...partido,
