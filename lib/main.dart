@@ -2668,74 +2668,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCompetenciaYTorneoSelector() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.88),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Competencia',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildSelectableChip(
-                text: 'Local',
-                selected: competenciaSeleccionada == 'Local',
-                onTap: () => _setCompetencia('Local'),
-              ),
-              _buildSelectableChip(
-                text: 'Amistoso',
-                selected: competenciaSeleccionada == 'Amistoso',
-                onTap: () => _setCompetencia('Amistoso'),
-              ),
-              _buildSelectableChip(
-                text: 'Nacional',
-                selected: competenciaSeleccionada == 'Nacional',
-                onTap: () => _setCompetencia('Nacional'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Torneo',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: torneosDisponibles.map((torneo) {
-              return _buildSelectableChip(
-                text: torneo,
-                selected: torneoSeleccionado == torneo,
-                onTap: () => _setTorneo(torneo),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTopIdentityRow() {
     return Row(
       children: [
@@ -3701,7 +3633,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  
   Widget _buildPrimaryOutlineAction({
     required String text,
     required IconData icon,
