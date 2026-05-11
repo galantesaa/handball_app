@@ -5186,28 +5186,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
   
   Future<void> _persistFixtureState() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    if (hayPartido && proximoPartido.isNotEmpty) {
-      await prefs.setString(
-        _proximoPartidoStorageKey,
-        jsonEncode(proximoPartido),
-      );
-    } else {
-      await prefs.remove(_proximoPartidoStorageKey);
-    }
-
-    await prefs.setString(
-      _siguientesPartidosStorageKey,
-      jsonEncode(siguientesPartidos),
-    );
-
-    await prefs.setString(
-      _partidosFinalizadosStorageKey,
-      jsonEncode(partidosFinalizados),
-    );
+    // Fuente única actual:
+    // - fixtures_v1 para pendientes / fixture / partidos sueltos.
+    // - finished_matches_history_v1 para finalizados.
+    //
+    // Este método queda intencionalmente como no-op para evitar volver a
+    // escribir estados legacy:
+    // - proximo_partido_*
+    // - siguientes_*
+    // - finalizados_*
+    return;
   }
-
+  
   Future<void> _resetPartidosDePrueba() async {
     final prefs = await SharedPreferences.getInstance();
 
