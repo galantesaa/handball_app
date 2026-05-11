@@ -110,63 +110,85 @@ class PartidoRepositoryV2 {
   /// LEER PARTIDOS FINALIZADOS
   /// Devuelve la lista de partidos finalizados guardados.
   /// ===============================
-  static Future<List<PartidoModel>> readFinishedMatches() async {
+    static Future<List<PartidoModel>> readFinishedMatches() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(finishedMatchesStorageKey);
 
-    if (raw == null || raw.isEmpty) return [];
+    if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+      return const [];
+    }
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
+    try {
+      final decoded = jsonDecode(raw);
 
-    final items = decoded.map((e) {
-      final data = Map<String, dynamic>.from(e as Map);
+      if (decoded is! List) {
+        await prefs.remove(finishedMatchesStorageKey);
+        return const [];
+      }
 
-      final partidoMap = Map<String, dynamic>.from(
-        (data['partido'] as Map?)?.cast<String, dynamic>() ??
-            <String, dynamic>{},
-      );
+      final items = <PartidoModel>[];
 
-      final merged = {
-        ...partidoMap,
-        'estado': 'Finalizado',
-        'estadoPartido': 'finalizado',
-        'golesSanFernando':
-            data['golesSanFernando'] ?? partidoMap['golesSanFernando'],
-        'golesRival': data['golesRival'] ?? partidoMap['golesRival'],
-        'golesRecibidos':
-            data['golesRecibidos'] ?? partidoMap['golesRecibidos'],
-        'atajadas': data['atajadas'] ?? partidoMap['atajadas'],
-        'penales': data['penales'] ?? partidoMap['penales'],
-        'exclusiones2Min':
-            data['exclusiones2Min'] ?? partidoMap['exclusiones2Min'],
-        'amarillas': data['amarillas'] ?? partidoMap['amarillas'],
-        'rojas': data['rojas'] ?? partidoMap['rojas'],
-        'perdidas': data['perdidas'] ?? partidoMap['perdidas'],
-        'recuperaciones':
-            data['recuperaciones'] ?? partidoMap['recuperaciones'],
-        'penalesConvertidosSanFernando':
-            data['penalesConvertidosSanFernando'] ??
-            partidoMap['penalesConvertidosSanFernando'],
-        'penalesConvertidosRival':
-            data['penalesConvertidosRival'] ??
-            partidoMap['penalesConvertidosRival'],
-        'eventos': data['eventos'] ?? partidoMap['eventos'] ?? <dynamic>[],
-        'archivedAt': data['archivedAt'],
-      };
+      for (final item in decoded) {
+        if (item is! Map) continue;
 
-      return PartidoModel.fromMap(merged);
-    }).toList();
+        try {
+          final data = Map<String, dynamic>.from(item);
 
-    items.sort((a, b) {
-      final aDate = DateTime.tryParse(a.archivedAt ?? '');
-      final bDate = DateTime.tryParse(b.archivedAt ?? '');
+          final partidoMap = Map<String, dynamic>.from(
+            (data['partido'] as Map?)?.cast<String, dynamic>() ??
+                <String, dynamic>{},
+          );
 
-      if (aDate == null && bDate == null) return 0;
-      if (aDate == null) return 1;
-      if (bDate == null) return -1;
-      return bDate.compareTo(aDate);
-    });
+          final merged = {
+            ...partidoMap,
+            'estado': 'Finalizado',
+            'estadoPartido': 'finalizado',
+            'golesSanFernando':
+                data['golesSanFernando'] ?? partidoMap['golesSanFernando'],
+            'golesRival': data['golesRival'] ?? partidoMap['golesRival'],
+            'golesRecibidos':
+                data['golesRecibidos'] ?? partidoMap['golesRecibidos'],
+            'atajadas': data['atajadas'] ?? partidoMap['atajadas'],
+            'penales': data['penales'] ?? partidoMap['penales'],
+            'exclusiones2Min':
+                data['exclusiones2Min'] ?? partidoMap['exclusiones2Min'],
+            'amarillas': data['amarillas'] ?? partidoMap['amarillas'],
+            'rojas': data['rojas'] ?? partidoMap['rojas'],
+            'perdidas': data['perdidas'] ?? partidoMap['perdidas'],
+            'recuperaciones':
+                data['recuperaciones'] ?? partidoMap['recuperaciones'],
+            'penalesConvertidosSanFernando':
+                data['penalesConvertidosSanFernando'] ??
+                    partidoMap['penalesConvertidosSanFernando'],
+            'penalesConvertidosRival':
+                data['penalesConvertidosRival'] ??
+                    partidoMap['penalesConvertidosRival'],
+            'eventos': data['eventos'] ?? partidoMap['eventos'] ?? <dynamic>[],
+            'archivedAt': data['archivedAt'] ?? partidoMap['archivedAt'],
+          };
 
-    return items;
+          items.add(PartidoModel.fromMap(merged));
+        } catch (_) {
+          continue;
+        }
+      }
+
+      items.sort((a, b) {
+        final aDate = DateTime.tryParse(a.archivedAt ?? '');
+        final bDate = DateTime.tryParse(b.archivedAt ?? '');
+
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+
+        return bDate.compareTo(aDate);
+      });
+
+      return items;
+    } catch (_) {
+      await prefs.remove(finishedMatchesStorageKey);
+      return const [];
+    }
   }
+
 }
