@@ -4653,14 +4653,24 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _recalcularProximoYSiguientesDesdeBase();
-      });
+      final debeRecalcular =
+          !_esPartidoValido(proximoPartido) ||
+          _estaFinalizadoGlobal(proximoPartido);
 
-      await _persistFixtureState();
+      if (debeRecalcular) {
+        setState(() {
+          _recalcularProximoYSiguientesDesdeBase();
+        });
+
+        await _persistFixtureState();
+      } else {
+        setState(() {
+          hayPartido = true;
+        });
+      }
     });
   }
-
+  
   Map<String, dynamic> _defaultProximoPartido() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -4963,7 +4973,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       _customFixturesV2 = filtered;
     });
   }
-  
+
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
     return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
       ...partido,
