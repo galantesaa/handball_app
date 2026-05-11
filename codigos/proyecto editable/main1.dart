@@ -19,6 +19,7 @@ import 'models/match_model.dart';
 import 'services/stats_service.dart';
 import 'package:flutter/rendering.dart';
 import 'features/settings/data/settings_repository.dart';
+import 'features/matches/data/repositories/fixture_repository_v2.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -1227,6 +1228,478 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
 /// ===============================
 ///
 
+class CompetitionCreationResult {
+  final String name;
+  final String type;
+  final String mode;
+  final bool hasFixture;
+  final bool allowManualMatches;
+  final bool allowKnockoutRounds;
+  final List<String> tournaments;
+  final List<structure.CompetitionStageConfig> stages;
+
+  const CompetitionCreationResult({
+    required this.name,
+    required this.type,
+    required this.mode,
+    required this.hasFixture,
+    required this.allowManualMatches,
+    required this.allowKnockoutRounds,
+    required this.tournaments,
+    required this.stages,
+  });
+}
+
+class CompetitionCreatorScreen extends StatefulWidget {
+  const CompetitionCreatorScreen({super.key});
+
+  @override
+  State<CompetitionCreatorScreen> createState() =>
+      _CompetitionCreatorScreenState();
+}
+
+class _CompetitionCreatorScreenState extends State<CompetitionCreatorScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _stagesController = TextEditingController();
+
+  String _mode = 'single_fixture';
+  bool _allowManualMatches = true;
+  bool _allowKnockoutRounds = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncDefaultStages();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _stagesController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasFixture => _mode != 'loose_matches';
+
+  String get _type {
+    if (_mode == 'split_fixture') return 'local';
+    return 'single';
+  }
+
+  String get _modeTitle {
+    switch (_mode) {
+      case 'loose_matches':
+        return 'Partidos sueltos';
+      case 'split_fixture':
+        return 'Apertura / Clausura';
+      case 'phased_fixture':
+        return 'Por fases';
+      case 'single_fixture':
+      default:
+        return 'Fixture único';
+    }
+  }
+
+  void _syncDefaultStages() {
+    if (_mode == 'loose_matches') {
+      _stagesController.text = 'Partidos sueltos';
+      _allowKnockoutRounds = false;
+      return;
+    }
+
+    if (_mode == 'split_fixture') {
+      _stagesController.text = 'Apertura, Clausura';
+      _allowKnockoutRounds = false;
+      return;
+    }
+
+    if (_mode == 'phased_fixture') {
+      _stagesController.text = 'Clasificación, Playoffs';
+      _allowKnockoutRounds = true;
+      return;
+    }
+
+    _stagesController.text = 'Único';
+    _allowKnockoutRounds = true;
+  }
+
+  List<String> _parseStages() {
+    final raw = _stagesController.text.trim();
+
+    if (raw.isEmpty) {
+      if (_mode == 'loose_matches') return const ['Partidos sueltos'];
+      if (_mode == 'split_fixture') return const ['Apertura', 'Clausura'];
+      return const ['Único'];
+    }
+
+    final result = raw
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (result.isEmpty) {
+      return const ['Único'];
+    }
+
+    return result;
+  }
+
+  String _stageTypeForMode() {
+    if (_mode == 'loose_matches') return 'friendly';
+    if (_mode == 'phased_fixture') return 'phase';
+    return 'league';
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresá el nombre de la competencia.')),
+      );
+      return;
+    }
+
+    final tournaments = _parseStages();
+
+    final stages = List.generate(tournaments.length, (index) {
+      final stageName = tournaments[index];
+
+      return structure.CompetitionStageConfig(
+        id: structure.StructureRepository.stageIdFromName(stageName),
+        name: stageName,
+        order: index,
+        hasFixture: _hasFixture,
+        allowManualMatches: _allowManualMatches,
+        allowKnockoutRounds: _allowKnockoutRounds,
+        stageType: _stageTypeForMode(),
+      );
+    });
+
+    Navigator.pop(
+      context,
+      CompetitionCreationResult(
+        name: name,
+        type: _type,
+        mode: _mode,
+        hasFixture: _hasFixture,
+        allowManualMatches: _allowManualMatches,
+        allowKnockoutRounds: _allowKnockoutRounds,
+        tournaments: tournaments,
+        stages: stages,
+      ),
+    );
+  }
+
+  void _setMode(String value) {
+    setState(() {
+      _mode = value;
+      _syncDefaultStages();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Crear competencia'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              children: [
+                const Text(
+                  'Configuración flexible',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Definí cómo se organiza esta competencia. La app va a usar esta estructura para fixtures, partidos sueltos y futuras fases.',
+                  style: TextStyle(
+                    color: Color(0xFFAAB4C3),
+                    fontSize: 13,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildCard(
+                  children: [
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Nombre de la competencia',
+                      hint: 'Ejemplo: Nacional B, Amistosos, Copa Metro',
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Tipo de competencia',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildModeTile(
+                      value: 'single_fixture',
+                      title: 'Fixture único',
+                      subtitle:
+                          'Una etapa principal. Puede ampliarse con cuartos, semifinal o final.',
+                    ),
+                    _buildModeTile(
+                      value: 'split_fixture',
+                      title: 'Apertura / Clausura',
+                      subtitle:
+                          'Competencia dividida en torneos o etapas independientes.',
+                    ),
+                    _buildModeTile(
+                      value: 'phased_fixture',
+                      title: 'Por fases',
+                      subtitle:
+                          'Clasificación, zonas, playoffs u otras fases configurables.',
+                    ),
+                    _buildModeTile(
+                      value: 'loose_matches',
+                      title: 'Partidos sueltos',
+                      subtitle:
+                          'Sin fixture. Ideal para amistosos o partidos independientes.',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildCard(
+                  children: [
+                    Text(
+                      'Etapas / torneos iniciales ($_modeTitle)',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Separá las etapas con coma. Después se podrán ampliar.',
+                      style: TextStyle(
+                        color: Color(0xFFAAB4C3),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTextField(
+                      controller: _stagesController,
+                      label: 'Etapas',
+                      hint: 'Ejemplo: Clasificación, Playoffs',
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      value: _allowManualMatches,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: const Color(0xFF4F8CFF),
+                      title: const Text(
+                        'Permitir partidos manuales',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Permite agregar partidos extra dentro de esta competencia.',
+                        style: TextStyle(color: Color(0xFFAAB4C3)),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _allowManualMatches = value;
+                        });
+                      },
+                    ),
+                    SwitchListTile(
+                      value: _allowKnockoutRounds,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: const Color(0xFF4F8CFF),
+                      title: const Text(
+                        'Permitir eliminatorias',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Habilita cuartos, semifinal, final u otras rondas futuras.',
+                        style: TextStyle(color: Color(0xFFAAB4C3)),
+                      ),
+                      onChanged: _mode == 'loose_matches'
+                          ? null
+                          : (value) {
+                              setState(() {
+                                _allowKnockoutRounds = value;
+                              });
+                            },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: _submit,
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Crear competencia'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F8CFF),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.92),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return TextField(
+      controller: controller,
+      textInputAction: TextInputAction.next,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+        filled: true,
+        fillColor: const Color(0xFF111A28),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeTile({
+    required String value,
+    required String title,
+    required String subtitle,
+  }) {
+    final selected = _mode == value;
+
+    return GestureDetector(
+      onTap: () => _setMode(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF4F8CFF).withOpacity(0.22)
+              : const Color(0xFF182338),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF4F8CFF)
+                : Colors.white.withOpacity(0.06),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: selected ? const Color(0xFF7DB7FF) : Colors.white70,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFFAAB4C3),
+                      fontSize: 12,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -1769,117 +2242,25 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveActiveContext();
   }
 
-  Future<void> _crearCompetencia() async {
-    String selectedType = 'single';
-
-    final nameController = TextEditingController();
-
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF0F1722),
-              title: const Text(
-                'Crear competencia',
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    autofocus: true,
-                    textInputAction: TextInputAction.done,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Nombre',
-                      hintText: 'Ejemplo: Nacional C',
-                      labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
-                      hintStyle: const TextStyle(color: Color(0xFF6B7280)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF263244)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: selectedType,
-                    dropdownColor: const Color(0xFF0F1722),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Tipo',
-                      labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF263244)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
-                      ),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'local', child: Text('Local')),
-                      DropdownMenuItem(
-                        value: 'single',
-                        child: Text('Único / Nacional / Amistoso'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() {
-                        selectedType = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext, {
-                      'name': nameController.text.trim(),
-                      'type': selectedType,
-                    });
-                  },
-                  child: const Text('Crear'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    Future<void> _crearCompetencia() async {
+    final result = await Navigator.push<CompetitionCreationResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CompetitionCreatorScreen(),
+      ),
     );
 
-    nameController.dispose();
-
-    if (result == null) return;
-
-    final name = result['name']?.trim() ?? '';
-    final type = result['type']?.trim() ?? 'single';
-
-    if (name.isEmpty) {
-      await _showMessage('El nombre de la competencia no puede estar vacío.');
-      return;
-    }
+    if (!mounted || result == null) return;
 
     final created = await _structureRepository.addCompetition(
-      name: name,
-      type: type,
-      tournaments: type == 'local'
-          ? const ['Apertura', 'Clausura']
-          : const ['Único'],
+      name: result.name,
+      type: result.type,
+      tournaments: result.tournaments,
+      mode: result.mode,
+      hasFixture: result.hasFixture,
+      allowManualMatches: result.allowManualMatches,
+      allowKnockoutRounds: result.allowKnockoutRounds,
+      stages: result.stages,
     );
 
     if (!mounted) return;
@@ -1893,14 +2274,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
 
+    final firstTournament = result.tournaments.isEmpty
+        ? ''
+        : result.tournaments.first;
+
     setState(() {
-      competenciaSeleccionada = name;
-      torneoSeleccionado = type == 'local' ? 'Apertura' : 'Único';
+      competenciaSeleccionada = result.name;
+      torneoSeleccionado = firstTournament;
+      categoriaSeleccionada = '';
+      _contextStep = 'categoria';
     });
 
     await _saveActiveContext();
-  }
 
+    if (!mounted) return;
+
+    await _showMessage('Competencia creada correctamente.');
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3711,6 +4102,348 @@ class _PressableTileState extends State<_PressableTile> {
 /// ===============================
 /// ===============================
 
+class MatchEditorScreen extends StatefulWidget {
+  final PartidoModel? initial;
+  final String temporada;
+  final String competencia;
+  final String torneo;
+  final String categoria;
+
+  const MatchEditorScreen({
+    super.key,
+    required this.temporada,
+    required this.competencia,
+    required this.torneo,
+    required this.categoria,
+    this.initial,
+  });
+
+  @override
+  State<MatchEditorScreen> createState() => _MatchEditorScreenState();
+}
+
+class _MatchEditorScreenState extends State<MatchEditorScreen> {
+  late final TextEditingController _rivalController;
+  late final TextEditingController _fechaController;
+  late final TextEditingController _horaController;
+  late final TextEditingController _fechaNumeroController;
+
+  String _condicion = 'Local';
+  bool _saving = false;
+
+  bool get _isEditing => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final initial = widget.initial;
+
+    _rivalController = TextEditingController(text: initial?.rival ?? '');
+    _fechaController = TextEditingController(text: initial?.fecha ?? '');
+    _horaController = TextEditingController(text: initial?.hora ?? '13:00');
+    _fechaNumeroController = TextEditingController(
+      text: initial?.fechaNumero?.toString() ?? '',
+    );
+
+    final condicionInicial = initial?.condicion.trim();
+    if (condicionInicial == 'Visitante') {
+      _condicion = 'Visitante';
+    }
+  }
+
+  @override
+  void dispose() {
+    _rivalController.dispose();
+    _fechaController.dispose();
+    _horaController.dispose();
+    _fechaNumeroController.dispose();
+    super.dispose();
+  }
+
+  int? _parseFechaNumero() {
+    final raw = _fechaNumeroController.text.trim();
+    if (raw.isEmpty) return null;
+    return int.tryParse(raw);
+  }
+
+  Future<void> _guardar() async {
+    if (_saving) return;
+
+    final rival = _rivalController.text.trim();
+    final fecha = _fechaController.text.trim();
+    final hora = _horaController.text.trim();
+
+    if (rival.isEmpty) {
+      _showLocalMessage('Ingresá el rival.');
+      return;
+    }
+
+    if (fecha.isEmpty) {
+      _showLocalMessage('Ingresá la fecha.');
+      return;
+    }
+
+    if (hora.isEmpty) {
+      _showLocalMessage('Ingresá la hora.');
+      return;
+    }
+
+    final fechaNumero = _parseFechaNumero();
+
+    setState(() => _saving = true);
+
+    final partido = PartidoModel(
+      temporada: widget.temporada,
+      competencia: widget.competencia,
+      rival: rival,
+      fechaNumero: fechaNumero,
+      fecha: fecha,
+      hora: hora,
+      condicion: _condicion,
+      torneo: widget.torneo,
+      categoria: widget.categoria,
+      estado: 'Pendiente',
+      estadoPartido: 'no_iniciado',
+      golesSanFernando: 0,
+      golesRival: 0,
+      golesRecibidos: 0,
+      atajadas: 0,
+      penales: 0,
+      exclusiones2Min: 0,
+      amarillas: 0,
+      rojas: 0,
+      perdidas: 0,
+      recuperaciones: 0,
+      penalesConvertidosSanFernando: 0,
+      penalesConvertidosRival: 0,
+      eventos: const [],
+      escudoRival: rivalShieldAssetGlobal(rival),
+      matchSquad: widget.initial?.matchSquad,
+    );
+
+    if (!mounted) return;
+
+    Navigator.pop(context, partido);
+  }
+
+  void _showLocalMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Editar partido' : 'Crear partido'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/fondohd.jpeg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
+          ),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              children: [
+                Text(
+                  '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · ${widget.categoria}',
+                  style: const TextStyle(
+                    color: Color(0xFFAAB4C3),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildCard(
+                  children: [
+                    _buildTextField(
+                      controller: _rivalController,
+                      label: 'Rival',
+                      hint: 'Ejemplo: C.A. River Plate',
+                      textInputType: TextInputType.text,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildTextField(
+                      controller: _fechaNumeroController,
+                      label: 'Fecha número',
+                      hint: 'Ejemplo: 1',
+                      textInputType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildTextField(
+                      controller: _fechaController,
+                      label: 'Fecha',
+                      hint: 'Ejemplo: 21/03',
+                      textInputType: TextInputType.datetime,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildTextField(
+                      controller: _horaController,
+                      label: 'Hora',
+                      hint: 'Ejemplo: 13:00',
+                      textInputType: TextInputType.datetime,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Condición',
+                      style: TextStyle(
+                        color: Color(0xFFAAB4C3),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildConditionButton(
+                            text: 'Local',
+                            selected: _condicion == 'Local',
+                            onTap: () => setState(() {
+                              _condicion = 'Local';
+                            }),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildConditionButton(
+                            text: 'Visitante',
+                            selected: _condicion == 'Visitante',
+                            onTap: () => setState(() {
+                              _condicion = 'Visitante';
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : _guardar,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F8CFF),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF263244),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Text(
+                      _saving ? 'Guardando...' : 'Guardar partido',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.92),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required TextInputType textInputType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: textInputType,
+      textInputAction: TextInputAction.next,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+        hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+        filled: true,
+        fillColor: const Color(0xFF111A28),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConditionButton({
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 44,
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF4F8CFF)
+              : const Color(0xFF182338),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF7DB7FF)
+                : Colors.white.withOpacity(0.06),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ProximoPartidoScreen extends StatefulWidget {
   final String temporada;
   final String competencia;
@@ -3743,6 +4476,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// LOAD ESTADO REAL V2
   /// Lee partido en vivo y finalizados desde el repository 2.0
   /// ===============================
+
+  final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+  List<PartidoModel> _customFixturesV2 = [];
 
   Future<void> _loadEstadoRealV2() async {
     final live = await PartidoRepositoryV2.readLiveMatch();
@@ -3861,6 +4597,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Usa solo el fixture base del torneo/categoría actual
   /// y filtra por partidos no finalizados segun V2.
   /// ===============================
+  
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
@@ -3905,22 +4642,21 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return AppContextKey.matchesMap(data: partido, context: _activeContext);
   }
 
-  @override
+     @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadEstadoRealV2();
+      await _loadCustomFixturesV2();
       await _loadFixtureState();
 
       if (!mounted) return;
 
-      setState(() {
-        _recalcularProximoYSiguientesDesdeBase();
-      });
+      setState(() {});
     });
   }
-
+  
   Map<String, dynamic> _defaultProximoPartido() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -4150,20 +4886,144 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
+    String _normalizeContextText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool _sameLooseStage(String a, String b) {
+    final left = _normalizeContextText(a);
+    final right = _normalizeContextText(b);
+
+    if (left == right) return true;
+
+    const looseAliases = {
+      'partido suelto',
+      'partidos sueltos',
+      'amistoso',
+      'amistosos',
+    };
+
+    return looseAliases.contains(left) && looseAliases.contains(right);
+  }
+
+  bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
+    final temporada = _normalizeContextText(partido.temporada);
+    final competencia = _normalizeContextText(partido.competencia);
+    final torneo = _normalizeContextText(partido.torneo);
+    final categoria = _normalizeContextText(partido.categoria);
+
+    final widgetTemporada = _normalizeContextText(widget.temporada);
+    final widgetCompetencia = _normalizeContextText(widget.competencia);
+    final widgetTorneo = _normalizeContextText(widget.torneo);
+    final widgetCategoria = _normalizeContextText(widget.categoria);
+
+    final sameBase =
+        temporada == widgetTemporada &&
+        competencia == widgetCompetencia &&
+        categoria == widgetCategoria;
+
+    if (!sameBase) return false;
+
+    return torneo == widgetTorneo || _sameLooseStage(torneo, widgetTorneo);
+  }
+
+  Future<void> _loadCustomFixturesV2() async {
+    final data = await _fixtureRepository.readFixtures();
+
+    final filtered = data.where(_customFixtureMatchesCurrentContext).toList();
+
+    filtered.sort((a, b) {
+      final byFecha = (a.fechaNumero ?? 999999).compareTo(
+        b.fechaNumero ?? 999999,
+      );
+
+      if (byFecha != 0) return byFecha;
+
+      return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
+    });
+
+    if (!mounted) return;
+
+    setState(() {
+      _customFixturesV2 = filtered;
+    });
+  }
+
+  String _stableFixtureIdentity(Map<String, dynamic> partido) {
+    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+      ...partido,
+      'temporada': partido['temporada'] ?? widget.temporada,
+      'competencia': partido['competencia'] ?? widget.competencia,
+      'torneo': partido['torneo'] ?? widget.torneo,
+      'categoria': partido['categoria'] ?? widget.categoria,
+    });
+  }
+
+  List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
+    List<Map<String, dynamic>> base,
+  ) {
+    final byStableId = <String, Map<String, dynamic>>{};
+
+    for (final item in base) {
+      final map = Map<String, dynamic>.from(item);
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    for (final custom in _customFixturesV2) {
+      final map = custom.toMap();
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    final result = byStableId.values.toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return result;
+  }
+  
   List<Map<String, dynamic>> _buildFixtureCompleto({
     required String categoria,
   }) {
-    final apertura = _buildAperturaBase(
-      categoria: categoria,
-    ).map(_convertirAFixturePartido).toList();
+    final base = <Map<String, dynamic>>[];
 
-    final clausura = _buildClausuraBase(
-      categoria: categoria,
-    ).map(_convertirAFixturePartido).toList();
+    if (widget.competencia.trim().toLowerCase() == 'local') {
+      final apertura = _buildAperturaBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
 
-    return [...apertura, ...clausura];
+      final clausura = _buildClausuraBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      base.addAll(apertura);
+      base.addAll(clausura);
+    }
+
+    return _mergeBaseWithCustomFixtures(base);
   }
-
+  
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -4214,18 +5074,32 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     List<Map<String, dynamic>> finalizadosDesdeHistory = [];
 
     if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
-      final decoded = jsonDecode(finalizadosRaw) as List<dynamic>;
-      finalizadosDesdeProximo = decoded
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      try {
+        final decoded = jsonDecode(finalizadosRaw);
+        if (decoded is List) {
+          finalizadosDesdeProximo = decoded
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      } catch (_) {
+        finalizadosDesdeProximo = [];
+      }
     }
 
     if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
-      final decoded = jsonDecode(finishedHistoryRaw) as List<dynamic>;
-      finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
-        return _partidoDesdeFinishedHistoryEntry(Map<String, dynamic>.from(e));
-      }).toList();
+      try {
+        final decoded = jsonDecode(finishedHistoryRaw);
+        if (decoded is List) {
+          finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
+            return _partidoDesdeFinishedHistoryEntry(
+              Map<String, dynamic>.from(e),
+            );
+          }).toList();
+        }
+      } catch (_) {
+        finalizadosDesdeHistory = [];
+      }
     }
 
     partidosFinalizados = _mergeFinalizados(
@@ -4233,11 +5107,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       desdeFinishedHistory: finalizadosDesdeHistory,
     ).where(_matchesCurrentContext).toList();
 
+    proximoPartido = {};
+    siguientesPartidos = [];
+
     if (proximoRaw != null && proximoRaw.isNotEmpty) {
       try {
         final decoded = jsonDecode(proximoRaw);
         if (decoded is Map) {
-          proximoPartido = Map<String, dynamic>.from(decoded);
+          final loaded = Map<String, dynamic>.from(decoded);
+
+          if (_matchesCurrentContext(loaded) && _esPartidoValido(loaded)) {
+            proximoPartido = loaded;
+          }
         }
       } catch (_) {
         proximoPartido = {};
@@ -4246,34 +5127,44 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
       try {
-        final decoded = jsonDecode(siguientesRaw) as List<dynamic>;
-        siguientesPartidos = decoded
-            .whereType<Map>()
-            .map((e) {
-              final item = Map<String, dynamic>.from(e);
-              item['escudoRival'] =
-                  item['escudoRival'] ??
-                  _rivalShieldAssetByName((item['rival'] ?? '').toString());
-              return item;
-            })
-            .where(_esPartidoValido)
-            .toList();
+        final decoded = jsonDecode(siguientesRaw);
+        if (decoded is List) {
+          siguientesPartidos = decoded
+              .whereType<Map>()
+              .map((e) {
+                final item = Map<String, dynamic>.from(e);
+                item['escudoRival'] =
+                    item['escudoRival'] ??
+                    _rivalShieldAssetByName((item['rival'] ?? '').toString());
+                return item;
+              })
+              .where(_matchesCurrentContext)
+              .where(_esPartidoValido)
+              .toList();
+        }
       } catch (_) {
         siguientesPartidos = [];
       }
     }
 
-    final debeReconstruir =
-        !_esPartidoValido(proximoPartido) ||
-        _estaFinalizadoGlobal(proximoPartido);
+    final hayProximoValido =
+        _esPartidoValido(proximoPartido) &&
+        !_estaFinalizadoGlobal(proximoPartido);
 
-    if (debeReconstruir) {
-      _recalcularProximoYSiguientesDesdeBase();
+    if (hayProximoValido) {
+      hayPartido = true;
+      return;
+    }
+
+    _recalcularProximoYSiguientesDesdeBase();
+
+    if (_esPartidoValido(proximoPartido)) {
+      hayPartido = true;
       await _persistFixtureState();
       return;
     }
 
-    hayPartido = _esPartidoValido(proximoPartido);
+    hayPartido = false;
   }
 
   Future<void> _persistFixtureState() async {
@@ -4335,6 +5226,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         proximoPartido = pendientes.first;
         siguientesPartidos = pendientes.skip(1).map((p) {
           return {
+            'temporada': p['temporada'],
+            'competencia': p['competencia'],
             'rival': p['rival'],
             'fecha': p['fecha'],
             'hora': p['hora'],
@@ -4343,6 +5236,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             'categoria': p['categoria'],
             'fechaNumero': p['fechaNumero'],
             'escudoRival': p['escudoRival'],
+            'estado': p['estado'],
           };
         }).toList();
         hayPartido = true;
@@ -4679,6 +5573,133 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
   }
 
+  PartidoModel _partidoModelFromMap(Map<String, dynamic> map) {
+    return PartidoModel.fromMap({
+      ...map,
+      'temporada': (map['temporada'] ?? widget.temporada).toString(),
+      'competencia': (map['competencia'] ?? widget.competencia).toString(),
+      'torneo': (map['torneo'] ?? widget.torneo).toString(),
+      'categoria': (map['categoria'] ?? widget.categoria).toString(),
+      'estado': (map['estado'] ?? 'Pendiente').toString(),
+      'estadoPartido': (map['estadoPartido'] ?? 'no_iniciado').toString(),
+      'eventos': map['eventos'] ?? <Map<String, dynamic>>[],
+    });
+  }
+
+  Future<void> _crearPartidoManual() async {
+    final result = await Navigator.push<PartidoModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MatchEditorScreen(
+          temporada: widget.temporada,
+          competencia: widget.competencia,
+          torneo: widget.torneo,
+          categoria: widget.categoria,
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    await _fixtureRepository.upsertFixture(result);
+    await _loadCustomFixturesV2();
+
+    final map = result.toMap();
+
+    setState(() {
+      if (!hayPartido || !_esPartidoValido(proximoPartido)) {
+        proximoPartido = map;
+        hayPartido = true;
+      } else {
+        final newIdentity = PartidoRepositoryV2.buildMatchIdentityFromMap(map);
+
+        final existsInSiguientes = siguientesPartidos.any((item) {
+          return PartidoRepositoryV2.buildMatchIdentityFromMap(item) ==
+              newIdentity;
+        });
+
+        final currentIdentity =
+            PartidoRepositoryV2.buildMatchIdentityFromMap(proximoPartido);
+
+        if (!existsInSiguientes && currentIdentity != newIdentity) {
+          siguientesPartidos.add(map);
+          siguientesPartidos.sort((a, b) {
+            final fa = (a['fechaNumero'] as int?) ?? 999999;
+            final fb = (b['fechaNumero'] as int?) ?? 999999;
+            return fa.compareTo(fb);
+          });
+        }
+      }
+    });
+
+    await _persistFixtureState();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Partido creado correctamente.')),
+    );
+  }
+
+  Future<void> _editarProximoPartido() async {
+    if (!_esPartidoValido(proximoPartido)) {
+      await _showEditError('No hay un partido válido para editar.');
+      return;
+    }
+
+    if (_estaFinalizadoGlobal(proximoPartido)) {
+      await _showEditError('No se puede editar un partido finalizado.');
+      return;
+    }
+
+    final oldModel = _partidoModelFromMap(proximoPartido);
+
+    final result = await Navigator.push<PartidoModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MatchEditorScreen(
+          initial: oldModel,
+          temporada: widget.temporada,
+          competencia: widget.competencia,
+          torneo: widget.torneo,
+          categoria: widget.categoria,
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    final replaced = await _fixtureRepository.replaceFixture(
+      oldPartido: oldModel,
+      newPartido: result,
+    );
+
+    if (!replaced) {
+      await _fixtureRepository.upsertFixture(result);
+    }
+      await _loadCustomFixturesV2();
+
+        setState(() {
+      _recalcularProximoYSiguientesDesdeBase();
+    });
+
+    await _persistFixtureState();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Partido actualizado correctamente.')),
+    );
+  }
+
+  Future<void> _showEditError(String message) async {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -4875,10 +5896,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         const SizedBox(height: 10),
         _buildOutlinedAction(
           text: 'Editar partido',
-          onTap: () {
-            debugPrint('Editar partido');
-          },
+          onTap: _editarProximoPartido,
         ),
+        
         const SizedBox(height: 12),
         _buildOutlinedAction(
           text: 'Eliminar partidos de prueba',
@@ -4940,10 +5960,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
               const SizedBox(height: 18),
               _buildPrimaryAction(
                 text: 'Crear partido',
-                onTap: () {
-                  debugPrint('Crear partido');
-                },
+                onTap: _crearPartidoManual,
               ),
+              
             ],
           ),
         ),
@@ -9497,11 +10516,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadFinalizadosV2();
-  }
+    final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+
+  List<PartidoModel> _customFixturesV2 = [];
 
   ActiveContext get _activeContext {
     return ActiveContext(
@@ -9514,6 +10531,17 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
+    @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadFinalizadosV2();
+      await _loadCustomFixturesV2();
+    });
+  }
+
+  
   String get _contextStorageSuffix {
     return AppContextKey.fromActiveContext(_activeContext);
   }
@@ -9530,6 +10558,80 @@ class _FixtureScreenState extends State<FixtureScreen> {
     setState(() {
       _finalizadosV2 = data;
     });
+  }
+
+  Future<void> _loadCustomFixturesV2() async {
+    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+
+    if (!mounted) return;
+
+    setState(() {
+      _customFixturesV2 = data;
+    });
+  }
+
+  String _stableFixtureIdentity(Map<String, dynamic> partido) {
+    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+      ...partido,
+      'temporada': partido['temporada'] ?? widget.temporada,
+      'competencia': partido['competencia'] ?? widget.competencia,
+      'torneo': partido['torneo'] ?? widget.torneo,
+      'categoria': partido['categoria'] ?? widget.categoria,
+    });
+  }
+
+  List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
+    List<Map<String, dynamic>> base,
+  ) {
+    final byStableId = <String, Map<String, dynamic>>{};
+
+    for (final item in base) {
+      final map = Map<String, dynamic>.from(item);
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    for (final custom in _customFixturesV2) {
+      final map = custom.toMap();
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    final result = byStableId.values.toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return result;
+  }
+
+  List<Map<String, dynamic>> _buildFixtureCompleto({
+    required String categoria,
+  }) {
+    final base = <Map<String, dynamic>>[];
+
+    if (widget.competencia.trim().toLowerCase() == 'local') {
+      final apertura = _buildAperturaBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      final clausura = _buildClausuraBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      base.addAll(apertura);
+      base.addAll(clausura);
+    }
+
+    return _mergeBaseWithCustomFixtures(base);
   }
 
   List<DateTime> _generarSabadosDesde({
@@ -9886,27 +10988,36 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    final competencia = widget.competencia.trim().toLowerCase();
-    final torneo = widget.torneo.trim().toLowerCase();
+    List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
+    final torneoActual = widget.torneo.trim().toLowerCase();
+    final categoriaActual = widget.categoria.trim().toLowerCase();
 
-    if (competencia != 'local') {
-      return const <Map<String, dynamic>>[];
-    }
+    final partidos = _buildFixtureCompleto(
+      categoria: widget.categoria,
+    ).where((partido) {
+      final torneo = (partido['torneo'] ?? '').toString().trim().toLowerCase();
+      final categoria = (partido['categoria'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
 
-    if (torneo == 'apertura') {
-      return _buildAperturaBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
-    }
+      return torneo == torneoActual && categoria == categoriaActual;
+    }).toList();
 
-    if (torneo == 'clausura') {
-      return _buildClausuraBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
-    }
+    partidos.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
 
-    return const <Map<String, dynamic>>[];
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return partidos;
   }
 
   Future<void> _abrirPartido(
@@ -9927,7 +11038,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     final partidos = _obtenerFixturePorCategoriaYTorneo();
 
@@ -9973,7 +11084,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
       ),
     );
   }
-
+  
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
     final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 

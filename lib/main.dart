@@ -10516,7 +10516,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
 
-    final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+  final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
 
   List<PartidoModel> _customFixturesV2 = [];
 
@@ -10560,15 +10560,75 @@ class _FixtureScreenState extends State<FixtureScreen> {
     });
   }
 
+  String _normalizeContextText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool _sameLooseStage(String a, String b) {
+    final left = _normalizeContextText(a);
+    final right = _normalizeContextText(b);
+
+    if (left == right) return true;
+
+    const aliases = {
+      'partido suelto',
+      'partidos sueltos',
+      'amistoso',
+      'amistosos',
+    };
+
+    return aliases.contains(left) && aliases.contains(right);
+  }
+
+  bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
+    final sameBase =
+        _normalizeContextText(partido.temporada) ==
+            _normalizeContextText(widget.temporada) &&
+        _normalizeContextText(partido.competencia) ==
+            _normalizeContextText(widget.competencia) &&
+        _normalizeContextText(partido.categoria) ==
+            _normalizeContextText(widget.categoria);
+
+    if (!sameBase) return false;
+
+    final torneo = _normalizeContextText(partido.torneo);
+    final currentTorneo = _normalizeContextText(widget.torneo);
+
+    return torneo == currentTorneo || _sameLooseStage(torneo, currentTorneo);
+  }
+
   Future<void> _loadCustomFixturesV2() async {
-    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+    final data = await _fixtureRepository.readFixtures();
+
+    final filtered = data.where(_customFixtureMatchesCurrentContext).toList();
+
+    filtered.sort((a, b) {
+      final byFecha =
+          (a.fechaNumero ?? 999999).compareTo(b.fechaNumero ?? 999999);
+
+      if (byFecha != 0) return byFecha;
+
+      return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
+    });
 
     if (!mounted) return;
 
     setState(() {
-      _customFixturesV2 = data;
+      _customFixturesV2 = filtered;
     });
   }
+
 
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
     return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
@@ -10988,20 +11048,18 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-    List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    final torneoActual = widget.torneo.trim().toLowerCase();
-    final categoriaActual = widget.categoria.trim().toLowerCase();
+  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
+    final torneoActual = _normalizeContextText(widget.torneo);
+    final categoriaActual = _normalizeContextText(widget.categoria);
 
     final partidos = _buildFixtureCompleto(
       categoria: widget.categoria,
     ).where((partido) {
-      final torneo = (partido['torneo'] ?? '').toString().trim().toLowerCase();
-      final categoria = (partido['categoria'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
+      final torneo = _normalizeContextText(partido['torneo']);
+      final categoria = _normalizeContextText(partido['categoria']);
 
-      return torneo == torneoActual && categoria == categoriaActual;
+      return categoria == categoriaActual &&
+          (torneo == torneoActual || _sameLooseStage(torneo, torneoActual));
     }).toList();
 
     partidos.sort((a, b) {
