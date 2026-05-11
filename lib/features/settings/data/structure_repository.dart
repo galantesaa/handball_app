@@ -4,26 +4,107 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/storage/app_storage_keys.dart';
 
+class CompetitionStageConfig {
+  final String id;
+  final String name;
+  final int order;
+  final bool hasFixture;
+  final bool allowManualMatches;
+  final bool allowKnockoutRounds;
+  final String stageType;
+
+  const CompetitionStageConfig({
+    required this.id,
+    required this.name,
+    required this.order,
+    required this.hasFixture,
+    required this.allowManualMatches,
+    required this.allowKnockoutRounds,
+    required this.stageType,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'order': order,
+      'hasFixture': hasFixture,
+      'allowManualMatches': allowManualMatches,
+      'allowKnockoutRounds': allowKnockoutRounds,
+      'stageType': stageType,
+    };
+  }
+
+  factory CompetitionStageConfig.fromJson(Map<String, dynamic> json) {
+    return CompetitionStageConfig(
+      id: (json['id'] ?? '').toString().trim(),
+      name: (json['name'] ?? '').toString().trim(),
+      order: json['order'] is int ? json['order'] as int : 0,
+      hasFixture: json['hasFixture'] == true,
+      allowManualMatches: json['allowManualMatches'] != false,
+      allowKnockoutRounds: json['allowKnockoutRounds'] == true,
+      stageType: (json['stageType'] ?? 'league').toString().trim(),
+    );
+  }
+}
+
 class CompetitionConfig {
   final String name;
+
+  /// Compatibilidad legacy:
+  /// - local
+  /// - single
   final String type;
+
+  /// Compatibilidad legacy:
+  /// antes representaba Apertura/Clausura/Único.
   final List<String> tournaments;
+
+  /// Nuevo modelo configurable:
+  /// - loose_matches
+  /// - single_fixture
+  /// - split_fixture
+  /// - phased_fixture
+  final String mode;
+
+  final bool hasFixture;
+  final bool allowManualMatches;
+  final bool allowKnockoutRounds;
+  final List<CompetitionStageConfig> stages;
 
   const CompetitionConfig({
     required this.name,
     required this.type,
     required this.tournaments,
+    required this.mode,
+    required this.hasFixture,
+    required this.allowManualMatches,
+    required this.allowKnockoutRounds,
+    required this.stages,
   });
 
   bool get isLocal => type == 'local';
 
   bool get isSingleTournament => type == 'single';
 
+  bool get isLooseMatches => mode == 'loose_matches';
+
+  bool get isSingleFixture => mode == 'single_fixture';
+
+  bool get isSplitFixture => mode == 'split_fixture';
+
+  bool get isPhasedFixture => mode == 'phased_fixture';
+
   Map<String, dynamic> toJson() {
     return {
       'name': name,
       'type': type,
       'tournaments': tournaments,
+      'mode': mode,
+      'hasFixture': hasFixture,
+      'allowManualMatches': allowManualMatches,
+      'allowKnockoutRounds': allowKnockoutRounds,
+      'stages': stages.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -38,10 +119,73 @@ class CompetitionConfig {
             .toList()
         : const <String>['Único'];
 
+    final cleanType = (json['type'] ?? 'single').toString().trim();
+
+    final legacyMode = cleanType == 'local'
+        ? 'split_fixture'
+        : 'single_fixture';
+
+    final mode = (json['mode'] ?? legacyMode).toString().trim();
+
+    final hasFixture = json['hasFixture'] is bool
+        ? json['hasFixture'] == true
+        : mode != 'loose_matches';
+
+    final allowManualMatches = json['allowManualMatches'] is bool
+        ? json['allowManualMatches'] == true
+        : true;
+
+    final allowKnockoutRounds = json['allowKnockoutRounds'] is bool
+        ? json['allowKnockoutRounds'] == true
+        : mode == 'single_fixture' || mode == 'phased_fixture';
+
+    final rawStages = json['stages'];
+
+    final stages = rawStages is List
+        ? rawStages
+            .whereType<Map>()
+            .map((e) => CompetitionStageConfig.fromJson(
+                  Map<String, dynamic>.from(e),
+                ))
+            .where((e) => e.name.trim().isNotEmpty)
+            .toList()
+        : <CompetitionStageConfig>[];
+
+    final resolvedTournaments = tournaments.isEmpty
+        ? cleanType == 'local'
+            ? const ['Apertura', 'Clausura']
+            : const ['Único']
+        : tournaments;
+
+    final resolvedStages = stages.isNotEmpty
+        ? stages
+        : List.generate(resolvedTournaments.length, (index) {
+            final name = resolvedTournaments[index];
+
+            return CompetitionStageConfig(
+              id: _stageIdFromName(name),
+              name: name,
+              order: index,
+              hasFixture: hasFixture,
+              allowManualMatches: allowManualMatches,
+              allowKnockoutRounds: allowKnockoutRounds,
+              stageType: mode == 'loose_matches'
+                  ? 'friendly'
+                  : mode == 'phased_fixture'
+                      ? 'phase'
+                      : 'league',
+            );
+          });
+
     return CompetitionConfig(
       name: (json['name'] ?? '').toString().trim(),
-      type: (json['type'] ?? 'single').toString().trim(),
-      tournaments: tournaments.isEmpty ? const ['Único'] : tournaments,
+      type: cleanType,
+      tournaments: resolvedTournaments,
+      mode: mode,
+      hasFixture: hasFixture,
+      allowManualMatches: allowManualMatches,
+      allowKnockoutRounds: allowKnockoutRounds,
+      stages: resolvedStages,
     );
   }
 
@@ -49,12 +193,36 @@ class CompetitionConfig {
     String? name,
     String? type,
     List<String>? tournaments,
+    String? mode,
+    bool? hasFixture,
+    bool? allowManualMatches,
+    bool? allowKnockoutRounds,
+    List<CompetitionStageConfig>? stages,
   }) {
     return CompetitionConfig(
       name: name ?? this.name,
       type: type ?? this.type,
       tournaments: tournaments ?? this.tournaments,
+      mode: mode ?? this.mode,
+      hasFixture: hasFixture ?? this.hasFixture,
+      allowManualMatches: allowManualMatches ?? this.allowManualMatches,
+      allowKnockoutRounds: allowKnockoutRounds ?? this.allowKnockoutRounds,
+      stages: stages ?? this.stages,
     );
+  }
+
+  static String _stageIdFromName(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
   }
 }
 
@@ -225,10 +393,15 @@ class StructureRepository {
     );
   }
 
-  Future<bool> addCompetition({
+    Future<bool> addCompetition({
     required String name,
     required String type,
     List<String>? tournaments,
+    String? mode,
+    bool? hasFixture,
+    bool? allowManualMatches,
+    bool? allowKnockoutRounds,
+    List<CompetitionStageConfig>? stages,
   }) async {
     final cleanName = _cleanText(name);
     if (cleanName.isEmpty) return false;
@@ -241,13 +414,52 @@ class StructureRepository {
 
     if (exists) return false;
 
-    final cleanType = _cleanText(type).isEmpty ? 'single' : _cleanText(type);
+    final cleanMode = _cleanText(mode ?? '').isEmpty
+        ? type == 'local'
+            ? 'split_fixture'
+            : 'single_fixture'
+        : _cleanText(mode!);
+
+    final cleanType = _cleanText(type).isEmpty
+        ? cleanMode == 'split_fixture'
+            ? 'local'
+            : 'single'
+        : _cleanText(type);
+
+    final resolvedHasFixture = hasFixture ?? cleanMode != 'loose_matches';
+
+    final resolvedAllowManualMatches = allowManualMatches ?? true;
+
+    final resolvedAllowKnockoutRounds =
+        allowKnockoutRounds ?? cleanMode == 'single_fixture';
 
     final resolvedTournaments = tournaments == null || tournaments.isEmpty
-        ? cleanType == 'local'
+        ? cleanMode == 'split_fixture'
             ? const ['Apertura', 'Clausura']
-            : const ['Único']
+            : cleanMode == 'loose_matches'
+                ? const ['Partidos sueltos']
+                : const ['Único']
         : _cleanStringList(tournaments);
+
+    final resolvedStages = stages == null || stages.isEmpty
+        ? List.generate(resolvedTournaments.length, (index) {
+            final stageName = resolvedTournaments[index];
+
+            return CompetitionStageConfig(
+              id: CompetitionConfig._stageIdFromName(stageName),
+              name: stageName,
+              order: index,
+              hasFixture: resolvedHasFixture,
+              allowManualMatches: resolvedAllowManualMatches,
+              allowKnockoutRounds: resolvedAllowKnockoutRounds,
+              stageType: cleanMode == 'loose_matches'
+                  ? 'friendly'
+                  : cleanMode == 'phased_fixture'
+                      ? 'phase'
+                      : 'league',
+            );
+          })
+        : stages;
 
     await saveCompetitions([
       ...competitions,
@@ -255,12 +467,17 @@ class StructureRepository {
         name: cleanName,
         type: cleanType,
         tournaments: resolvedTournaments,
+        mode: cleanMode,
+        hasFixture: resolvedHasFixture,
+        allowManualMatches: resolvedAllowManualMatches,
+        allowKnockoutRounds: resolvedAllowKnockoutRounds,
+        stages: resolvedStages,
       ),
     ]);
 
     return true;
   }
-
+  
   Future<bool> addTournamentToCompetition({
     required String competitionName,
     required String tournament,
