@@ -1284,26 +1284,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _createInstitutionFromEmptyState() async {
-  final name = _institutionController.text.trim();
+    final name = _institutionController.text.trim();
 
-  if (name.isEmpty) {
-    await _showMessage('Ingresá el nombre de la institución.');
-    return;
+    if (name.isEmpty) {
+      await _showMessage('Ingresá el nombre de la institución.');
+      return;
+    }
+
+    setState(() {
+      tieneInstitucion = true;
+      institucionNombre = name;
+      temporadaSeleccionada = '';
+      competenciaSeleccionada = '';
+      torneoSeleccionado = '';
+      categoriaSeleccionada = '';
+      _contextStep = 'temporada';
+      _institutionController.clear();
+    });
+
+    await _saveActiveContext();
   }
-
-  setState(() {
-    tieneInstitucion = true;
-    institucionNombre = name;
-    temporadaSeleccionada = '';
-    competenciaSeleccionada = '';
-    torneoSeleccionado = '';
-    categoriaSeleccionada = '';
-    _contextStep = 'temporada';
-    _institutionController.clear();
-  });
-
-  await _saveActiveContext();
-}
 
   void _openContextStep(String step) {
     setState(() {
@@ -2388,120 +2388,120 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEstadoSinInstitucion(BuildContext context) {
-  return SizedBox(
-    height: MediaQuery.of(context).size.height * 0.72,
-    child: Center(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F1722).withOpacity(0.82),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: const Color(0xFF4F8CFF).withOpacity(0.28),
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.72,
+      child: Center(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1722).withOpacity(0.82),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: const Color(0xFF4F8CFF).withOpacity(0.28),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildInstitutionBadge(),
+              const SizedBox(height: 18),
+              const Text(
+                'No hay institución creada',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Creá una institución nueva o importá un backup existente.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.35,
+                  color: Color(0xFFAAB4C3),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: _institutionController,
+                textInputAction: TextInputAction.done,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Nombre de la institución',
+                  hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                  filled: true,
+                  fillColor: const Color(0xFF111A28),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.08),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                  ),
+                ),
+                onSubmitted: (_) => _createInstitutionFromEmptyState(),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: _createInstitutionFromEmptyState,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Crear institución'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F8CFF),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _importarBackupDesdeEstadoVacio,
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('Importar backup'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFD7DCE3),
+                    side: BorderSide(color: Colors.white.withOpacity(0.10)),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildInstitutionBadge(),
-            const SizedBox(height: 18),
-            const Text(
-              'No hay institución creada',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Creá una institución nueva o importá un backup existente.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.35,
-                color: Color(0xFFAAB4C3),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _institutionController,
-              textInputAction: TextInputAction.done,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Nombre de la institución',
-                hintStyle: const TextStyle(color: Color(0xFF6B7280)),
-                filled: true,
-                fillColor: const Color(0xFF111A28),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 14,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.white.withOpacity(0.08),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
-                ),
-              ),
-              onSubmitted: (_) => _createInstitutionFromEmptyState(),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _createInstitutionFromEmptyState,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Crear institución'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F8CFF),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  textStyle: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: _importarBackupDesdeEstadoVacio,
-                icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Importar backup'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFD7DCE3),
-                  side: BorderSide(color: Colors.white.withOpacity(0.10)),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildEstadoConInstitucion() {
     return Padding(
@@ -3763,19 +3763,19 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   List<Map<String, dynamic>> partidosFinalizados = [];
 
   ActiveContext get _activeContext {
-  return ActiveContext(
-    hasInstitution: true,
-    institutionName: '',
-    season: widget.temporada,
-    competition: widget.competencia,
-    tournament: widget.torneo,
-    category: widget.categoria,
-  );
-}
+    return ActiveContext(
+      hasInstitution: true,
+      institutionName: '',
+      season: widget.temporada,
+      competition: widget.competencia,
+      tournament: widget.torneo,
+      category: widget.categoria,
+    );
+  }
 
-String get _contextStorageSuffix {
-  return AppContextKey.fromActiveContext(_activeContext);
-}
+  String get _contextStorageSuffix {
+    return AppContextKey.fromActiveContext(_activeContext);
+  }
 
   String get _proximoPartidoStorageKey =>
       'proximo_partido_$_contextStorageSuffix';
@@ -3795,7 +3795,7 @@ String get _contextStorageSuffix {
   /// Permiten comparar Map actual con PartidoModel
   /// ===============================
   String _identityFromMap(Map<String, dynamic> partido) {
-  return PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
+    return PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
   }
 
   bool _estaFinalizadoV2(Map<String, dynamic> partido) {
@@ -3804,7 +3804,7 @@ String get _contextStorageSuffix {
     final identidad = _identityFromMap(partido);
 
     return _finalizadosV2.any((p) {
-      return buildNormalizedMatchIdentity(p.toMap()) == identidad;
+      return PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad;
     });
   }
 
@@ -3842,8 +3842,9 @@ String get _contextStorageSuffix {
     final identidad = _identityFromMap(partido);
 
     final enV2 = _estaFinalizadoV2(partido);
+
     final enLegacy = partidosFinalizados.any((p) {
-      return buildNormalizedMatchIdentity(p) == identidad ||
+      return PartidoRepositoryV2.buildMatchIdentityFromMap(p) == identidad ||
           _partidoIdentity(p) == _partidoIdentity(partido);
     });
 
@@ -3901,12 +3902,9 @@ String get _contextStorageSuffix {
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-  return AppContextKey.matchesMap(
-    data: partido,
-    context: _activeContext,
-  );
-}
-  
+    return AppContextKey.matchesMap(data: partido, context: _activeContext);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -4116,6 +4114,8 @@ String get _contextStorageSuffix {
         : (raw['local'] ?? 'Rival').toString();
 
     return {
+      'temporada': widget.temporada,
+      'competencia': widget.competencia,
       'rival': rival,
       'fechaNumero': raw['fechaNumero'],
       'fecha': raw['fecha'],
@@ -4168,25 +4168,27 @@ String get _contextStorageSuffix {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
     final identidadesFinalizadas = partidosFinalizados
-        .map((p) => _partidoIdentity(p))
+        .map((p) => _identityFromMap(p))
         .toSet();
 
     final pendientes = fixture.where((p) {
       return p['torneo'] == widget.torneo &&
           p['categoria'] == widget.categoria &&
-          !identidadesFinalizadas.contains(_partidoIdentity(p));
+          !identidadesFinalizadas.contains(_identityFromMap(p));
     }).toList();
 
     if (pendientes.isEmpty) return [];
 
-    final identidadProximo = _partidoIdentity(proximoPartido);
+    final identidadProximo = _identityFromMap(proximoPartido);
 
     final siguientes = pendientes
-        .where((p) => _partidoIdentity(p) != identidadProximo)
+        .where((p) => _identityFromMap(p) != identidadProximo)
         .toList();
 
     return siguientes.take(3).map((p) {
       return {
+        'temporada': p['temporada'],
+        'competencia': p['competencia'],
         'rival': p['rival'],
         'fecha': p['fecha'],
         'hora': p['hora'],
@@ -4306,14 +4308,14 @@ String get _contextStorageSuffix {
 
     final Map<String, Map<String, dynamic>> finalizadosPorId = {
       for (final p in partidosFinalizados)
-        _partidoIdentity(p): Map<String, dynamic>.from(p),
+        _identityFromMap(p): Map<String, dynamic>.from(p),
     };
 
     final List<Map<String, dynamic>> pendientes = [];
     final List<Map<String, dynamic>> finalizadosConservados = [];
 
     for (final partido in fixture) {
-      final id = _partidoIdentity(partido);
+      final id = _identityFromMap(partido);
 
       if (finalizadosPorId.containsKey(id)) {
         final partidoFinalizado =
@@ -4540,7 +4542,8 @@ String get _contextStorageSuffix {
       final partido = Map<String, dynamic>.from(p)
         ..['estado'] = 'Finalizado'
         ..['estadoPartido'] = 'finalizado';
-      unicos[_partidoIdentity(partido)] = partido;
+
+      unicos[_identityFromMap(partido)] = partido;
     }
 
     final lista = unicos.values.toList();
@@ -4569,6 +4572,9 @@ String get _contextStorageSuffix {
     final String rival = (siguiente['rival'] ?? 'Rival').toString();
 
     return {
+      'temporada': (siguiente['temporada'] ?? widget.temporada).toString(),
+      'competencia': (siguiente['competencia'] ?? widget.competencia)
+          .toString(),
       'rival': rival,
       'fechaNumero': siguiente['fechaNumero'],
       'fecha': (siguiente['fecha'] ?? '').toString(),
@@ -4602,9 +4608,9 @@ String get _contextStorageSuffix {
   void _promoverSiguienteSiActualEstaFinalizado({bool saveAfter = true}) {
     if (!hayPartido || !_partidoEstaFinalizado(proximoPartido)) return;
 
-    final actualId = _partidoIdentity(proximoPartido);
+    final actualId = _identityFromMap(proximoPartido);
     final yaExiste = partidosFinalizados.any(
-      (p) => _partidoIdentity(p) == actualId,
+      (p) => _identityFromMap(p) == actualId,
     );
 
     if (!yaExiste) {
@@ -4847,7 +4853,9 @@ String get _contextStorageSuffix {
               final identidad = _identityFromMap(proximoPartido);
 
               final finalizado = _finalizadosV2.firstWhere(
-                (p) => buildNormalizedMatchIdentity(p.toMap()) == identidad,
+                (p) =>
+                    PartidoRepositoryV2.buildMatchIdentityFromModel(p) ==
+                    identidad,
               );
 
               Navigator.push(
@@ -9496,19 +9504,19 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   ActiveContext get _activeContext {
-  return ActiveContext(
-    hasInstitution: true,
-    institutionName: '',
-    season: widget.temporada,
-    competition: widget.competencia,
-    tournament: widget.torneo,
-    category: widget.categoria,
-  );
-}
+    return ActiveContext(
+      hasInstitution: true,
+      institutionName: '',
+      season: widget.temporada,
+      competition: widget.competencia,
+      tournament: widget.torneo,
+      category: widget.categoria,
+    );
+  }
 
   String get _contextStorageSuffix {
-  return AppContextKey.fromActiveContext(_activeContext);
-}
+    return AppContextKey.fromActiveContext(_activeContext);
+  }
 
   /// ===============================
   /// LOAD FINALIZADOS V2
@@ -9967,13 +9975,14 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
-    final identidad = buildNormalizedMatchIdentity(partido);
+    final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 
     final PartidoModel? finalizadoV2 = _finalizadosV2
         .cast<PartidoModel?>()
         .firstWhere(
           (p) =>
-              p != null && buildNormalizedMatchIdentity(p.toMap()) == identidad,
+              p != null &&
+              PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
           orElse: () => null,
         );
 
@@ -14747,27 +14756,24 @@ class _HistorialScreenState extends State<HistorialScreen> {
   }
 
   ActiveContext get _activeContext {
-  return ActiveContext(
-    hasInstitution: true,
-    institutionName: '',
-    season: widget.temporada,
-    competition: widget.competencia,
-    tournament: widget.torneo,
-    category: widget.categoria,
-  );
-}
+    return ActiveContext(
+      hasInstitution: true,
+      institutionName: '',
+      season: widget.temporada,
+      competition: widget.competencia,
+      tournament: widget.torneo,
+      category: widget.categoria,
+    );
+  }
 
   bool _matchesCurrentContext(Map<String, dynamic> item) {
-  final partido = item['partido'] is Map
-      ? Map<String, dynamic>.from(item['partido'] as Map)
-      : item;
+    final partido = item['partido'] is Map
+        ? Map<String, dynamic>.from(item['partido'] as Map)
+        : item;
 
-  return AppContextKey.matchesMap(
-    data: partido,
-    context: _activeContext,
-  );
-}
-  
+    return AppContextKey.matchesMap(data: partido, context: _activeContext);
+  }
+
   void _aplicarFiltros() {
     final q = _busqueda.trim().toLowerCase();
 
@@ -14795,6 +14801,43 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
   String? _rivalShieldAsset(String rival) {
     return rivalShieldAssetGlobal(rival);
+  }
+
+  Widget _buildContextPathLabel() {
+    final path = [
+      widget.temporada,
+      widget.competencia,
+      widget.torneo,
+      widget.categoria,
+    ].where((e) => e.trim().isNotEmpty).join(' · ');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.85),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.route_rounded, color: Color(0xFFAAB4C3), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              path.isEmpty ? 'Contexto no seleccionado' : path,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFD4DCE7),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -14849,37 +14892,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown<String>(
-                              value: _categoriaSeleccionada,
-                              items: const ['Todas', 'Cadetes', 'Juveniles'],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _categoriaSeleccionada = value;
-                                  _aplicarFiltros();
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildDropdown<String>(
-                              value: _torneoSeleccionado,
-                              items: const ['Todos', 'Apertura', 'Clausura'],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _torneoSeleccionado = value;
-                                  _aplicarFiltros();
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildContextPathLabel(),
                     ],
                   ),
                 ),
@@ -15365,23 +15378,20 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
   }
 
   ActiveContext get _activeContext {
-  return ActiveContext(
-    hasInstitution: true,
-    institutionName: '',
-    season: widget.temporada,
-    competition: widget.competencia,
-    tournament: widget.torneo,
-    category: widget.categoria,
-  );
-}
+    return ActiveContext(
+      hasInstitution: true,
+      institutionName: '',
+      season: widget.temporada,
+      competition: widget.competencia,
+      tournament: widget.torneo,
+      category: widget.categoria,
+    );
+  }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-  return AppContextKey.matchesMap(
-    data: partido,
-    context: _activeContext,
-  );
-}
-  
+    return AppContextKey.matchesMap(data: partido, context: _activeContext);
+  }
+
   Future<List<Map<String, dynamic>>> _loadPartidosReales() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('finished_matches_history_v1');
@@ -15404,23 +15414,22 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
       );
 
       final merged = {
-  ...base,
-  'matchIdentity': map['matchIdentity'],
-  'archivedAt': map['archivedAt'] ?? map['timestamp'],
-  'golesSanFernando':
-      map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
-  'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
-  'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
-  'golesRecibidos':
-      map['golesRecibidos'] ?? base['golesRecibidos'] ?? 0,
-  'eventos': map['eventos'] ?? base['eventos'] ?? <dynamic>[],
-};
+        ...base,
+        'matchIdentity': map['matchIdentity'],
+        'archivedAt': map['archivedAt'] ?? map['timestamp'],
+        'golesSanFernando':
+            map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
+        'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
+        'atajadas': map['atajadas'] ?? base['atajadas'] ?? 0,
+        'golesRecibidos': map['golesRecibidos'] ?? base['golesRecibidos'] ?? 0,
+        'eventos': map['eventos'] ?? base['eventos'] ?? <dynamic>[],
+      };
 
-if (!_matchesCurrentContext(merged)) {
-  continue;
-}
+      if (!_matchesCurrentContext(merged)) {
+        continue;
+      }
 
-partidos.add(merged);
+      partidos.add(merged);
     }
 
     partidos.sort((a, b) {
@@ -15768,17 +15777,17 @@ class EquiposScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-          title: const Text(
-            'Equipo',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
-            ),
+        title: const Text(
+          'Equipo',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
           ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
         ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Stack(
         children: [
           Positioned.fill(
