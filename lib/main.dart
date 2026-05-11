@@ -10516,7 +10516,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
 
-  final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+    final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
 
   List<PartidoModel> _customFixturesV2 = [];
 
@@ -10628,8 +10628,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
       _customFixturesV2 = filtered;
     });
   }
-
-
+  
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
     return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
       ...partido,
@@ -11077,8 +11076,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     return partidos;
   }
-
+  
   Future<void> _abrirPartido(
+    
     BuildContext context,
     Map<String, dynamic> partido,
   ) async {
