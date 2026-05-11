@@ -1865,39 +1865,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _createOrSelectCompetitionFlow() async {
     final value = _competitionController.text.trim();
 
-    if (value.isEmpty) {
-      await _showMessage('Ingresá una competencia válida.');
-      return;
-    }
-
-    final exists = competenciasDinamicas.any(
-      (e) => e.name.trim().toLowerCase() == value.toLowerCase(),
-    );
-
-    if (!exists) {
-      final isLocal = value.toLowerCase() == 'local';
-
-      final created = await _structureRepository.addCompetition(
-        name: value,
-        type: isLocal ? 'local' : 'single',
-        tournaments: isLocal ? const ['Apertura', 'Clausura'] : const ['Único'],
+    if (value.isNotEmpty) {
+      final exists = competenciasDinamicas.any(
+        (e) => e.name.trim().toLowerCase() == value.toLowerCase(),
       );
 
-      if (!mounted) return;
-
-      if (!created) {
-        await _showMessage('La competencia ya existe o no es válida.');
+      if (exists) {
+        await _selectCompetitionFlow(value);
         return;
       }
-
-      await _loadStructureData();
-
-      if (!mounted) return;
     }
 
-    await _selectCompetitionFlow(value);
-  }
+    _competitionController.clear();
 
+    await _crearCompetencia();
+  }
+  
   Future<void> _selectTournamentFlow(String tournament) async {
     final clean = tournament.trim();
     if (clean.isEmpty) return;
