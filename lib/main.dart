@@ -4088,6 +4088,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// ===============================
 
   final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+  List<PartidoModel> _customFixturesV2 = [];
 
   Future<void> _loadEstadoRealV2() async {
     final live = await PartidoRepositoryV2.readLiveMatch();
@@ -4206,6 +4207,58 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Usa solo el fixture base del torneo/categoría actual
   /// y filtra por partidos no finalizados segun V2.
   /// ===============================
+    String _stableFixtureIdentity(Map<String, dynamic> partido) {
+    return [
+      PartidoRepositoryV2.normalizeValue(partido['temporada'] ?? widget.temporada),
+      PartidoRepositoryV2.normalizeValue(partido['competencia'] ?? widget.competencia),
+      PartidoRepositoryV2.normalizeValue(partido['torneo'] ?? widget.torneo),
+      PartidoRepositoryV2.normalizeValue(partido['categoria'] ?? widget.categoria),
+      PartidoRepositoryV2.normalizeValue(partido['rival']),
+      PartidoRepositoryV2.normalizeValue(partido['condicion']),
+    ].join('|');
+  }
+
+  Future<void> _loadCustomFixturesV2() async {
+    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+
+    if (!mounted) return;
+
+    _customFixturesV2 = data;
+  }
+
+  List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
+    List<Map<String, dynamic>> base,
+  ) {
+    final resultByStableId = <String, Map<String, dynamic>>{};
+
+    for (final item in base) {
+      final map = Map<String, dynamic>.from(item);
+      resultByStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    for (final custom in _customFixturesV2) {
+      final map = custom.toMap();
+      resultByStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    final result = resultByStableId.values.toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return result;
+  }
+
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
@@ -4250,12 +4303,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return AppContextKey.matchesMap(data: partido, context: _activeContext);
   }
 
-  @override
+    @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadEstadoRealV2();
+      await _loadCustomFixturesV2();
       await _loadFixtureState();
 
       if (!mounted) return;
@@ -4263,6 +4317,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       setState(() {
         _recalcularProximoYSiguientesDesdeBase();
       });
+
+      await _persistFixtureState();
     });
   }
 
@@ -4495,19 +4551,27 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
-  List<Map<String, dynamic>> _buildFixtureCompleto({
+    List<Map<String, dynamic>> _buildFixtureCompleto({
     required String categoria,
   }) {
-    final apertura = _buildAperturaBase(
-      categoria: categoria,
-    ).map(_convertirAFixturePartido).toList();
+    final base = <Map<String, dynamic>>[];
 
-    final clausura = _buildClausuraBase(
-      categoria: categoria,
-    ).map(_convertirAFixturePartido).toList();
+    if (widget.competencia.trim().toLowerCase() == 'local') {
+      final apertura = _buildAperturaBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
 
-    return [...apertura, ...clausura];
+      final clausura = _buildClausuraBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      base.addAll(apertura);
+      base.addAll(clausura);
+    }
+
+    return _mergeBaseWithCustomFixtures(base);
   }
+
 
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
@@ -5056,6 +5120,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     if (!mounted || result == null) return;
 
     await _fixtureRepository.upsertFixture(result);
+    await _loadCustomFixturesV2();
 
     final map = result.toMap();
 
@@ -5130,10 +5195,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     if (!replaced) {
       await _fixtureRepository.upsertFixture(result);
     }
+      await _loadCustomFixturesV2();
 
-    setState(() {
-      proximoPartido = result.toMap();
-      hayPartido = true;
+        setState(() {
+      _recalcularProximoYSiguientesDesdeBase();
     });
 
     await _persistFixtureState();
