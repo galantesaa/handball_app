@@ -4603,12 +4603,21 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       categoria: widget.categoria,
     ).where(_matchesCurrentContext).toList();
 
-    final pendientes = todos.where((p) => !_estaFinalizadoGlobal(p)).toList();
+    final pendientes = todos.where((p) {
+      return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
+    }).toList();
 
     pendientes.sort((a, b) {
       final fa = (a['fechaNumero'] as int?) ?? 999999;
       final fb = (b['fechaNumero'] as int?) ?? 999999;
-      return fa.compareTo(fb);
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
     });
 
     if (pendientes.isEmpty) {
@@ -4641,42 +4650,39 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    final sameSeason =
-        _normalizeContextText(partido['temporada']) ==
-        _normalizeContextText(widget.temporada);
+    final sameBase =
+        FixtureRepositoryV2.normalize(partido['temporada']) ==
+            FixtureRepositoryV2.normalize(widget.temporada) &&
+        FixtureRepositoryV2.normalize(partido['competencia']) ==
+            FixtureRepositoryV2.normalize(widget.competencia) &&
+        FixtureRepositoryV2.normalize(partido['categoria']) ==
+            FixtureRepositoryV2.normalize(widget.categoria);
 
-    final sameCompetition =
-        _normalizeContextText(partido['competencia']) ==
-        _normalizeContextText(widget.competencia);
+    if (!sameBase) return false;
 
-    final sameCategory =
-        _normalizeContextText(partido['categoria']) ==
-        _normalizeContextText(widget.categoria);
-
-    if (!sameSeason || !sameCompetition || !sameCategory) return false;
-
-    final partidoTorneo = _normalizeContextText(partido['torneo']);
-    final widgetTorneo = _normalizeContextText(widget.torneo);
-
-    return partidoTorneo == widgetTorneo ||
-        _sameLooseStage(partidoTorneo, widgetTorneo);
+    return FixtureRepositoryV2.normalize(partido['torneo']) ==
+            FixtureRepositoryV2.normalize(widget.torneo) ||
+        FixtureRepositoryV2.isLooseStageAlias(
+          partido['torneo'].toString(),
+          widget.torneo,
+        );
   }
- 
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadEstadoRealV2();
-      await _loadCustomFixturesV2();
       await _loadFixtureState();
 
       if (!mounted) return;
 
       setState(() {});
     });
-  }
-  
+  }  
+
+
   Map<String, dynamic> _defaultProximoPartido() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -5083,110 +5089,102 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _loadFixtureState() async {
-    final prefs = await SharedPreferences.getInstance();
+    final repositoryFixtures = await _fixtureRepository.readFixturesFlexible(
+      temporada: widget.temporada,
+      competencia: widget.competencia,
+      torneo: widget.torneo,
+      categoria: widget.categoria,
+    );
 
-    final proximoRaw = prefs.getString(_proximoPartidoStorageKey);
-    final siguientesRaw = prefs.getString(_siguientesPartidosStorageKey);
-    final finalizadosRaw = prefs.getString(_partidosFinalizadosStorageKey);
-    final finishedHistoryRaw = prefs.getString(_finishedMatchesStorageKey);
+    final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
 
-    List<Map<String, dynamic>> finalizadosDesdeProximo = [];
-    List<Map<String, dynamic>> finalizadosDesdeHistory = [];
+    final baseMaps = <Map<String, dynamic>>[];
 
-    if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(finalizadosRaw);
-        if (decoded is List) {
-          finalizadosDesdeProximo = decoded
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-        }
-      } catch (_) {
-        finalizadosDesdeProximo = [];
-      }
+    if (FixtureRepositoryV2.normalize(widget.competencia) == 'local') {
+      final apertura = _buildAperturaBase(
+        categoria: widget.categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      final clausura = _buildClausuraBase(
+        categoria: widget.categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      baseMaps.addAll(apertura);
+      baseMaps.addAll(clausura);
     }
 
-    if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(finishedHistoryRaw);
-        if (decoded is List) {
-          finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
-            return _partidoDesdeFinishedHistoryEntry(
-              Map<String, dynamic>.from(e),
-            );
-          }).toList();
-        }
-      } catch (_) {
-        finalizadosDesdeHistory = [];
-      }
+    final mergedByIdentity = <String, Map<String, dynamic>>{};
+
+    for (final item in baseMaps) {
+      if (!_matchesCurrentContext(item)) continue;
+
+      mergedByIdentity[
+        FixtureRepositoryV2.buildStableFixtureIdentityFromMap(item)
+      ] = Map<String, dynamic>.from(item);
     }
 
-    partidosFinalizados = _mergeFinalizados(
-      desdeProximoScreen: finalizadosDesdeProximo,
-      desdeFinishedHistory: finalizadosDesdeHistory,
-    ).where(_matchesCurrentContext).toList();
+    for (final item in customMaps) {
+      if (!_matchesCurrentContext(item)) continue;
 
-    proximoPartido = {};
-    siguientesPartidos = [];
+      mergedByIdentity[
+        FixtureRepositoryV2.buildStableFixtureIdentityFromMap(item)
+      ] = Map<String, dynamic>.from(item);
+    }
 
-    if (proximoRaw != null && proximoRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(proximoRaw);
-        if (decoded is Map) {
-          final loaded = Map<String, dynamic>.from(decoded);
+    final todos = mergedByIdentity.values.toList();
 
-          if (_matchesCurrentContext(loaded) && _esPartidoValido(loaded)) {
-            proximoPartido = loaded;
-          }
-        }
-      } catch (_) {
+    todos.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    final pendientes = todos.where((p) {
+      return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
+    }).toList();
+
+    if (!mounted) return;
+
+    setState(() {
+      _customFixturesV2 = repositoryFixtures;
+
+      if (pendientes.isEmpty) {
         proximoPartido = {};
-      }
-    }
-
-    if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(siguientesRaw);
-        if (decoded is List) {
-          siguientesPartidos = decoded
-              .whereType<Map>()
-              .map((e) {
-                final item = Map<String, dynamic>.from(e);
-                item['escudoRival'] =
-                    item['escudoRival'] ??
-                    _rivalShieldAssetByName((item['rival'] ?? '').toString());
-                return item;
-              })
-              .where(_matchesCurrentContext)
-              .where(_esPartidoValido)
-              .toList();
-        }
-      } catch (_) {
         siguientesPartidos = [];
+        hayPartido = false;
+        return;
       }
-    }
 
-    final hayProximoValido =
-        _esPartidoValido(proximoPartido) &&
-        !_estaFinalizadoGlobal(proximoPartido);
+      proximoPartido = Map<String, dynamic>.from(pendientes.first);
 
-    if (hayProximoValido) {
+      siguientesPartidos = pendientes.skip(1).map((p) {
+        return {
+          'temporada': p['temporada'],
+          'competencia': p['competencia'],
+          'rival': p['rival'],
+          'fechaNumero': p['fechaNumero'],
+          'fecha': p['fecha'],
+          'hora': p['hora'],
+          'condicion': p['condicion'],
+          'torneo': p['torneo'],
+          'categoria': p['categoria'],
+          'escudoRival': p['escudoRival'],
+          'estado': p['estado'],
+          'estadoPartido': p['estadoPartido'],
+        };
+      }).toList();
+
       hayPartido = true;
-      return;
-    }
-
-    _recalcularProximoYSiguientesDesdeBase();
-
-    if (_esPartidoValido(proximoPartido)) {
-      hayPartido = true;
-      await _persistFixtureState();
-      return;
-    }
-
-    hayPartido = false;
+    });
   }
-
+  
   Future<void> _persistFixtureState() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -5633,7 +5631,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         FixtureRepositoryV2.buildStableFixtureIdentity(b);
   }
 
-    Future<void> _crearPartidoManual() async {
+  Future<void> _crearPartidoManual() async {
     final result = await Navigator.push<PartidoModel>(
       context,
       MaterialPageRoute(
@@ -5648,71 +5646,20 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     if (!mounted || result == null) return;
 
-    await _fixtureRepository.upsertFixture(result);
-
-    final allFixtures = await _fixtureRepository.readFixtures();
-
-    final savedExists = allFixtures.any((item) {
-      return _sameFixtureStableIdentity(item, result);
-    });
+    final saved = await _fixtureRepository.upsertFixture(result);
 
     if (!mounted) return;
 
-    if (!savedExists) {
+    if (!saved) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No se pudo guardar el partido en el fixture.'),
+          content: Text('No se pudo guardar el partido en fixtures_v1.'),
         ),
       );
       return;
     }
 
-    final filtered = allFixtures.where(_sameContextForPartidoModel).toList()
-      ..sort((a, b) {
-        final byFecha = (a.fechaNumero ?? 999999).compareTo(
-          b.fechaNumero ?? 999999,
-        );
-
-        if (byFecha != 0) return byFecha;
-
-        return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
-      });
-
-    setState(() {
-      _customFixturesV2 = filtered;
-
-      final pendientes = filtered
-          .map((e) => e.toMap())
-          .where((p) => !_estaFinalizadoGlobal(p))
-          .toList();
-
-      if (pendientes.isEmpty) {
-        proximoPartido = {};
-        siguientesPartidos = [];
-        hayPartido = false;
-      } else {
-        proximoPartido = pendientes.first;
-        siguientesPartidos = pendientes.skip(1).map((p) {
-          return {
-            'temporada': p['temporada'],
-            'competencia': p['competencia'],
-            'rival': p['rival'],
-            'fechaNumero': p['fechaNumero'],
-            'fecha': p['fecha'],
-            'hora': p['hora'],
-            'condicion': p['condicion'],
-            'torneo': p['torneo'],
-            'categoria': p['categoria'],
-            'escudoRival': p['escudoRival'],
-            'estado': p['estado'],
-            'estadoPartido': p['estadoPartido'],
-          };
-        }).toList();
-        hayPartido = true;
-      }
-    });
-
-    await _persistFixtureState();
+    await _loadFixtureState();
 
     if (!mounted) return;
 
@@ -5720,7 +5667,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       const SnackBar(content: Text('Partido creado correctamente.')),
     );
   }
-
+  
   Future<void> _editarProximoPartido() async {
     if (!_esPartidoValido(proximoPartido)) {
       await _showEditError('No hay un partido válido para editar.');
@@ -5755,15 +5702,19 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
 
     if (!replaced) {
-      await _fixtureRepository.upsertFixture(result);
+      final saved = await _fixtureRepository.upsertFixture(result);
+
+      if (!saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo actualizar el partido.'),
+          ),
+        );
+        return;
+      }
     }
-      await _loadCustomFixturesV2();
 
-        setState(() {
-      _recalcularProximoYSiguientesDesdeBase();
-    });
-
-    await _persistFixtureState();
+    await _loadFixtureState();
 
     if (!mounted) return;
 
@@ -5771,7 +5722,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       const SnackBar(content: Text('Partido actualizado correctamente.')),
     );
   }
-
+  
   Future<void> _showEditError(String message) async {
     if (!mounted) return;
 
