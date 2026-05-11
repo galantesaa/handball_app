@@ -11204,13 +11204,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     return FutureBuilder<List<PartidoModel>>(
       future: _fixturesFuture,
       builder: (context, snapshot) {
-        final customDirecto = snapshot.hasData
-            ? _obtenerFixtureDesdeCustomDirecto(snapshot.data!)
-            : <Map<String, dynamic>>[];
-
-        final partidos = customDirecto.isNotEmpty
-            ? customDirecto
-            : _obtenerFixturePorCategoriaYTorneo();
+        final partidos = _obtenerFixturePorCategoriaYTorneo();
 
         return Scaffold(
           extendBodyBehindAppBar: true,
