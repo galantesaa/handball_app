@@ -4642,7 +4642,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return AppContextKey.matchesMap(data: partido, context: _activeContext);
   }
 
-    @override
+     @override
   void initState() {
     super.initState();
 
@@ -4653,21 +4653,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
       if (!mounted) return;
 
-      final debeRecalcular =
-          !_esPartidoValido(proximoPartido) ||
-          _estaFinalizadoGlobal(proximoPartido);
-
-      if (debeRecalcular) {
-        setState(() {
-          _recalcularProximoYSiguientesDesdeBase();
-        });
-
-        await _persistFixtureState();
-      } else {
-        setState(() {
-          hayPartido = true;
-        });
-      }
+      setState(() {});
     });
   }
   
@@ -5088,18 +5074,32 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     List<Map<String, dynamic>> finalizadosDesdeHistory = [];
 
     if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
-      final decoded = jsonDecode(finalizadosRaw) as List<dynamic>;
-      finalizadosDesdeProximo = decoded
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      try {
+        final decoded = jsonDecode(finalizadosRaw);
+        if (decoded is List) {
+          finalizadosDesdeProximo = decoded
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      } catch (_) {
+        finalizadosDesdeProximo = [];
+      }
     }
 
     if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
-      final decoded = jsonDecode(finishedHistoryRaw) as List<dynamic>;
-      finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
-        return _partidoDesdeFinishedHistoryEntry(Map<String, dynamic>.from(e));
-      }).toList();
+      try {
+        final decoded = jsonDecode(finishedHistoryRaw);
+        if (decoded is List) {
+          finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
+            return _partidoDesdeFinishedHistoryEntry(
+              Map<String, dynamic>.from(e),
+            );
+          }).toList();
+        }
+      } catch (_) {
+        finalizadosDesdeHistory = [];
+      }
     }
 
     partidosFinalizados = _mergeFinalizados(
@@ -5107,11 +5107,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       desdeFinishedHistory: finalizadosDesdeHistory,
     ).where(_matchesCurrentContext).toList();
 
+    proximoPartido = {};
+    siguientesPartidos = [];
+
     if (proximoRaw != null && proximoRaw.isNotEmpty) {
       try {
         final decoded = jsonDecode(proximoRaw);
         if (decoded is Map) {
-          proximoPartido = Map<String, dynamic>.from(decoded);
+          final loaded = Map<String, dynamic>.from(decoded);
+
+          if (_matchesCurrentContext(loaded) && _esPartidoValido(loaded)) {
+            proximoPartido = loaded;
+          }
         }
       } catch (_) {
         proximoPartido = {};
@@ -5120,34 +5127,44 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
       try {
-        final decoded = jsonDecode(siguientesRaw) as List<dynamic>;
-        siguientesPartidos = decoded
-            .whereType<Map>()
-            .map((e) {
-              final item = Map<String, dynamic>.from(e);
-              item['escudoRival'] =
-                  item['escudoRival'] ??
-                  _rivalShieldAssetByName((item['rival'] ?? '').toString());
-              return item;
-            })
-            .where(_esPartidoValido)
-            .toList();
+        final decoded = jsonDecode(siguientesRaw);
+        if (decoded is List) {
+          siguientesPartidos = decoded
+              .whereType<Map>()
+              .map((e) {
+                final item = Map<String, dynamic>.from(e);
+                item['escudoRival'] =
+                    item['escudoRival'] ??
+                    _rivalShieldAssetByName((item['rival'] ?? '').toString());
+                return item;
+              })
+              .where(_matchesCurrentContext)
+              .where(_esPartidoValido)
+              .toList();
+        }
       } catch (_) {
         siguientesPartidos = [];
       }
     }
 
-    final debeReconstruir =
-        !_esPartidoValido(proximoPartido) ||
-        _estaFinalizadoGlobal(proximoPartido);
+    final hayProximoValido =
+        _esPartidoValido(proximoPartido) &&
+        !_estaFinalizadoGlobal(proximoPartido);
 
-    if (debeReconstruir) {
-      _recalcularProximoYSiguientesDesdeBase();
+    if (hayProximoValido) {
+      hayPartido = true;
+      return;
+    }
+
+    _recalcularProximoYSiguientesDesdeBase();
+
+    if (_esPartidoValido(proximoPartido)) {
+      hayPartido = true;
       await _persistFixtureState();
       return;
     }
 
-    hayPartido = _esPartidoValido(proximoPartido);
+    hayPartido = false;
   }
 
   Future<void> _persistFixtureState() async {
