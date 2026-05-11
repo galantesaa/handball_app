@@ -10079,6 +10079,59 @@ class _FixtureScreenState extends State<FixtureScreen> {
     });
   }
 
+  Future<void> _loadCustomFixturesV2() async {
+    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+
+    if (!mounted) return;
+
+    setState(() {
+      _customFixturesV2 = data;
+    });
+  }
+
+  String _stableFixtureIdentity(Map<String, dynamic> partido) {
+    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+      ...partido,
+      'temporada': partido['temporada'] ?? widget.temporada,
+      'competencia': partido['competencia'] ?? widget.competencia,
+      'torneo': partido['torneo'] ?? widget.torneo,
+      'categoria': partido['categoria'] ?? widget.categoria,
+    });
+  }
+
+  List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
+    List<Map<String, dynamic>> base,
+  ) {
+    final byStableId = <String, Map<String, dynamic>>{};
+
+    for (final item in base) {
+      final map = Map<String, dynamic>.from(item);
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    for (final custom in _customFixturesV2) {
+      final map = custom.toMap();
+      byStableId[_stableFixtureIdentity(map)] = map;
+    }
+
+    final result = byStableId.values.toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+    });
+
+    return result;
+  }
+
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
