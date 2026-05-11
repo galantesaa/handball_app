@@ -10132,6 +10132,27 @@ class _FixtureScreenState extends State<FixtureScreen> {
     return result;
   }
 
+  List<Map<String, dynamic>> _buildFixtureCompleto({
+    required String categoria,
+  }) {
+    final base = <Map<String, dynamic>>[];
+
+    if (widget.competencia.trim().toLowerCase() == 'local') {
+      final apertura = _buildAperturaBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      final clausura = _buildClausuraBase(
+        categoria: categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      base.addAll(apertura);
+      base.addAll(clausura);
+    }
+
+    return _mergeBaseWithCustomFixtures(base);
+  }
+
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
