@@ -10609,9 +10609,32 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   Future<void> _loadCustomFixturesV2() async {
-    final data = await _fixtureRepository.readFixtures();
+    final allFixtures = await _fixtureRepository.readFixtures();
 
-    final filtered = data.where(_customFixtureMatchesCurrentContext).toList();
+    final filtered = allFixtures.where((partido) {
+      final sameSeason =
+          _normalizeContextText(partido.temporada) ==
+          _normalizeContextText(widget.temporada);
+
+      final sameCompetition =
+          _normalizeContextText(partido.competencia) ==
+          _normalizeContextText(widget.competencia);
+
+      final sameCategory =
+          _normalizeContextText(partido.categoria) ==
+          _normalizeContextText(widget.categoria);
+
+      if (!sameSeason || !sameCompetition || !sameCategory) {
+        return false;
+      }
+
+      final partidoTorneo = _normalizeContextText(partido.torneo);
+      final widgetTorneo = _normalizeContextText(widget.torneo);
+
+      if (partidoTorneo == widgetTorneo) return true;
+
+      return _sameLooseStage(partidoTorneo, widgetTorneo);
+    }).toList();
 
     filtered.sort((a, b) {
       final byFecha =
@@ -10628,7 +10651,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
       _customFixturesV2 = filtered;
     });
   }
-  
+
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
     return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
       ...partido,
@@ -10677,7 +10700,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }) {
     final base = <Map<String, dynamic>>[];
 
-    if (widget.competencia.trim().toLowerCase() == 'local') {
+    if (_normalizeContextText(widget.competencia) == 'local') {
       final apertura = _buildAperturaBase(
         categoria: categoria,
       ).map(_convertirAFixturePartido).toList();
@@ -10692,7 +10715,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     return _mergeBaseWithCustomFixtures(base);
   }
-
+  
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
     required int cantidad,
@@ -11057,8 +11080,11 @@ class _FixtureScreenState extends State<FixtureScreen> {
       final torneo = _normalizeContextText(partido['torneo']);
       final categoria = _normalizeContextText(partido['categoria']);
 
-      return categoria == categoriaActual &&
-          (torneo == torneoActual || _sameLooseStage(torneo, torneoActual));
+      final sameCategory = categoria == categoriaActual;
+      final sameTournament =
+          torneo == torneoActual || _sameLooseStage(torneo, torneoActual);
+
+      return sameCategory && sameTournament;
     }).toList();
 
     partidos.sort((a, b) {
@@ -11076,7 +11102,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     return partidos;
   }
-  
+
   Future<void> _abrirPartido(
     
     BuildContext context,
