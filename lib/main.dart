@@ -3982,6 +3982,48 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     });
   }
 
+  bool _isAssetShieldPath(String? value) {
+    return (value ?? '').trim().startsWith('assets/');
+  }
+
+  Widget _buildShieldImage(String? path, {double size = 18}) {
+    final cleanPath = (path ?? '').trim();
+
+    if (cleanPath.isEmpty) {
+      return Icon(
+        Icons.sports_handball,
+        size: size,
+        color: const Color(0xFF1C2B44),
+      );
+    }
+
+    if (_isAssetShieldPath(cleanPath)) {
+      return Image.asset(
+        cleanPath,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) {
+          return Icon(
+            Icons.sports_handball,
+            size: size,
+            color: const Color(0xFF1C2B44),
+          );
+        },
+      );
+    }
+
+    return Image.file(
+      File(cleanPath),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) {
+        return Icon(
+          Icons.sports_handball,
+          size: size,
+          color: const Color(0xFF1C2B44),
+        );
+      },
+    );
+  }
+
   bool hayPartido = true;
 
   Map<String, dynamic> proximoPartido = {};
@@ -5645,15 +5687,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 color: Colors.white,
               ),
               padding: const EdgeInsets.all(6),
-              child: Center(
-                child: escudoRival == null
-                    ? const Icon(
-                        Icons.sports_handball,
-                        size: 18,
-                        color: Color(0xFF1C2B44),
-                      )
-                    : Image.asset(escudoRival, fit: BoxFit.contain),
-              ),
+              child: Center(child: _buildShieldImage(escudoRival, size: 18)),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -5690,21 +5724,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         color: Colors.white,
       ),
       padding: const EdgeInsets.all(8),
-      child: Center(
-        child: assetPath == null
-            ? const Icon(
-                Icons.sports_handball,
-                color: Color(0xFF1C2B44),
-                size: 24,
-              )
-            : Image.asset(assetPath, fit: BoxFit.contain),
-      ),
+      child: Center(child: _buildShieldImage(assetPath, size: 24)),
     );
   }
 
   /// ===============================
   /// CHIP DE ESTADO (MEJORADO CON COLOR DINÁMICO)
   /// ===============================
+
   Widget _buildStatusChip(String label, {Color? color}) {
     final baseColor = color ?? const Color(0xFF4F8CFF);
 

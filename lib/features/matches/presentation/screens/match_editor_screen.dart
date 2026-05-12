@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../../models_v2.dart';
 import '../../../teams/data/team_repository.dart';
 
@@ -78,13 +81,7 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
 
   Future<String?> _resolveRivalShield(String rival) async {
     final existing = await _teamRepository.findByName(rival);
-
-    if (existing?.shieldAsset != null &&
-        existing!.shieldAsset!.trim().isNotEmpty) {
-      return existing.shieldAsset;
-    }
-
-    return null;
+    return existing?.displayShieldPath;
   }
 
   Future<void> _loadTeams() async {
@@ -142,6 +139,100 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     _showLocalMessage(
       created ? 'Rival agregado al catálogo.' : 'Rival seleccionado.',
     );
+  }
+
+  Future<void> _pickAndAssignShieldForCurrentTeam() async {
+    final cleanName = _rivalController.text.trim();
+
+    if (cleanName.isEmpty) {
+      _showLocalMessage('Primero ingresá o seleccioná un rival.');
+      return;
+    }
+
+    TeamModel? team = await _teamRepository.findByName(cleanName);
+
+    if (team == null) {
+      await _teamRepository.addTeam(name: cleanName);
+      team = await _teamRepository.findByName(cleanName);
+    }
+
+    if (!mounted || team == null) return;
+
+    if ((team.shieldAsset ?? '').trim().isNotEmpty) {
+      _showLocalMessage('Este equipo ya tiene un escudo incluido en la app.');
+      return;
+    }
+
+    const typeGroup = XTypeGroup(
+      label: 'Imágenes',
+      extensions: <String>['png', 'jpg', 'jpeg', 'webp'],
+    );
+
+    final file = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[typeGroup],
+    );
+
+    if (file == null) return;
+
+    final sourcePath = file.path;
+    if (sourcePath.isEmpty) {
+      _showLocalMessage('No se pudo leer la imagen seleccionada.');
+      return;
+    }
+
+    final sourceFile = File(sourcePath);
+    final exists = await sourceFile.exists();
+
+    if (!exists) {
+      _showLocalMessage('La imagen seleccionada no existe.');
+      return;
+    }
+
+    final extension = sourcePath.split('.').last.toLowerCase();
+    final safeExtension = ['png', 'jpg', 'jpeg', 'webp'].contains(extension)
+        ? extension
+        : 'png';
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final shieldsDir = Directory('${appDir.path}/team_shields');
+
+    if (!await shieldsDir.exists()) {
+      await shieldsDir.create(recursive: true);
+    }
+
+    final targetPath =
+        '${shieldsDir.path}/${team.id}_${DateTime.now().millisecondsSinceEpoch}.$safeExtension';
+
+    await sourceFile.copy(targetPath);
+
+    final updated = await _teamRepository.updateTeamShieldFilePath(
+      teamId: team.id,
+      shieldFilePath: targetPath,
+    );
+
+    if (!mounted) return;
+
+    if (!updated) {
+      _showLocalMessage('No se pudo guardar el escudo.');
+      return;
+    }
+
+    await _loadTeams();
+
+    final refreshed = await _teamRepository.findByName(cleanName);
+
+    if (!mounted) return;
+
+    setState(() {
+      _selectedOpponent = refreshed;
+      _rivalController.text = refreshed?.name ?? cleanName;
+    });
+
+    _showLocalMessage('Escudo agregado correctamente.');
+  }
+
+  bool _isAssetPath(String value) {
+    return value.trim().startsWith('assets/');
   }
 
   Iterable<TeamModel> _filterTeams(String query) {
@@ -410,7 +501,7 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
 
                   return ListTile(
                     dense: true,
-                    leading: _buildTeamShield(team.shieldAsset),
+                    leading: _buildTeamShield(team.displayShieldPath),
                     title: Text(
                       team.name,
                       style: const TextStyle(
@@ -458,21 +549,32 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
                 fillColor: const Color(0xFF111A28),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(8),
-                  child: _buildTeamShield(_selectedOpponent?.shieldAsset),
+                  child: _buildTeamShield(_selectedOpponent?.displayShieldPath),
                 ),
-                suffixIcon: IconButton(
-                  tooltip: 'Agregar rival al catálogo',
-                  icon: const Icon(Icons.add_rounded),
-                  onPressed: () async {
-                    await _createQuickTeam(textEditingController.text);
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Agregar escudo',
+                      icon: const Icon(Icons.image_rounded),
+                      onPressed: _pickAndAssignShieldForCurrentTeam,
+                    ),
+                    IconButton(
+                      tooltip: 'Agregar rival al catálogo',
+                      icon: const Icon(Icons.add_rounded),
+                      onPressed: () async {
+                        await _createQuickTeam(textEditingController.text);
 
-                    if (!mounted) return;
+                        if (!mounted) return;
 
-                    textEditingController.text = _rivalController.text;
-                    textEditingController.selection = TextSelection.collapsed(
-                      offset: textEditingController.text.length,
-                    );
-                  },
+                        textEditingController.text = _rivalController.text;
+                        textEditingController.selection =
+                            TextSelection.collapsed(
+                              offset: textEditingController.text.length,
+                            );
+                      },
+                    ),
+                  ],
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
@@ -499,8 +601,10 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     );
   }
 
-  Widget _buildTeamShield(String? assetPath) {
-    if (assetPath == null || assetPath.trim().isEmpty) {
+  Widget _buildTeamShield(String? shieldPath) {
+    final path = (shieldPath ?? '').trim();
+
+    if (path.isEmpty) {
       return const Icon(
         Icons.shield_outlined,
         color: Color(0xFFAAB4C3),
@@ -508,8 +612,24 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
       );
     }
 
-    return Image.asset(
-      assetPath,
+    if (_isAssetPath(path)) {
+      return Image.asset(
+        path,
+        width: 26,
+        height: 26,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) {
+          return const Icon(
+            Icons.shield_outlined,
+            color: Color(0xFFAAB4C3),
+            size: 22,
+          );
+        },
+      );
+    }
+
+    return Image.file(
+      File(path),
       width: 26,
       height: 26,
       fit: BoxFit.contain,

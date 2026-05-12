@@ -9,7 +9,13 @@ class TeamModel {
   final String name;
   final String normalizedName;
   final String? shortName;
+
+  // Escudo incluido en assets de la app
   final String? shieldAsset;
+
+  // Escudo subido por usuario (archivo local)
+  final String? shieldFilePath;
+
   final bool isOwnTeam;
   final bool isActive;
 
@@ -19,6 +25,7 @@ class TeamModel {
     required this.normalizedName,
     this.shortName,
     this.shieldAsset,
+    this.shieldFilePath,
     this.isOwnTeam = false,
     this.isActive = true,
   });
@@ -27,6 +34,7 @@ class TeamModel {
     required String name,
     String? shortName,
     String? shieldAsset,
+    String? shieldFilePath,
     bool isOwnTeam = false,
   }) {
     final normalized = TeamRepository.normalize(name);
@@ -37,6 +45,7 @@ class TeamModel {
       normalizedName: normalized,
       shortName: _cleanNullable(shortName),
       shieldAsset: _cleanNullable(shieldAsset),
+      shieldFilePath: _cleanNullable(shieldFilePath),
       isOwnTeam: isOwnTeam,
       isActive: true,
     );
@@ -53,6 +62,7 @@ class TeamModel {
           .trim(),
       shortName: _cleanNullable(json['shortName']),
       shieldAsset: _cleanNullable(json['shieldAsset']),
+      shieldFilePath: _cleanNullable(json['shieldFilePath']),
       isOwnTeam: json['isOwnTeam'] == true,
       isActive: json['isActive'] != false,
     );
@@ -65,6 +75,7 @@ class TeamModel {
       'normalizedName': normalizedName,
       'shortName': shortName,
       'shieldAsset': shieldAsset,
+      'shieldFilePath': shieldFilePath,
       'isOwnTeam': isOwnTeam,
       'isActive': isActive,
     };
@@ -76,6 +87,7 @@ class TeamModel {
     String? normalizedName,
     String? shortName,
     String? shieldAsset,
+    String? shieldFilePath,
     bool? isOwnTeam,
     bool? isActive,
   }) {
@@ -87,14 +99,29 @@ class TeamModel {
       normalizedName: normalizedName ?? TeamRepository.normalize(resolvedName),
       shortName: shortName ?? this.shortName,
       shieldAsset: shieldAsset ?? this.shieldAsset,
+      shieldFilePath: shieldFilePath ?? this.shieldFilePath,
       isOwnTeam: isOwnTeam ?? this.isOwnTeam,
       isActive: isActive ?? this.isActive,
     );
   }
 
+  String? get displayShieldPath {
+    final asset = _cleanNullable(shieldAsset);
+
+    if (asset != null) {
+      return asset;
+    }
+
+    return _cleanNullable(shieldFilePath);
+  }
+
   static String? _cleanNullable(dynamic value) {
     final text = (value ?? '').toString().trim();
-    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+
+    if (text.isEmpty || text.toLowerCase() == 'null') {
+      return null;
+    }
+
     return text;
   }
 }
@@ -194,6 +221,7 @@ class TeamRepository {
     required String name,
     String? shortName,
     String? shieldAsset,
+    String? shieldFilePath,
     bool isOwnTeam = false,
   }) async {
     final cleanName = name.trim();
@@ -211,6 +239,7 @@ class TeamRepository {
         name: cleanName,
         shortName: shortName,
         shieldAsset: shieldAsset,
+        shieldFilePath: shieldFilePath,
         isOwnTeam: isOwnTeam,
       ),
     ]);
@@ -234,7 +263,7 @@ class TeamRepository {
 
   Future<String?> shieldForTeamName(String name) async {
     final team = await findByName(name);
-    return team?.shieldAsset;
+    return team?.displayShieldPath;
   }
 
   List<TeamModel> _defaultTeams() {
@@ -320,5 +349,26 @@ class TeamRepository {
         normalizedName: 'a.a.c.f. quilmes',
       ),
     ];
+  }
+
+  Future<bool> updateTeamShieldFilePath({
+    required String teamId,
+    required String shieldFilePath,
+  }) async {
+    final cleanPath = shieldFilePath.trim();
+    if (teamId.trim().isEmpty || cleanPath.isEmpty) return false;
+
+    final teams = await readTeams();
+
+    final index = teams.indexWhere((team) => team.id == teamId);
+    if (index < 0) return false;
+
+    final current = teams[index];
+
+    final updated = <TeamModel>[...teams];
+    updated[index] = current.copyWith(shieldFilePath: cleanPath);
+
+    await saveTeams(updated);
+    return true;
   }
 }
