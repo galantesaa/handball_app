@@ -1814,21 +1814,36 @@ Future<void> _showInstitutionSwitcher() async {
 
   if (!mounted) return;
 
-  if (institutions.isEmpty) {
-    await _showMessage('No hay instituciones disponibles.');
-    return;
-  }
+  final controller = TextEditingController();
 
   final selected = await showModalBottomSheet<InstitutionModel>(
     context: context,
+    isScrollControlled: true,
     backgroundColor: const Color(0xFF0F1722),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
     ),
-    builder: (_) {
+    builder: (sheetContext) {
+      Future<void> createInstitution() async {
+        final name = controller.text.trim();
+        if (name.isEmpty) return;
+
+        await _institutionRepository.addInstitution(name: name);
+        final created = await _institutionRepository.findByName(name);
+
+        if (created != null && sheetContext.mounted) {
+          Navigator.pop(sheetContext, created);
+        }
+      }
+
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(sheetContext).viewInsets.bottom + 28,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1841,11 +1856,12 @@ Future<void> _showInstitutionSwitcher() async {
                 ),
               ),
               const SizedBox(height: 16),
+
               ...institutions.map((institution) {
                 final isCurrent = institution.id == institucionId;
 
                 return GestureDetector(
-                  onTap: () => Navigator.pop(context, institution),
+                  onTap: () => Navigator.pop(sheetContext, institution),
                   child: Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 10),
@@ -1892,12 +1908,56 @@ Future<void> _showInstitutionSwitcher() async {
                   ),
                 );
               }),
+
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                textInputAction: TextInputAction.done,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Nueva institución',
+                  hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                  filled: true,
+                  fillColor: const Color(0xFF111A28),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.08),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                  ),
+                ),
+                onSubmitted: (_) => createInstitution(),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: createInstitution,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Crear nueva institución'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F8CFF),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       );
     },
   );
+
+  controller.dispose();
 
   if (!mounted || selected == null) return;
 
@@ -1917,7 +1977,7 @@ Future<void> _showInstitutionSwitcher() async {
 
   if (!mounted) return;
 
-  await _showMessage('Institución cambiada correctamente.');
+  await _showMessage('Institución seleccionada correctamente.');
 }
 
   @override
