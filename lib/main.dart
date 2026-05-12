@@ -2086,6 +2086,108 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _pickAndAssignInstitutionShield() async {
+    final cleanId = (institucionId ?? '').trim();
+    final cleanName = institucionNombre.trim();
+
+    if (cleanId.isEmpty && cleanName.isEmpty) {
+      await _showMessage('Primero creá o seleccioná una institución.');
+      return;
+    }
+
+    InstitutionModel? institution;
+
+    if (cleanId.isNotEmpty) {
+      institution = await _institutionRepository.findById(cleanId);
+    }
+
+    institution ??= await _institutionRepository.findByName(cleanName);
+
+    if (!mounted) return;
+
+    if (institution == null) {
+      await _showMessage('No se encontró la institución actual.');
+      return;
+    }
+
+    if ((institution.shieldAsset ?? '').trim().isNotEmpty) {
+      await _showMessage('Esta institución ya tiene un escudo incluido en la app.');
+      return;
+    }
+
+    const typeGroup = XTypeGroup(
+      label: 'Imágenes',
+      extensions: <String>['png', 'jpg', 'jpeg', 'webp'],
+    );
+
+    final file = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[typeGroup],
+    );
+
+    if (file == null) return;
+
+    final sourcePath = file.path;
+
+    if (sourcePath.isEmpty) {
+      await _showMessage('No se pudo leer la imagen seleccionada.');
+      return;
+    }
+
+    final sourceFile = File(sourcePath);
+
+    if (!await sourceFile.exists()) {
+      await _showMessage('La imagen seleccionada no existe.');
+      return;
+    }
+
+    final extension = sourcePath.split('.').last.toLowerCase();
+    final safeExtension = ['png', 'jpg', 'jpeg', 'webp'].contains(extension)
+        ? extension
+        : 'png';
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final shieldsDir = Directory('${appDir.path}/institution_shields');
+
+    if (!await shieldsDir.exists()) {
+      await shieldsDir.create(recursive: true);
+    }
+
+    final targetPath =
+        '${shieldsDir.path}/${institution.id}_${DateTime.now().millisecondsSinceEpoch}.$safeExtension';
+
+    await sourceFile.copy(targetPath);
+
+    final updated = await _institutionRepository.updateInstitutionShieldFilePath(
+      institutionId: institution.id,
+      shieldFilePath: targetPath,
+    );
+
+    if (!mounted) return;
+
+    if (!updated) {
+      await _showMessage('No se pudo guardar el escudo institucional.');
+      return;
+    }
+
+    final refreshed = await _institutionRepository.findById(institution.id);
+
+    if (!mounted) return;
+
+    final resolvedInstitution = refreshed ?? institution;
+
+    setState(() {
+      institucionId = resolvedInstitution.id;
+      institucionNombre = resolvedInstitution.name;
+      institucionEscudo = resolvedInstitution.displayShieldPath ?? targetPath;
+    });
+
+    await _saveActiveContext();
+
+    if (!mounted) return;
+
+    await _showMessage('Escudo institucional guardado correctamente.');
+  }
+
   Future<String?> _resolveInstitutionShieldPath({
     required String? institutionId,
     required String institutionName,
@@ -3065,36 +3167,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInstitutionBadge() {
-    final institution = institucionNombre.trim().toLowerCase();
-
-    final useSanFernandoLogo =
-        tieneInstitucion && institution == 'san fernando handball';
-
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      padding: const EdgeInsets.all(8),
-      child: Center(
-        child: useSanFernandoLogo
-            ? Image.asset(
-                'assets/images/san_fernando.png',
-                fit: BoxFit.contain,
-                alignment: Alignment.center,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.shield_outlined,
-                  color: Color(0xFF1C2B44),
-                  size: 26,
-                ),
-              )
-            : const Icon(
-                Icons.add_business_rounded,
-                color: Color(0xFF1C2B44),
-                size: 26,
-              ),
+    return GestureDetector(
+      onTap: tieneInstitucion ? _pickAndAssignInstitutionShield : null,
+      child: buildShieldAvatar(
+        institucionEscudo,
+        size: 48,
+        padding: 8,
       ),
     );
   }
