@@ -25,6 +25,8 @@ class MatchEditorScreen extends StatefulWidget {
 
 class _MatchEditorScreenState extends State<MatchEditorScreen> {
   final TeamRepository _teamRepository = const TeamRepository();
+  List<TeamModel> _availableTeams = [];
+  TeamModel? _selectedOpponent;
 
   late final TextEditingController _rivalController;
   late final TextEditingController _fechaController;
@@ -54,6 +56,7 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     if (condicionInicial == 'Visitante') {
       _condicion = 'Visitante';
     }
+    _loadTeams();
   }
 
   @override
@@ -82,6 +85,79 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     }
 
     return null;
+  }
+
+  Future<void> _loadTeams() async {
+    try {
+      final teams = await _teamRepository.readTeams();
+
+      if (!mounted) return;
+
+      final currentRival = _rivalController.text.trim();
+      TeamModel? selected;
+
+      if (currentRival.isNotEmpty) {
+        selected = await _teamRepository.findByName(currentRival);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _availableTeams = teams.where((team) => team.isActive).toList();
+        _selectedOpponent = selected;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _availableTeams = [];
+        _selectedOpponent = null;
+      });
+    }
+  }
+
+  Future<void> _createQuickTeam(String rawName) async {
+    final cleanName = rawName.trim();
+
+    if (cleanName.isEmpty) {
+      _showLocalMessage('Ingresá el nombre del rival.');
+      return;
+    }
+
+    final created = await _teamRepository.addTeam(name: cleanName);
+
+    final team = await _teamRepository.findByName(cleanName);
+
+    if (!mounted) return;
+
+    await _loadTeams();
+
+    if (!mounted) return;
+
+    setState(() {
+      _selectedOpponent = team;
+      _rivalController.text = team?.name ?? cleanName;
+    });
+
+    _showLocalMessage(
+      created ? 'Rival agregado al catálogo.' : 'Rival seleccionado.',
+    );
+  }
+
+  Iterable<TeamModel> _filterTeams(String query) {
+    final normalizedQuery = TeamRepository.normalize(query);
+
+    if (normalizedQuery.isEmpty) {
+      return _availableTeams;
+    }
+
+    return _availableTeams.where((team) {
+      final name = TeamRepository.normalize(team.name);
+      final shortName = TeamRepository.normalize(team.shortName);
+
+      return name.contains(normalizedQuery) ||
+          shortName.contains(normalizedQuery);
+    });
   }
 
   Future<void> _guardar() async {
@@ -192,12 +268,7 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
                 const SizedBox(height: 18),
                 _buildCard(
                   children: [
-                    _buildTextField(
-                      controller: _rivalController,
-                      label: 'Rival',
-                      hint: 'Ejemplo: C.A. River Plate',
-                      textInputType: TextInputType.text,
-                    ),
+                    _buildOpponentAutocompleteField(),
                     const SizedBox(height: 14),
                     _buildTextField(
                       controller: _fechaNumeroController,
@@ -303,6 +374,152 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
       ),
+    );
+  }
+
+  Widget _buildOpponentAutocompleteField() {
+    return Autocomplete<TeamModel>(
+      initialValue: TextEditingValue(text: _rivalController.text),
+      displayStringForOption: (team) => team.name,
+      optionsBuilder: (textEditingValue) {
+        return _filterTeams(textEditingValue.text);
+      },
+      onSelected: (team) {
+        setState(() {
+          _selectedOpponent = team;
+          _rivalController.text = team.name;
+        });
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        final list = options.toList();
+
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            color: const Color(0xFF0F1722),
+            elevation: 8,
+            borderRadius: BorderRadius.circular(14),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 260, maxWidth: 360),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: list.length,
+                itemBuilder: (context, index) {
+                  final team = list[index];
+
+                  return ListTile(
+                    dense: true,
+                    leading: _buildTeamShield(team.shieldAsset),
+                    title: Text(
+                      team.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    subtitle: team.shortName == null
+                        ? null
+                        : Text(
+                            team.shortName!,
+                            style: const TextStyle(
+                              color: Color(0xFFAAB4C3),
+                              fontSize: 12,
+                            ),
+                          ),
+                    onTap: () => onSelected(team),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      fieldViewBuilder:
+          (context, textEditingController, focusNode, onFieldSubmitted) {
+            if (textEditingController.text != _rivalController.text) {
+              textEditingController.text = _rivalController.text;
+              textEditingController.selection = TextSelection.collapsed(
+                offset: textEditingController.text.length,
+              );
+            }
+
+            return TextField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              textInputAction: TextInputAction.next,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Rival',
+                hintText: 'Ejemplo: C.A. River Plate',
+                labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
+                hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                filled: true,
+                fillColor: const Color(0xFF111A28),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: _buildTeamShield(_selectedOpponent?.shieldAsset),
+                ),
+                suffixIcon: IconButton(
+                  tooltip: 'Agregar rival al catálogo',
+                  icon: const Icon(Icons.add_rounded),
+                  onPressed: () async {
+                    await _createQuickTeam(textEditingController.text);
+
+                    if (!mounted) return;
+
+                    textEditingController.text = _rivalController.text;
+                    textEditingController.selection = TextSelection.collapsed(
+                      offset: textEditingController.text.length,
+                    );
+                  },
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                ),
+              ),
+              onChanged: (value) async {
+                _rivalController.text = value;
+
+                final selected = await _teamRepository.findByName(value);
+
+                if (!mounted) return;
+
+                setState(() {
+                  _selectedOpponent = selected;
+                });
+              },
+            );
+          },
+    );
+  }
+
+  Widget _buildTeamShield(String? assetPath) {
+    if (assetPath == null || assetPath.trim().isEmpty) {
+      return const Icon(
+        Icons.shield_outlined,
+        color: Color(0xFFAAB4C3),
+        size: 22,
+      );
+    }
+
+    return Image.asset(
+      assetPath,
+      width: 26,
+      height: 26,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) {
+        return const Icon(
+          Icons.shield_outlined,
+          color: Color(0xFFAAB4C3),
+          size: 22,
+        );
+      },
     );
   }
 
