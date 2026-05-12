@@ -4306,6 +4306,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         'temporada': p['temporada'],
         'competencia': p['competencia'],
         'rival': p['rival'],
+        'institutionId': p['institutionId'] ?? widget.institutionId,
+        'equipoPropio': p['equipoPropio'] ?? _institutionName,
+        'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
         'fechaNumero': p['fechaNumero'],
         'fecha': p['fecha'],
         'hora': p['hora'],
@@ -4842,6 +4845,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           'temporada': p['temporada'],
           'competencia': p['competencia'],
           'rival': p['rival'],
+          'institutionId': p['institutionId'] ?? widget.institutionId,
+          'equipoPropio': p['equipoPropio'] ?? _institutionName,
+          'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
           'fechaNumero': p['fechaNumero'],
           'fecha': p['fecha'],
           'hora': p['hora'],
@@ -5229,12 +5235,15 @@ await Navigator.push(
     final result = await Navigator.push<PartidoModel>(
       context,
       MaterialPageRoute(
-        builder: (_) => MatchEditorScreen(
+                builder: (_) => MatchEditorScreen(
           initial: oldModel,
           temporada: widget.temporada,
           competencia: widget.competencia,
           torneo: widget.torneo,
           categoria: widget.categoria,
+          institutionId: oldModel.institutionId ?? widget.institutionId,
+          equipoPropio: oldModel.equipoPropio ?? _institutionName,
+          escudoPropio: oldModel.escudoPropio ?? _institutionShieldPath,
         ),
       ),
     );
