@@ -21,7 +21,6 @@ import 'package:flutter/rendering.dart';
 import 'features/settings/data/settings_repository.dart';
 import 'features/matches/data/repositories/fixture_repository_v2.dart';
 import 'features/matches/presentation/screens/match_editor_screen.dart';
-import 'features/institutions/data/institution_repository.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -1776,7 +1775,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool tieneInstitucion = false;
 
   String institucionNombre = '';
-  String? institucionId;
   String temporadaSeleccionada = '';
   String competenciaSeleccionada = '';
   String torneoSeleccionado = '';
@@ -1785,8 +1783,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _contextStep = '';
 
   final SettingsRepository _settingsRepository = SettingsRepository();
-  final InstitutionRepository _institutionRepository =
-    const InstitutionRepository();
 
   final structure.StructureRepository _structureRepository =
       structure.StructureRepository();
@@ -1823,7 +1819,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-    Future<void> _createInstitutionFromEmptyState() async {
+  Future<void> _createInstitutionFromEmptyState() async {
     final name = _institutionController.text.trim();
 
     if (name.isEmpty) {
@@ -1831,21 +1827,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    await _institutionRepository.addInstitution(name: name);
-
-    final institution = await _institutionRepository.findByName(name);
-
-    if (!mounted) return;
-
-    if (institution == null) {
-      await _showMessage('No se pudo crear la institución.');
-      return;
-    }
-
     setState(() {
       tieneInstitucion = true;
-      institucionId = institution.id;
-      institucionNombre = institution.name;
+      institucionNombre = name;
       temporadaSeleccionada = '';
       competenciaSeleccionada = '';
       torneoSeleccionado = '';
@@ -2067,7 +2051,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadStructureData();
     setState(() {
       tieneInstitucion = activeContext.hasInstitution;
-      institucionId = activeContext.institutionId;
       institucionNombre = activeContext.institutionName;
       temporadaSeleccionada = activeContext.season;
       competenciaSeleccionada = activeContext.competition;
@@ -2096,7 +2079,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ActiveContext(
         hasInstitution: tieneInstitucion,
         institutionName: institucionNombre,
-        institutionId: institucionId,
         season: temporadaSeleccionada,
         competition: competenciaSeleccionada,
         tournament: torneoSeleccionado,

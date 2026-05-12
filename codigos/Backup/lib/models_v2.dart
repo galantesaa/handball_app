@@ -165,9 +165,6 @@ class PartidoModel {
   final String categoria;
   final String temporada;
   final String competencia;
-  final String? institutionId;
-  final String? equipoPropio;
-  final String? escudoPropio;    
 
   final String estado;
   final String estadoPartido;
@@ -227,9 +224,6 @@ class PartidoModel {
     this.matchSquad,
     this.temporada = '2026',
     this.competencia = 'Local',
-    this.institutionId,
-    this.equipoPropio,
-    this.escudoPropio,
   });
 
   factory PartidoModel.fromMap(Map<String, dynamic> map) {
@@ -238,9 +232,6 @@ class PartidoModel {
     return PartidoModel(
       temporada: (map['temporada'] ?? '2026').toString(),
       competencia: (map['competencia'] ?? 'Local').toString(),
-      institutionId: map['institutionId']?.toString(),
-      equipoPropio: map['equipoPropio']?.toString(),
-      escudoPropio: map['escudoPropio']?.toString(),
       rival: (map['rival'] ?? 'Rival').toString(),
       fechaNumero: map['fechaNumero'] as int?,
       fecha: (map['fecha'] ?? '').toString(),
@@ -286,9 +277,6 @@ class PartidoModel {
     return {
       'temporada': temporada,
       'competencia': competencia,
-      'institutionId': institutionId,
-      'equipoPropio': equipoPropio,
-      'escudoPropio': escudoPropio,
       'rival': rival,
       'fechaNumero': fechaNumero,
       'fecha': fecha,
@@ -324,9 +312,6 @@ class PartidoModel {
   PartidoModel copyWith({
     String? temporada,
     String? competencia,
-    String? institutionId,
-    String? equipoPropio,
-    String? escudoPropio,
     String? rival,
     int? fechaNumero,
     String? fecha,
@@ -360,9 +345,6 @@ class PartidoModel {
     return PartidoModel(
       temporada: temporada ?? this.temporada,
       competencia: competencia ?? this.competencia,
-      institutionId: institutionId ?? this.institutionId,
-      equipoPropio: equipoPropio ?? this.equipoPropio,
-      escudoPropio: escudoPropio ?? this.escudoPropio,
       rival: rival ?? this.rival,
       fechaNumero: fechaNumero ?? this.fechaNumero,
       fecha: fecha ?? this.fecha,
