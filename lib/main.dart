@@ -5044,6 +5044,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       competencia: widget.competencia,
       torneo: widget.torneo,
       categoria: widget.categoria,
+      institutionId: widget.institutionId,
     );
 
     final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
