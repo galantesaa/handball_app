@@ -12584,23 +12584,10 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildMiniShield({String? assetPath}) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      padding: const EdgeInsets.all(6),
-      child: Center(
-        child: assetPath == null
-            ? const Icon(
-                Icons.sports_handball,
-                size: 18,
-                color: Color(0xFF1C2B44),
-              )
-            : Image.asset(assetPath, fit: BoxFit.contain),
-      ),
+    return buildShieldAvatar(
+      assetPath,
+      size: 34,
+      padding: 6,
     );
   }
 
