@@ -2609,6 +2609,7 @@ class _HomeScreenState extends State<HomeScreen> {
           competencia: competenciaSeleccionada,
           torneo: torneoSeleccionado,
           categoria: categoriaSeleccionada,
+          institutionName: institucionNombre,
         ),
       ),
     );
@@ -4024,6 +4025,28 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// ===============================
 
   final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+
+  String get _institutionName {
+    final value = widget.institutionName.trim();
+
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return 'Institución';
+    }
+
+    return value;
+  }
+
+  String? get _institutionShieldPath {
+    final normalized = _institutionName.trim().toLowerCase();
+
+    if (normalized == 'san fernando handball' ||
+        normalized == 'san fernando') {
+      return 'assets/images/san_fernando.png';
+    }
+
+    return null;
+  }
+  
   List<PartidoModel> _customFixturesV2 = [];
 
   Future<void> _loadEstadoRealV2() async {
@@ -5358,6 +5381,7 @@ await Navigator.push(
                     competencia: widget.competencia,
                     torneo: widget.torneo,
                     categoria: widget.categoria,
+                    institutionName: widget.institutionName,
                   ),
                 ),
               );
@@ -9975,6 +9999,7 @@ class FixtureScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String institutionName;
 
   const FixtureScreen({
     super.key,
@@ -9982,6 +10007,7 @@ class FixtureScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.institutionName,
   });
 
   @override
@@ -10004,6 +10030,27 @@ class _FixtureScreenState extends State<FixtureScreen> {
   final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
 
   List<PartidoModel> _customFixturesV2 = [];
+
+  String get _institutionName {
+    final value = widget.institutionName.trim();
+
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return 'Institución';
+    }
+
+    return value;
+  }
+
+  String? get _institutionShieldPath {
+    final normalized = _institutionName.trim().toLowerCase();
+
+    if (normalized == 'san fernando handball' ||
+        normalized == 'san fernando') {
+      return 'assets/images/san_fernando.png';
+    }
+
+    return null;
+  }
 
   ActiveContext get _activeContext {
     return ActiveContext(
@@ -10644,6 +10691,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
       Map<String, dynamic>.from(partido),
     );
 
+    partidoReal['equipoPropio'] = _institutionName;
+    partidoReal['escudoPropio'] = _institutionShieldPath;
+
     if (!context.mounted) return;
 
     Navigator.push(
@@ -11268,7 +11318,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       widget.partido['matchRosterSnapshot'] = matchRosterSnapshotActual;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
