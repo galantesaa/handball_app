@@ -139,52 +139,46 @@ class InstitutionRepository {
   }
 
   Future<List<InstitutionModel>> readInstitutions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(AppStorageKeys.institutions);
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(AppStorageKeys.institutions);
 
-    if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
-      final seeded = _defaultInstitutions();
-      await saveInstitutions(seeded);
-      return seeded;
-    }
-
-    try {
-      final decoded = jsonDecode(raw);
-
-      if (decoded is! List) {
-        await prefs.remove(AppStorageKeys.institutions);
-        final seeded = _defaultInstitutions();
-        await saveInstitutions(seeded);
-        return seeded;
-      }
-
-      final result = <InstitutionModel>[];
-
-      for (final item in decoded) {
-        if (item is! Map) continue;
-
-        final institution = InstitutionModel.fromJson(
-          Map<String, dynamic>.from(item),
-        );
-
-        if (institution.name.trim().isEmpty) continue;
-
-        final exists = result.any(
-          (e) => e.normalizedName == institution.normalizedName,
-        );
-
-        if (!exists) result.add(institution);
-      }
-
-      result.sort((a, b) => a.name.compareTo(b.name));
-      return result;
-    } catch (_) {
-      await prefs.remove(AppStorageKeys.institutions);
-      final seeded = _defaultInstitutions();
-      await saveInstitutions(seeded);
-      return seeded;
-    }
+  if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+    return const [];
   }
+
+  try {
+    final decoded = jsonDecode(raw);
+
+    if (decoded is! List) {
+      await prefs.remove(AppStorageKeys.institutions);
+      return const [];
+    }
+
+    final result = <InstitutionModel>[];
+
+    for (final item in decoded) {
+      if (item is! Map) continue;
+
+      final institution = InstitutionModel.fromJson(
+        Map<String, dynamic>.from(item),
+      );
+
+      if (institution.name.trim().isEmpty) continue;
+
+      final exists = result.any(
+        (e) => e.normalizedName == institution.normalizedName,
+      );
+
+      if (!exists) result.add(institution);
+    }
+
+    result.sort((a, b) => a.name.compareTo(b.name));
+    return result;
+  } catch (_) {
+    await prefs.remove(AppStorageKeys.institutions);
+    return const [];
+  }
+}
 
   Future<void> saveInstitutions(List<InstitutionModel> institutions) async {
     final prefs = await SharedPreferences.getInstance();
@@ -301,4 +295,9 @@ class InstitutionRepository {
       ),
     ];
   }
+
+
+
+
+
 }
