@@ -1814,7 +1814,7 @@ Future<void> _showInstitutionSwitcher() async {
 
   if (!mounted) return;
 
-  final controller = TextEditingController();
+  String newInstitutionName = '';
 
   final selected = await showModalBottomSheet<InstitutionModel>(
     context: context,
@@ -1825,8 +1825,10 @@ Future<void> _showInstitutionSwitcher() async {
     ),
     builder: (sheetContext) {
       Future<void> createInstitution() async {
-        final name = controller.text.trim();
+        final name = newInstitutionName.trim();
         if (name.isEmpty) return;
+
+        FocusScope.of(sheetContext).unfocus();
 
         await _institutionRepository.addInstitution(name: name);
         final created = await _institutionRepository.findByName(name);
@@ -1844,120 +1846,125 @@ Future<void> _showInstitutionSwitcher() async {
             20,
             MediaQuery.of(sheetContext).viewInsets.bottom + 28,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Cambiar institución',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Cambiar institución',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              ...institutions.map((institution) {
-                final isCurrent = institution.id == institucionId;
+                ...institutions.map((institution) {
+                  final isCurrent = institution.id == institucionId;
 
-                return GestureDetector(
-                  onTap: () => Navigator.pop(sheetContext, institution),
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? const Color(0xFF4F8CFF).withOpacity(0.22)
-                          : const Color(0xFF182338),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isCurrent
-                            ? const Color(0xFF4F8CFF)
-                            : Colors.white.withOpacity(0.06),
+                  return GestureDetector(
+                    onTap: () {
+                      FocusScope.of(sheetContext).unfocus();
+                      Navigator.pop(sheetContext, institution);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        buildShieldAvatar(
-                          institution.displayShieldPath,
-                          size: 38,
-                          padding: 6,
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? const Color(0xFF4F8CFF).withOpacity(0.22)
+                            : const Color(0xFF182338),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isCurrent
+                              ? const Color(0xFF4F8CFF)
+                              : Colors.white.withOpacity(0.06),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            institution.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
+                      ),
+                      child: Row(
+                        children: [
+                          buildShieldAvatar(
+                            institution.displayShieldPath,
+                            size: 38,
+                            padding: 6,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              institution.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ),
-                        if (isCurrent)
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            color: Color(0xFF4F8CFF),
-                          ),
-                      ],
+                          if (isCurrent)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF4F8CFF),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
 
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                textInputAction: TextInputAction.done,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Nueva institución',
-                  hintStyle: const TextStyle(color: Color(0xFF6B7280)),
-                  filled: true,
-                  fillColor: const Color(0xFF111A28),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.08),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
-                  ),
-                ),
-                onSubmitted: (_) => createInstitution(),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: createInstitution,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Crear nueva institución'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F8CFF),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
+                const SizedBox(height: 12),
+                TextField(
+                  textInputAction: TextInputAction.done,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Nueva institución',
+                    hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                    filled: true,
+                    fillColor: const Color(0xFF111A28),
+                    enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.08),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    newInstitutionName = value;
+                  },
+                  onSubmitted: (_) => createInstitution(),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: createInstitution,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Crear nueva institución'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F8CFF),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     },
   );
-
-  controller.dispose();
 
   if (!mounted || selected == null) return;
 
