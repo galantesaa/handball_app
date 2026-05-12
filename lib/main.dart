@@ -4884,25 +4884,35 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
-    final temporada = _normalizeContextText(partido.temporada);
-    final competencia = _normalizeContextText(partido.competencia);
-    final torneo = _normalizeContextText(partido.torneo);
-    final categoria = _normalizeContextText(partido.categoria);
+  final partidoInstitutionId = _normalizeContextText(partido.institutionId);
+  final currentInstitutionId = _normalizeContextText(widget.institutionId);
 
-    final widgetTemporada = _normalizeContextText(widget.temporada);
-    final widgetCompetencia = _normalizeContextText(widget.competencia);
-    final widgetTorneo = _normalizeContextText(widget.torneo);
-    final widgetCategoria = _normalizeContextText(widget.categoria);
+  final sameInstitution =
+      partidoInstitutionId.isNotEmpty &&
+      currentInstitutionId.isNotEmpty &&
+      partidoInstitutionId == currentInstitutionId;
 
-    final sameBase =
-        temporada == widgetTemporada &&
-        competencia == widgetCompetencia &&
-        categoria == widgetCategoria;
+  if (!sameInstitution) return false;
 
-    if (!sameBase) return false;
+  final temporada = _normalizeContextText(partido.temporada);
+  final competencia = _normalizeContextText(partido.competencia);
+  final torneo = _normalizeContextText(partido.torneo);
+  final categoria = _normalizeContextText(partido.categoria);
 
-    return torneo == widgetTorneo || _sameLooseStage(torneo, widgetTorneo);
-  }
+  final widgetTemporada = _normalizeContextText(widget.temporada);
+  final widgetCompetencia = _normalizeContextText(widget.competencia);
+  final widgetTorneo = _normalizeContextText(widget.torneo);
+  final widgetCategoria = _normalizeContextText(widget.categoria);
+
+  final sameBase =
+      temporada == widgetTemporada &&
+      competencia == widgetCompetencia &&
+      categoria == widgetCategoria;
+
+  if (!sameBase) return false;
+
+  return torneo == widgetTorneo || _sameLooseStage(torneo, widgetTorneo);
+}
 
   Future<void> _loadCustomFixturesV2() async {
     final data = await _fixtureRepository.readFixtures();
@@ -4927,13 +4937,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
-    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-      ...partido,
-      'temporada': partido['temporada'] ?? widget.temporada,
-      'competencia': partido['competencia'] ?? widget.competencia,
-      'torneo': partido['torneo'] ?? widget.torneo,
-      'categoria': partido['categoria'] ?? widget.categoria,
-    });
+  return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+    ...partido,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+    'temporada': partido['temporada'] ?? widget.temporada,
+    'competencia': partido['competencia'] ?? widget.competencia,
+    'torneo': partido['torneo'] ?? widget.torneo,
+    'categoria': partido['categoria'] ?? widget.categoria,
+  });
   }
 
   List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
