@@ -2502,6 +2502,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
+                tieneFixture: competenciaActualTieneFixture,
               );
 
             case 'Partidos jugados':
@@ -4275,6 +4276,7 @@ class ProximoPartidoScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final bool tieneFixture;
 
   const ProximoPartidoScreen({
     super.key,
@@ -4282,6 +4284,7 @@ class ProximoPartidoScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.tieneFixture,
   });
 
   @override
