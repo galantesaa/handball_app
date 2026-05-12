@@ -5564,24 +5564,26 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             },
           ),
         ],*/
-        const SizedBox(height: 10),
-        _buildSecondaryAction(
-          text: 'Ver fixture completo',
-          icon: Icons.calendar_month_outlined,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => FixtureScreen(
-                  temporada: widget.temporada,
-                  competencia: widget.competencia,
-                  torneo: widget.torneo,
-                  categoria: widget.categoria,
+        if (widget.tieneFixture) ...[
+          const SizedBox(height: 10),
+          _buildSecondaryAction(
+            text: 'Ver fixture completo',
+            icon: Icons.calendar_month_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FixtureScreen(
+                    temporada: widget.temporada,
+                    competencia: widget.competencia,
+                    torneo: widget.torneo,
+                    categoria: widget.categoria,
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
+        ],
         const SizedBox(height: 20),
         _buildPrimaryAction(
           text: _estaFinalizadoV2(proximoPartido)
