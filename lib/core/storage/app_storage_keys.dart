@@ -13,6 +13,8 @@ class AppStorageKeys {
 
   static const String teams = 'teams_v1';
 
+  static const String institutions = 'institutions_v1';
+
   static const String liveMatch = 'live_match_current_v1';
 
   static const String finishedMatches = 'finished_matches_history_v1';
