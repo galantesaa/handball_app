@@ -32,11 +32,7 @@ bool isAssetShieldPath(String? value) {
   return (value ?? '').trim().startsWith('assets/');
 }
 
-Widget buildShieldAvatar(
-  String? path, {
-  double size = 58,
-  double padding = 8,
-}) {
+Widget buildShieldAvatar(String? path, {double size = 58, double padding = 8}) {
   final cleanPath = (path ?? '').trim();
 
   Widget fallback() {
@@ -73,12 +69,9 @@ Widget buildShieldAvatar(
       color: Colors.white,
     ),
     padding: EdgeInsets.all(padding),
-    child: ClipOval(
-      child: Center(child: image),
-    ),
+    child: ClipOval(child: Center(child: image)),
   );
 }
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1787,7 +1780,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final SettingsRepository _settingsRepository = SettingsRepository();
   final InstitutionRepository _institutionRepository =
-    const InstitutionRepository();
+      const InstitutionRepository();
 
   final structure.StructureRepository _structureRepository =
       structure.StructureRepository();
@@ -1809,183 +1802,183 @@ class _HomeScreenState extends State<HomeScreen> {
     categoriaSeleccionada,
   ];
 
-Future<void> _showInstitutionSwitcher() async {
-  final institutions = await _institutionRepository.readInstitutions();
+  Future<void> _showInstitutionSwitcher() async {
+    final institutions = await _institutionRepository.readInstitutions();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  String newInstitutionName = '';
+    String newInstitutionName = '';
 
-  final selected = await showModalBottomSheet<InstitutionModel>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: const Color(0xFF0F1722),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-    ),
-    builder: (sheetContext) {
-      Future<void> createInstitution() async {
-        final name = newInstitutionName.trim();
-        if (name.isEmpty) return;
+    final selected = await showModalBottomSheet<InstitutionModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        Future<void> createInstitution() async {
+          final name = newInstitutionName.trim();
+          if (name.isEmpty) return;
 
-        FocusScope.of(sheetContext).unfocus();
+          FocusScope.of(sheetContext).unfocus();
 
-        await _institutionRepository.addInstitution(name: name);
-        final created = await _institutionRepository.findByName(name);
+          await _institutionRepository.addInstitution(name: name);
+          final created = await _institutionRepository.findByName(name);
 
-        if (created != null && sheetContext.mounted) {
-          Navigator.pop(sheetContext, created);
+          if (created != null && sheetContext.mounted) {
+            Navigator.pop(sheetContext, created);
+          }
         }
-      }
 
-      return SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            MediaQuery.of(sheetContext).viewInsets.bottom + 28,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Cambiar institución',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 28,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Cambiar institución',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                ...institutions.map((institution) {
-                  final isCurrent = institution.id == institucionId;
+                  ...institutions.map((institution) {
+                    final isCurrent = institution.id == institucionId;
 
-                  return GestureDetector(
-                    onTap: () {
-                      FocusScope.of(sheetContext).unfocus();
-                      Navigator.pop(sheetContext, institution);
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? const Color(0xFF4F8CFF).withOpacity(0.22)
-                            : const Color(0xFF182338),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isCurrent
-                              ? const Color(0xFF4F8CFF)
-                              : Colors.white.withOpacity(0.06),
+                    return GestureDetector(
+                      onTap: () {
+                        FocusScope.of(sheetContext).unfocus();
+                        Navigator.pop(sheetContext, institution);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          buildShieldAvatar(
-                            institution.displayShieldPath,
-                            size: 38,
-                            padding: 6,
+                        decoration: BoxDecoration(
+                          color: isCurrent
+                              ? const Color(0xFF4F8CFF).withOpacity(0.22)
+                              : const Color(0xFF182338),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isCurrent
+                                ? const Color(0xFF4F8CFF)
+                                : Colors.white.withOpacity(0.06),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              institution.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
+                        ),
+                        child: Row(
+                          children: [
+                            buildShieldAvatar(
+                              institution.displayShieldPath,
+                              size: 38,
+                              padding: 6,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                institution.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
-                          ),
-                          if (isCurrent)
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: Color(0xFF4F8CFF),
-                            ),
-                        ],
+                            if (isCurrent)
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF4F8CFF),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
 
-                const SizedBox(height: 12),
-                TextField(
-                  textInputAction: TextInputAction.done,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Nueva institución',
-                    hintStyle: const TextStyle(color: Color(0xFF6B7280)),
-                    filled: true,
-                    fillColor: const Color(0xFF111A28),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: Colors.white.withOpacity(0.08),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    newInstitutionName = value;
-                  },
-                  onSubmitted: (_) => createInstitution(),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: createInstitution,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Crear nueva institución'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F8CFF),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
+                  const SizedBox(height: 12),
+                  TextField(
+                    textInputAction: TextInputAction.done,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Nueva institución',
+                      hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                      filled: true,
+                      fillColor: const Color(0xFF111A28),
+                      enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Colors.white.withOpacity(0.08),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      newInstitutionName = value;
+                    },
+                    onSubmitted: (_) => createInstitution(),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: createInstitution,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Crear nueva institución'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F8CFF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
 
-  if (!mounted || selected == null) return;
+    if (!mounted || selected == null) return;
 
-  setState(() {
-    tieneInstitucion = true;
-    institucionId = selected.id;
-    institucionNombre = selected.name;
-    institucionEscudo = selected.displayShieldPath;
-    temporadaSeleccionada = '';
-    competenciaSeleccionada = '';
-    torneoSeleccionado = '';
-    categoriaSeleccionada = '';
-    _contextStep = 'temporada';
-  });
+    setState(() {
+      tieneInstitucion = true;
+      institucionId = selected.id;
+      institucionNombre = selected.name;
+      institucionEscudo = selected.displayShieldPath;
+      temporadaSeleccionada = '';
+      competenciaSeleccionada = '';
+      torneoSeleccionado = '';
+      categoriaSeleccionada = '';
+      _contextStep = 'temporada';
+    });
 
-  await _saveActiveContext();
+    await _saveActiveContext();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  await _showMessage('Institución seleccionada correctamente.');
-}
+    await _showMessage('Institución seleccionada correctamente.');
+  }
 
   @override
   void initState() {
@@ -2003,7 +1996,7 @@ Future<void> _showInstitutionSwitcher() async {
     super.dispose();
   }
 
-    Future<void> _createInstitutionFromEmptyState() async {
+  Future<void> _createInstitutionFromEmptyState() async {
     final name = _institutionController.text.trim();
 
     if (name.isEmpty) {
@@ -2246,7 +2239,7 @@ Future<void> _showInstitutionSwitcher() async {
     );
 
     await _loadStructureData();
-        final resolvedInstitutionShield = await _resolveInstitutionShieldPath(
+    final resolvedInstitutionShield = await _resolveInstitutionShieldPath(
       institutionId: activeContext.institutionId,
       institutionName: activeContext.institutionName,
     );
@@ -2290,7 +2283,9 @@ Future<void> _showInstitutionSwitcher() async {
     }
 
     if ((institution.shieldAsset ?? '').trim().isNotEmpty) {
-      await _showMessage('Esta institución ya tiene un escudo incluido en la app.');
+      await _showMessage(
+        'Esta institución ya tiene un escudo incluido en la app.',
+      );
       return;
     }
 
@@ -2336,10 +2331,11 @@ Future<void> _showInstitutionSwitcher() async {
 
     await sourceFile.copy(targetPath);
 
-    final updated = await _institutionRepository.updateInstitutionShieldFilePath(
-      institutionId: institution.id,
-      shieldFilePath: targetPath,
-    );
+    final updated = await _institutionRepository
+        .updateInstitutionShieldFilePath(
+          institutionId: institution.id,
+          shieldFilePath: targetPath,
+        );
 
     if (!mounted) return;
 
@@ -2893,6 +2889,9 @@ Future<void> _showInstitutionSwitcher() async {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
+                institutionName: institucionNombre,
+                institutionId: institucionId,
+                institutionShieldPath: institucionEscudo,
               );
 
             case 'Estadísticas':
@@ -2932,14 +2931,14 @@ Future<void> _showInstitutionSwitcher() async {
       context,
       MaterialPageRoute(
         builder: (_) => FixtureScreen(
-        temporada: temporadaSeleccionada,
-        competencia: competenciaSeleccionada,
-        torneo: torneoSeleccionado,
-        categoria: categoriaSeleccionada,
-        institutionName: institucionNombre,
-        institutionId: institucionId,
-        institutionShieldPath: institucionEscudo,
-      ),
+          temporada: temporadaSeleccionada,
+          competencia: competenciaSeleccionada,
+          torneo: torneoSeleccionado,
+          categoria: categoriaSeleccionada,
+          institutionName: institucionNombre,
+          institutionId: institucionId,
+          institutionShieldPath: institucionEscudo,
+        ),
       ),
     );
   }
@@ -3310,58 +3309,54 @@ Future<void> _showInstitutionSwitcher() async {
   }
 
   Widget _buildInstitutionHeaderMounted() {
-  return Center(
-    child: GestureDetector(
-      onTap: _showInstitutionSwitcher,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0A1018).withOpacity(0.95),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInstitutionBadge(),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  institucionNombre,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    height: 1.1,
+    return Center(
+      child: GestureDetector(
+        onTap: _showInstitutionSwitcher,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A1018).withOpacity(0.95),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildInstitutionBadge(),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    institucionNombre,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.1,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.swap_horiz_rounded,
-                color: Color(0xFF7DB7FF),
-                size: 22,
-              ),
-            ],
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: Color(0xFF7DB7FF),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildInstitutionBadge() {
     return GestureDetector(
       onTap: tieneInstitucion ? _pickAndAssignInstitutionShield : null,
-      child: buildShieldAvatar(
-        institucionEscudo,
-        size: 48,
-        padding: 8,
-      ),
+      child: buildShieldAvatar(institucionEscudo, size: 48, padding: 8),
     );
   }
 
@@ -4353,14 +4348,12 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     final normalized = _institutionName.trim().toLowerCase();
 
-    if (normalized == 'san fernando handball' ||
-        normalized == 'san fernando') {
+    if (normalized == 'san fernando handball' || normalized == 'san fernando') {
       return 'assets/images/san_fernando.png';
     }
 
     return null;
   }
-
 
   List<PartidoModel> _customFixturesV2 = [];
 
@@ -4884,35 +4877,35 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
-  final partidoInstitutionId = _normalizeContextText(partido.institutionId);
-  final currentInstitutionId = _normalizeContextText(widget.institutionId);
+    final partidoInstitutionId = _normalizeContextText(partido.institutionId);
+    final currentInstitutionId = _normalizeContextText(widget.institutionId);
 
-  final sameInstitution =
-      partidoInstitutionId.isNotEmpty &&
-      currentInstitutionId.isNotEmpty &&
-      partidoInstitutionId == currentInstitutionId;
+    final sameInstitution =
+        partidoInstitutionId.isNotEmpty &&
+        currentInstitutionId.isNotEmpty &&
+        partidoInstitutionId == currentInstitutionId;
 
-  if (!sameInstitution) return false;
+    if (!sameInstitution) return false;
 
-  final temporada = _normalizeContextText(partido.temporada);
-  final competencia = _normalizeContextText(partido.competencia);
-  final torneo = _normalizeContextText(partido.torneo);
-  final categoria = _normalizeContextText(partido.categoria);
+    final temporada = _normalizeContextText(partido.temporada);
+    final competencia = _normalizeContextText(partido.competencia);
+    final torneo = _normalizeContextText(partido.torneo);
+    final categoria = _normalizeContextText(partido.categoria);
 
-  final widgetTemporada = _normalizeContextText(widget.temporada);
-  final widgetCompetencia = _normalizeContextText(widget.competencia);
-  final widgetTorneo = _normalizeContextText(widget.torneo);
-  final widgetCategoria = _normalizeContextText(widget.categoria);
+    final widgetTemporada = _normalizeContextText(widget.temporada);
+    final widgetCompetencia = _normalizeContextText(widget.competencia);
+    final widgetTorneo = _normalizeContextText(widget.torneo);
+    final widgetCategoria = _normalizeContextText(widget.categoria);
 
-  final sameBase =
-      temporada == widgetTemporada &&
-      competencia == widgetCompetencia &&
-      categoria == widgetCategoria;
+    final sameBase =
+        temporada == widgetTemporada &&
+        competencia == widgetCompetencia &&
+        categoria == widgetCategoria;
 
-  if (!sameBase) return false;
+    if (!sameBase) return false;
 
-  return torneo == widgetTorneo || _sameLooseStage(torneo, widgetTorneo);
-}
+    return torneo == widgetTorneo || _sameLooseStage(torneo, widgetTorneo);
+  }
 
   Future<void> _loadCustomFixturesV2() async {
     final data = await _fixtureRepository.readFixtures();
@@ -4937,14 +4930,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
-  return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-    ...partido,
-    'institutionId': partido['institutionId'] ?? widget.institutionId,
-    'temporada': partido['temporada'] ?? widget.temporada,
-    'competencia': partido['competencia'] ?? widget.competencia,
-    'torneo': partido['torneo'] ?? widget.torneo,
-    'categoria': partido['categoria'] ?? widget.categoria,
-  });
+    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+      ...partido,
+      'institutionId': partido['institutionId'] ?? widget.institutionId,
+      'temporada': partido['temporada'] ?? widget.temporada,
+      'competencia': partido['competencia'] ?? widget.competencia,
+      'torneo': partido['torneo'] ?? widget.torneo,
+      'categoria': partido['categoria'] ?? widget.categoria,
+    });
   }
 
   List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
@@ -5379,15 +5372,15 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     proximoPartido['esPartidoReal'] ??= false;
 
-final ownTeamName = widget.institutionName.trim().isEmpty
-    ? 'Institución'
-    : widget.institutionName.trim();
+    final ownTeamName = widget.institutionName.trim().isEmpty
+        ? 'Institución'
+        : widget.institutionName.trim();
 
-proximoPartido['institutionId'] = widget.institutionId;
-proximoPartido['equipoPropio'] = ownTeamName;
-proximoPartido['escudoPropio'] = _institutionShieldPath;
+    proximoPartido['institutionId'] = widget.institutionId;
+    proximoPartido['equipoPropio'] = ownTeamName;
+    proximoPartido['escudoPropio'] = _institutionShieldPath;
 
-await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
@@ -5513,7 +5506,7 @@ await Navigator.push(
     final result = await Navigator.push<PartidoModel>(
       context,
       MaterialPageRoute(
-                builder: (_) => MatchEditorScreen(
+        builder: (_) => MatchEditorScreen(
           initial: oldModel,
           temporada: widget.temporada,
           competencia: widget.competencia,
@@ -5837,7 +5830,7 @@ await Navigator.push(
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-                Text(
+        Text(
           _institutionTitle,
           style: const TextStyle(
             fontSize: 24,
@@ -5864,7 +5857,7 @@ await Navigator.push(
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-                Text(
+        Text(
           _institutionTitle,
           style: const TextStyle(
             fontSize: 24,
@@ -10385,7 +10378,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
     return value;
   }
 
-    String? get _institutionShieldPath {
+  String? get _institutionShieldPath {
     final direct = (widget.institutionShieldPath ?? '').trim();
 
     if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
@@ -10394,8 +10387,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     final normalized = _institutionName.trim().toLowerCase();
 
-    if (normalized == 'san fernando handball' ||
-        normalized == 'san fernando') {
+    if (normalized == 'san fernando handball' || normalized == 'san fernando') {
       return 'assets/images/san_fernando.png';
     }
 
@@ -11321,7 +11313,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// Estos getters siguen manejando la UI actual,
   /// pero algunos datos ya se leen desde PartidoModel.
   /// ===============================
-  
+
   bool get _partidoFinalizado => estadoPartido == 'finalizado';
 
   bool get _somosLocales => partidoV2.condicion.trim().toLowerCase() == 'local';
@@ -11345,8 +11337,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
 
     final normalized = _equipoPropioNombre.trim().toLowerCase();
 
-    if (normalized == 'san fernando handball' ||
-        normalized == 'san fernando') {
+    if (normalized == 'san fernando handball' || normalized == 'san fernando') {
       return 'assets/images/san_fernando.png';
     }
 
@@ -11590,7 +11581,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// Sincroniza el estado actual del centro de control con widget.partido,
   /// pero usando PartidoModel como base intermedia.
   /// ===============================
-    void _syncStateToPartido() {
+  void _syncStateToPartido() {
     final PartidoModel partidoActualizado = partidoV2.copyWith(
       estado: estadoPartido == 'finalizado' ? 'Finalizado' : partidoV2.estado,
       estadoPartido: estadoPartido,
@@ -12369,9 +12360,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   String get _matchIdentity {
-  return PartidoRepositoryV2.buildMatchIdentityFromMap(
-    Map<String, dynamic>.from(widget.partido),
-  );
+    return PartidoRepositoryV2.buildMatchIdentityFromMap(
+      Map<String, dynamic>.from(widget.partido),
+    );
   }
 
   bool get _isArgentinosJuniorsOfficialMatch {
@@ -12491,72 +12482,73 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Map<String, dynamic> _toPersistedMatchMap() {
-  final partidoPersistido = Map<String, dynamic>.from(widget.partido);
+    final partidoPersistido = Map<String, dynamic>.from(widget.partido);
 
-  partidoPersistido['estado'] =
-      estadoPartido == 'finalizado' ? 'Finalizado' : 'En vivo';
-  partidoPersistido['estadoPartido'] = estadoPartido;
-  partidoPersistido['finalizado'] = estadoPartido == 'finalizado';
+    partidoPersistido['estado'] = estadoPartido == 'finalizado'
+        ? 'Finalizado'
+        : 'En vivo';
+    partidoPersistido['estadoPartido'] = estadoPartido;
+    partidoPersistido['finalizado'] = estadoPartido == 'finalizado';
 
-  partidoPersistido['golesSanFernando'] = golesSanFernando;
-  partidoPersistido['golesRival'] = golesRival;
-  partidoPersistido['golesRecibidos'] = golesRecibidos;
-  partidoPersistido['atajadas'] = atajadas;
-  partidoPersistido['penales'] = penales;
-  partidoPersistido['exclusiones2Min'] = exclusiones2Min;
-  partidoPersistido['amarillas'] = amarillas;
-  partidoPersistido['rojas'] = rojas;
-  partidoPersistido['perdidas'] = perdidas;
-  partidoPersistido['recuperaciones'] = recuperaciones;
-  partidoPersistido['penalesConvertidosSanFernando'] =
-      penalesConvertidosSanFernando;
-  partidoPersistido['penalesConvertidosRival'] = penalesConvertidosRival;
-  partidoPersistido['modoActual'] = modo;
-  partidoPersistido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
-  partidoPersistido['modoInicioPrimerTiempoAlargue'] =
-      modoInicioPrimerTiempoAlargue;
-  partidoPersistido['currentGoalkeeperNumber'] = currentGoalkeeperNumber;
-  partidoPersistido['eventos'] = eventos;
+    partidoPersistido['golesSanFernando'] = golesSanFernando;
+    partidoPersistido['golesRival'] = golesRival;
+    partidoPersistido['golesRecibidos'] = golesRecibidos;
+    partidoPersistido['atajadas'] = atajadas;
+    partidoPersistido['penales'] = penales;
+    partidoPersistido['exclusiones2Min'] = exclusiones2Min;
+    partidoPersistido['amarillas'] = amarillas;
+    partidoPersistido['rojas'] = rojas;
+    partidoPersistido['perdidas'] = perdidas;
+    partidoPersistido['recuperaciones'] = recuperaciones;
+    partidoPersistido['penalesConvertidosSanFernando'] =
+        penalesConvertidosSanFernando;
+    partidoPersistido['penalesConvertidosRival'] = penalesConvertidosRival;
+    partidoPersistido['modoActual'] = modo;
+    partidoPersistido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
+    partidoPersistido['modoInicioPrimerTiempoAlargue'] =
+        modoInicioPrimerTiempoAlargue;
+    partidoPersistido['currentGoalkeeperNumber'] = currentGoalkeeperNumber;
+    partidoPersistido['eventos'] = eventos;
 
-  return {
-    'version': 2,
-    'matchIdentity': _matchIdentity,
-    'partido': partidoPersistido,
-    'institutionId': partidoPersistido['institutionId'],
-    'temporada': partidoPersistido['temporada'],
-    'competencia': partidoPersistido['competencia'],
-    'torneo': partidoPersistido['torneo'],
-    'categoria': partidoPersistido['categoria'],
-    'estadoPartido': estadoPartido,
-    'finalizado': estadoPartido == 'finalizado',
-    'golesSanFernando': golesSanFernando,
-    'golesRival': golesRival,
-    'golesRecibidos': golesRecibidos,
-    'atajadas': atajadas,
-    'penales': penales,
-    'exclusiones2Min': exclusiones2Min,
-    'amarillas': amarillas,
-    'rojas': rojas,
-    'perdidas': perdidas,
-    'recuperaciones': recuperaciones,
-    'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-    'penalesConvertidosRival': penalesConvertidosRival,
-    'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
-    'penalesIntentadosRival': penalesIntentadosRival,
-    'modo': modo,
-    'zonaTiro': zonaTiro,
-    'zonaArco': zonaArco,
-    'penalEnCurso': penalEnCurso,
-    'actorPenalActual': actorPenalActual,
-    'mostrarContra': mostrarContra,
-    'contraDebeCambiarModo': contraDebeCambiarModo,
-    'origenJugadaActual': origenJugadaActual,
-    'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
-    'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
-    'currentGoalkeeperNumber': currentGoalkeeperNumber,
-    'eventos': eventos,
-  };
-}
+    return {
+      'version': 2,
+      'matchIdentity': _matchIdentity,
+      'partido': partidoPersistido,
+      'institutionId': partidoPersistido['institutionId'],
+      'temporada': partidoPersistido['temporada'],
+      'competencia': partidoPersistido['competencia'],
+      'torneo': partidoPersistido['torneo'],
+      'categoria': partidoPersistido['categoria'],
+      'estadoPartido': estadoPartido,
+      'finalizado': estadoPartido == 'finalizado',
+      'golesSanFernando': golesSanFernando,
+      'golesRival': golesRival,
+      'golesRecibidos': golesRecibidos,
+      'atajadas': atajadas,
+      'penales': penales,
+      'exclusiones2Min': exclusiones2Min,
+      'amarillas': amarillas,
+      'rojas': rojas,
+      'perdidas': perdidas,
+      'recuperaciones': recuperaciones,
+      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+      'penalesConvertidosRival': penalesConvertidosRival,
+      'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
+      'penalesIntentadosRival': penalesIntentadosRival,
+      'modo': modo,
+      'zonaTiro': zonaTiro,
+      'zonaArco': zonaArco,
+      'penalEnCurso': penalEnCurso,
+      'actorPenalActual': actorPenalActual,
+      'mostrarContra': mostrarContra,
+      'contraDebeCambiarModo': contraDebeCambiarModo,
+      'origenJugadaActual': origenJugadaActual,
+      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+      'currentGoalkeeperNumber': currentGoalkeeperNumber,
+      'eventos': eventos,
+    };
+  }
 
   Future<void> _persistLiveMatch() async {
     if (!mounted) return;
@@ -12815,7 +12807,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   String? get _escudoVisitanteEnVivo {
     return _somosLocales ? _rivalEscudoEnVivo : _equipoPropioEscudoEnVivo;
   }
-  
+
   int _golesLocal() => _somosLocales ? golesSanFernando : golesRival;
   int _golesVisitante() => _somosLocales ? golesRival : golesSanFernando;
 
@@ -13052,11 +13044,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildMiniShield({String? assetPath}) {
-    return buildShieldAvatar(
-      assetPath,
-      size: 34,
-      padding: 6,
-    );
+    return buildShieldAvatar(assetPath, size: 34, padding: 6);
   }
 
   Widget _buildMiniTeamTag(String text) {
@@ -15896,6 +15884,9 @@ class HistorialScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const HistorialScreen({
     super.key,
@@ -15903,6 +15894,9 @@ class HistorialScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -16027,7 +16021,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
   ActiveContext get _activeContext {
     return ActiveContext(
       hasInstitution: true,
-      institutionName: '',
+      institutionName: widget.institutionName,
+      institutionId: widget.institutionId,
       season: widget.temporada,
       competition: widget.competencia,
       tournament: widget.torneo,
@@ -16186,12 +16181,47 @@ class _HistorialScreenState extends State<HistorialScreen> {
                             );
                             final escudo = _rivalShieldAsset(rival);
 
+                            final condicion = (partido['condicion'] ?? '')
+                                .toString()
+                                .trim();
+                            final somosLocales =
+                                condicion.toLowerCase() == 'local';
+
+                            final equipoPropio =
+                                widget.institutionName.trim().isEmpty
+                                ? (partido['equipoPropio'] ?? 'Institución')
+                                      .toString()
+                                : widget.institutionName.trim();
+
+                            final escudoPropio =
+                                widget.institutionShieldPath ??
+                                partido['escudoPropio']?.toString();
+
                             final match = MatchModel.fromMap(
                               {
                                 ...partido,
+                                'institutionId':
+                                    partido['institutionId'] ??
+                                    widget.institutionId,
+                                'equipoPropio': equipoPropio,
+                                'escudoPropio': escudoPropio,
+                                'equipoLocal': somosLocales
+                                    ? equipoPropio
+                                    : rival,
+                                'equipoVisitante': somosLocales
+                                    ? rival
+                                    : equipoPropio,
+                                'escudoLocal': somosLocales
+                                    ? escudoPropio
+                                    : escudo,
+                                'escudoVisitante': somosLocales
+                                    ? escudo
+                                    : escudoPropio,
                                 'rival': rival,
                                 'escudoRival': escudo,
+                                'estado': 'Finalizado',
                                 'estadoPartido': 'finalizado',
+                                'finalizado': true,
                               },
                               finalizadoOverride: true,
                               escudoRivalOverride: escudo,

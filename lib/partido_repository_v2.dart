@@ -36,9 +36,7 @@ class PartidoRepositoryV2 {
   /// LEGACY MATCH IDENTITY
   /// Compatible con historial viejo.
   /// ===============================
-  static String buildLegacyMatchIdentityFromModel(
-    PartidoModel partido,
-  ) {
+  static String buildLegacyMatchIdentityFromModel(PartidoModel partido) {
     return [
       normalizeValue(partido.temporada),
       normalizeValue(partido.competencia),
@@ -54,13 +52,9 @@ class PartidoRepositoryV2 {
   /// MATCH IDENTITY V2
   /// Nueva identidad multi-institución.
   /// ===============================
-  static String buildMatchIdentityFromModel(
-    PartidoModel partido,
-  ) {
+  static String buildMatchIdentityFromModel(PartidoModel partido) {
     return [
-      normalizeValue(
-        partido.institutionId ?? 'legacy_institution',
-      ),
+      normalizeValue(partido.institutionId ?? 'legacy_institution'),
       normalizeValue(partido.temporada),
       normalizeValue(partido.competencia),
       normalizeValue(partido.torneo),
@@ -74,9 +68,7 @@ class PartidoRepositoryV2 {
   /// ===============================
   /// LEGACY MATCH IDENTITY MAP
   /// ===============================
-  static String buildLegacyMatchIdentityFromMap(
-    Map<String, dynamic> partido,
-  ) {
+  static String buildLegacyMatchIdentityFromMap(Map<String, dynamic> partido) {
     return [
       normalizeValue(partido['temporada'] ?? '2026'),
       normalizeValue(partido['competencia'] ?? 'Local'),
@@ -91,23 +83,19 @@ class PartidoRepositoryV2 {
   /// ===============================
   /// MATCH IDENTITY MAP V2
   /// ===============================
-  static String buildMatchIdentityFromMap(
-  Map<String, dynamic> partido,
-) {
-  return [
-    normalizeValue(
-      partido['institutionId'] ?? 'legacy_institution',
-    ),
-    normalizeValue(partido['temporada'] ?? '2026'),
-    normalizeValue(partido['competencia'] ?? 'Local'),
-    normalizeValue(partido['torneo']),
-    normalizeValue(partido['categoria']),
-    normalizeValue(partido['fecha']),
-    normalizeValue(partido['rival']),
-    normalizeValue(partido['condicion']),
-  ].join('|');
-}
-  
+  static String buildMatchIdentityFromMap(Map<String, dynamic> partido) {
+    return [
+      normalizeValue(partido['institutionId'] ?? 'legacy_institution'),
+      normalizeValue(partido['temporada'] ?? '2026'),
+      normalizeValue(partido['competencia'] ?? 'Local'),
+      normalizeValue(partido['torneo']),
+      normalizeValue(partido['categoria']),
+      normalizeValue(partido['fecha']),
+      normalizeValue(partido['rival']),
+      normalizeValue(partido['condicion']),
+    ].join('|');
+  }
+
   /// ===============================
   /// READ LIVE MATCH SEGURO
   /// No rompe si live_match_current_v1 está null/corrupto.
@@ -156,7 +144,7 @@ class PartidoRepositoryV2 {
   /// LEER PARTIDOS FINALIZADOS
   /// Devuelve la lista de partidos finalizados guardados.
   /// ===============================
-    static Future<List<PartidoModel>> readFinishedMatches() async {
+  static Future<List<PartidoModel>> readFinishedMatches() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(finishedMatchesStorageKey);
 
@@ -187,8 +175,23 @@ class PartidoRepositoryV2 {
 
           final merged = {
             ...partidoMap,
+
+            'institutionId':
+                data['institutionId'] ?? partidoMap['institutionId'],
+            'temporada': data['temporada'] ?? partidoMap['temporada'] ?? '2026',
+            'competencia':
+                data['competencia'] ?? partidoMap['competencia'] ?? 'Local',
+            'torneo': data['torneo'] ?? partidoMap['torneo'],
+            'categoria': data['categoria'] ?? partidoMap['categoria'],
+
+            'matchIdentity':
+                data['matchIdentity'] ?? partidoMap['matchIdentity'],
+            'archivedAt': data['archivedAt'] ?? partidoMap['archivedAt'],
+
             'estado': 'Finalizado',
             'estadoPartido': 'finalizado',
+            'finalizado': true,
+
             'golesSanFernando':
                 data['golesSanFernando'] ?? partidoMap['golesSanFernando'],
             'golesRival': data['golesRival'] ?? partidoMap['golesRival'],
@@ -205,12 +208,11 @@ class PartidoRepositoryV2 {
                 data['recuperaciones'] ?? partidoMap['recuperaciones'],
             'penalesConvertidosSanFernando':
                 data['penalesConvertidosSanFernando'] ??
-                    partidoMap['penalesConvertidosSanFernando'],
+                partidoMap['penalesConvertidosSanFernando'],
             'penalesConvertidosRival':
                 data['penalesConvertidosRival'] ??
-                    partidoMap['penalesConvertidosRival'],
+                partidoMap['penalesConvertidosRival'],
             'eventos': data['eventos'] ?? partidoMap['eventos'] ?? <dynamic>[],
-            'archivedAt': data['archivedAt'] ?? partidoMap['archivedAt'],
           };
 
           items.add(PartidoModel.fromMap(merged));
@@ -236,5 +238,4 @@ class PartidoRepositoryV2 {
       return const [];
     }
   }
-
 }
