@@ -1808,6 +1808,118 @@ class _HomeScreenState extends State<HomeScreen> {
     torneoSeleccionado,
     categoriaSeleccionada,
   ];
+
+Future<void> _showInstitutionSwitcher() async {
+  final institutions = await _institutionRepository.readInstitutions();
+
+  if (!mounted) return;
+
+  if (institutions.isEmpty) {
+    await _showMessage('No hay instituciones disponibles.');
+    return;
+  }
+
+  final selected = await showModalBottomSheet<InstitutionModel>(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Cambiar institución',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...institutions.map((institution) {
+                final isCurrent = institution.id == institucionId;
+
+                return GestureDetector(
+                  onTap: () => Navigator.pop(context, institution),
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? const Color(0xFF4F8CFF).withOpacity(0.22)
+                          : const Color(0xFF182338),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isCurrent
+                            ? const Color(0xFF4F8CFF)
+                            : Colors.white.withOpacity(0.06),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        buildShieldAvatar(
+                          institution.displayShieldPath,
+                          size: 38,
+                          padding: 6,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            institution.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (isCurrent)
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: Color(0xFF4F8CFF),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  if (!mounted || selected == null) return;
+
+  setState(() {
+    tieneInstitucion = true;
+    institucionId = selected.id;
+    institucionNombre = selected.name;
+    institucionEscudo = selected.displayShieldPath;
+    temporadaSeleccionada = '';
+    competenciaSeleccionada = '';
+    torneoSeleccionado = '';
+    categoriaSeleccionada = '';
+    _contextStep = 'temporada';
+  });
+
+  await _saveActiveContext();
+
+  if (!mounted) return;
+
+  await _showMessage('Institución cambiada correctamente.');
+}
+
   @override
   void initState() {
     super.initState();
@@ -3131,7 +3243,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInstitutionHeaderMounted() {
-    return Center(
+  return Center(
+    child: GestureDetector(
+      onTap: _showInstitutionSwitcher,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -3159,12 +3273,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.swap_horiz_rounded,
+                color: Color(0xFF7DB7FF),
+                size: 22,
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildInstitutionBadge() {
     return GestureDetector(
