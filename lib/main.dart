@@ -12290,22 +12290,64 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   bool _isDraw() => golesSanFernando == golesRival;
   bool _isPenaltyShootout() => estadoPartido == 'penales';
 
-  bool get _somosLocales => widget.partido['condicion'] == 'Local';
+  bool get _somosLocales {
+    return (widget.partido['condicion'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase() ==
+        'local';
+  }
 
-  String get _nombreLocalEnVivo => _somosLocales
-      ? 'San Fernando'
-      : (widget.partido['rival'] ?? 'Rival').toString();
+  String get _equipoPropioNombreEnVivo {
+    final raw = (widget.partido['equipoPropio'] ?? '').toString().trim();
 
-  String get _nombreVisitanteEnVivo => _somosLocales
-      ? (widget.partido['rival'] ?? 'Rival').toString()
-      : 'San Fernando';
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return fixTextoRoto(raw);
+    }
 
-  String? get _escudoLocalEnVivo =>
-      _somosLocales ? 'assets/images/san_fernando.png' : _rivalShieldAsset();
+    return 'Institución';
+  }
 
-  String? get _escudoVisitanteEnVivo =>
-      _somosLocales ? _rivalShieldAsset() : 'assets/images/san_fernando.png';
+  String? get _equipoPropioEscudoEnVivo {
+    final raw = (widget.partido['escudoPropio'] ?? '').toString().trim();
 
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return raw;
+    }
+
+    return null;
+  }
+
+  String? get _rivalEscudoEnVivo {
+    final directo = (widget.partido['escudoRival'] ?? '').toString().trim();
+
+    if (directo.isNotEmpty && directo.toLowerCase() != 'null') {
+      return directo;
+    }
+
+    return _rivalShieldAsset();
+  }
+
+  String get _nombreLocalEnVivo {
+    return _somosLocales
+        ? _equipoPropioNombreEnVivo
+        : (widget.partido['rival'] ?? 'Rival').toString();
+  }
+
+  String get _nombreVisitanteEnVivo {
+    return _somosLocales
+        ? (widget.partido['rival'] ?? 'Rival').toString()
+        : _equipoPropioNombreEnVivo;
+  }
+
+  String? get _escudoLocalEnVivo {
+    return _somosLocales ? _equipoPropioEscudoEnVivo : _rivalEscudoEnVivo;
+  }
+
+  String? get _escudoVisitanteEnVivo {
+    return _somosLocales ? _rivalEscudoEnVivo : _equipoPropioEscudoEnVivo;
+  }
+  
   int _golesLocal() => _somosLocales ? golesSanFernando : golesRival;
   int _golesVisitante() => _somosLocales ? golesRival : golesSanFernando;
 
