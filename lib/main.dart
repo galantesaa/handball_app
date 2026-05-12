@@ -12369,13 +12369,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   String get _matchIdentity {
-    return [
-      _normalizeValue(widget.partido['torneo']),
-      _normalizeValue(widget.partido['categoria']),
-      _normalizeValue(widget.partido['fecha']),
-      _normalizeValue(widget.partido['rival']),
-      _normalizeValue(widget.partido['condicion']),
-    ].join('|');
+  return PartidoRepositoryV2.buildMatchIdentityFromMap(
+    Map<String, dynamic>.from(widget.partido),
+  );
   }
 
   bool get _isArgentinosJuniorsOfficialMatch {
@@ -12495,39 +12491,72 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Map<String, dynamic> _toPersistedMatchMap() {
-    return {
-      'version': 1,
-      'matchIdentity': _matchIdentity,
-      'partido': Map<String, dynamic>.from(widget.partido),
-      'estadoPartido': estadoPartido,
-      'golesSanFernando': golesSanFernando,
-      'golesRival': golesRival,
-      'golesRecibidos': golesRecibidos,
-      'atajadas': atajadas,
-      'penales': penales,
-      'exclusiones2Min': exclusiones2Min,
-      'amarillas': amarillas,
-      'rojas': rojas,
-      'perdidas': perdidas,
-      'recuperaciones': recuperaciones,
-      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-      'penalesConvertidosRival': penalesConvertidosRival,
-      'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
-      'penalesIntentadosRival': penalesIntentadosRival,
-      'modo': modo,
-      'zonaTiro': zonaTiro,
-      'zonaArco': zonaArco,
-      'penalEnCurso': penalEnCurso,
-      'actorPenalActual': actorPenalActual,
-      'mostrarContra': mostrarContra,
-      'contraDebeCambiarModo': contraDebeCambiarModo,
-      'origenJugadaActual': origenJugadaActual,
-      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
-      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
-      'currentGoalkeeperNumber': currentGoalkeeperNumber,
-      'eventos': eventos,
-    };
-  }
+  final partidoPersistido = Map<String, dynamic>.from(widget.partido);
+
+  partidoPersistido['estado'] =
+      estadoPartido == 'finalizado' ? 'Finalizado' : 'En vivo';
+  partidoPersistido['estadoPartido'] = estadoPartido;
+  partidoPersistido['finalizado'] = estadoPartido == 'finalizado';
+
+  partidoPersistido['golesSanFernando'] = golesSanFernando;
+  partidoPersistido['golesRival'] = golesRival;
+  partidoPersistido['golesRecibidos'] = golesRecibidos;
+  partidoPersistido['atajadas'] = atajadas;
+  partidoPersistido['penales'] = penales;
+  partidoPersistido['exclusiones2Min'] = exclusiones2Min;
+  partidoPersistido['amarillas'] = amarillas;
+  partidoPersistido['rojas'] = rojas;
+  partidoPersistido['perdidas'] = perdidas;
+  partidoPersistido['recuperaciones'] = recuperaciones;
+  partidoPersistido['penalesConvertidosSanFernando'] =
+      penalesConvertidosSanFernando;
+  partidoPersistido['penalesConvertidosRival'] = penalesConvertidosRival;
+  partidoPersistido['modoActual'] = modo;
+  partidoPersistido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
+  partidoPersistido['modoInicioPrimerTiempoAlargue'] =
+      modoInicioPrimerTiempoAlargue;
+  partidoPersistido['currentGoalkeeperNumber'] = currentGoalkeeperNumber;
+  partidoPersistido['eventos'] = eventos;
+
+  return {
+    'version': 2,
+    'matchIdentity': _matchIdentity,
+    'partido': partidoPersistido,
+    'institutionId': partidoPersistido['institutionId'],
+    'temporada': partidoPersistido['temporada'],
+    'competencia': partidoPersistido['competencia'],
+    'torneo': partidoPersistido['torneo'],
+    'categoria': partidoPersistido['categoria'],
+    'estadoPartido': estadoPartido,
+    'finalizado': estadoPartido == 'finalizado',
+    'golesSanFernando': golesSanFernando,
+    'golesRival': golesRival,
+    'golesRecibidos': golesRecibidos,
+    'atajadas': atajadas,
+    'penales': penales,
+    'exclusiones2Min': exclusiones2Min,
+    'amarillas': amarillas,
+    'rojas': rojas,
+    'perdidas': perdidas,
+    'recuperaciones': recuperaciones,
+    'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+    'penalesConvertidosRival': penalesConvertidosRival,
+    'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
+    'penalesIntentadosRival': penalesIntentadosRival,
+    'modo': modo,
+    'zonaTiro': zonaTiro,
+    'zonaArco': zonaArco,
+    'penalEnCurso': penalEnCurso,
+    'actorPenalActual': actorPenalActual,
+    'mostrarContra': mostrarContra,
+    'contraDebeCambiarModo': contraDebeCambiarModo,
+    'origenJugadaActual': origenJugadaActual,
+    'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+    'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+    'currentGoalkeeperNumber': currentGoalkeeperNumber,
+    'eventos': eventos,
+  };
+}
 
   Future<void> _persistLiveMatch() async {
     if (!mounted) return;
