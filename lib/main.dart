@@ -5150,6 +5150,9 @@ await Navigator.push(
           competencia: widget.competencia,
           torneo: widget.torneo,
           categoria: widget.categoria,
+          institutionId: null,
+          equipoPropio: _institutionName,
+          escudoPropio: _institutionShieldPath,
         ),
       ),
     );

@@ -12,6 +12,9 @@ class MatchEditorScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String? institutionId;
+  final String? equipoPropio;
+  final String? escudoPropio;
 
   const MatchEditorScreen({
     super.key,
@@ -20,6 +23,9 @@ class MatchEditorScreen extends StatefulWidget {
     required this.torneo,
     required this.categoria,
     this.initial,
+    this.institutionId,
+    this.equipoPropio,
+    this.escudoPropio,
   });
 
   @override
@@ -286,6 +292,9 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     final partido = PartidoModel(
       temporada: widget.temporada,
       competencia: widget.competencia,
+      institutionId: widget.institutionId,
+      equipoPropio: widget.equipoPropio,
+      escudoPropio: widget.escudoPropio,
       rival: rival,
       fechaNumero: fechaNumero,
       fecha: fecha,
