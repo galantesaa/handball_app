@@ -11189,7 +11189,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// Sincroniza el estado actual del centro de control con widget.partido,
   /// pero usando PartidoModel como base intermedia.
   /// ===============================
-  void _syncStateToPartido() {
+    void _syncStateToPartido() {
     final PartidoModel partidoActualizado = partidoV2.copyWith(
       estado: estadoPartido == 'finalizado' ? 'Finalizado' : partidoV2.estado,
       estadoPartido: estadoPartido,
@@ -11214,6 +11214,15 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     final Map<String, dynamic> actualizadoMap = partidoActualizado.toMap();
 
     final bool esPartidoRealActual = widget.partido['esPartidoReal'] == true;
+
+    final dynamic equipoPropioActual = widget.partido['equipoPropio'];
+    final dynamic escudoPropioActual = widget.partido['escudoPropio'];
+    final dynamic escudoRivalActual = widget.partido['escudoRival'];
+    final dynamic equipoLocalActual = widget.partido['equipoLocal'];
+    final dynamic equipoVisitanteActual = widget.partido['equipoVisitante'];
+    final dynamic escudoLocalActual = widget.partido['escudoLocal'];
+    final dynamic escudoVisitanteActual = widget.partido['escudoVisitante'];
+
     final dynamic matchSquadActual = widget.partido['matchSquad'];
     final dynamic matchRosterSnapshotActual =
         widget.partido['matchRosterSnapshot'];
@@ -11223,14 +11232,43 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       ..addAll(actualizadoMap)
       ..['esPartidoReal'] = esPartidoRealActual;
 
+    if (equipoPropioActual != null) {
+      widget.partido['equipoPropio'] = equipoPropioActual;
+    }
+
+    if (escudoPropioActual != null) {
+      widget.partido['escudoPropio'] = escudoPropioActual;
+    }
+
+    if (escudoRivalActual != null) {
+      widget.partido['escudoRival'] = escudoRivalActual;
+    }
+
+    if (equipoLocalActual != null) {
+      widget.partido['equipoLocal'] = equipoLocalActual;
+    }
+
+    if (equipoVisitanteActual != null) {
+      widget.partido['equipoVisitante'] = equipoVisitanteActual;
+    }
+
+    if (escudoLocalActual != null) {
+      widget.partido['escudoLocal'] = escudoLocalActual;
+    }
+
+    if (escudoVisitanteActual != null) {
+      widget.partido['escudoVisitante'] = escudoVisitanteActual;
+    }
+
     if (matchSquadActual != null) {
       widget.partido['matchSquad'] = matchSquadActual;
     }
+
     if (matchRosterSnapshotActual != null) {
       widget.partido['matchRosterSnapshot'] = matchRosterSnapshotActual;
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
