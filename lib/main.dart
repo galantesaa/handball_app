@@ -1777,6 +1777,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String institucionNombre = '';
   String? institucionId;
+  String? institucionEscudo;
   String temporadaSeleccionada = '';
   String competenciaSeleccionada = '';
   String torneoSeleccionado = '';
@@ -1846,6 +1847,7 @@ class _HomeScreenState extends State<HomeScreen> {
       tieneInstitucion = true;
       institucionId = institution.id;
       institucionNombre = institution.name;
+      institucionEscudo = institution.displayShieldPath;
       temporadaSeleccionada = '';
       competenciaSeleccionada = '';
       torneoSeleccionado = '';
@@ -2065,16 +2067,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     await _loadStructureData();
+        final resolvedInstitutionShield = await _resolveInstitutionShieldPath(
+      institutionId: activeContext.institutionId,
+      institutionName: activeContext.institutionName,
+    );
+
+    if (!mounted) return;
     setState(() {
       tieneInstitucion = activeContext.hasInstitution;
       institucionId = activeContext.institutionId;
       institucionNombre = activeContext.institutionName;
+      institucionEscudo = resolvedInstitutionShield;
       temporadaSeleccionada = activeContext.season;
       competenciaSeleccionada = activeContext.competition;
       torneoSeleccionado = activeContext.tournament;
       categoriaSeleccionada = activeContext.category;
       _isLoadingContext = false;
     });
+  }
+
+  Future<String?> _resolveInstitutionShieldPath({
+    required String? institutionId,
+    required String institutionName,
+  }) async {
+    InstitutionModel? institution;
+
+    final cleanId = (institutionId ?? '').trim();
+
+    if (cleanId.isNotEmpty) {
+      institution = await _institutionRepository.findById(cleanId);
+    }
+
+    institution ??= await _institutionRepository.findByName(institutionName);
+
+    return institution?.displayShieldPath;
   }
 
   Future<void> _loadStructureData() async {
@@ -2576,6 +2602,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 categoria: categoriaSeleccionada,
                 tieneFixture: competenciaActualTieneFixture,
                 institutionName: institucionNombre,
+                institutionId: institucionId,
+                institutionShieldPath: institucionEscudo,
               );
 
             case 'Partidos jugados':
@@ -2623,12 +2651,14 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => FixtureScreen(
-          temporada: temporadaSeleccionada,
-          competencia: competenciaSeleccionada,
-          torneo: torneoSeleccionado,
-          categoria: categoriaSeleccionada,
-          institutionName: institucionNombre,
-        ),
+        temporada: temporadaSeleccionada,
+        competencia: competenciaSeleccionada,
+        torneo: torneoSeleccionado,
+        categoria: categoriaSeleccionada,
+        institutionName: institucionNombre,
+        institutionId: institucionId,
+        institutionShieldPath: institucionEscudo,
+      ),
       ),
     );
   }
@@ -4012,6 +4042,8 @@ class ProximoPartidoScreen extends StatefulWidget {
   final String categoria;
   final bool tieneFixture;
   final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const ProximoPartidoScreen({
     super.key,
@@ -4021,6 +4053,8 @@ class ProximoPartidoScreen extends StatefulWidget {
     required this.categoria,
     required this.tieneFixture,
     required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -4044,17 +4078,13 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
 
-  String get _institutionName {
-    final value = widget.institutionName.trim();
+  String? get _institutionShieldPath {
+    final direct = (widget.institutionShieldPath ?? '').trim();
 
-    if (value.isEmpty || value.toLowerCase() == 'null') {
-      return 'Institución';
+    if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
+      return direct;
     }
 
-    return value;
-  }
-
-  String? get _institutionShieldPath {
     final normalized = _institutionName.trim().toLowerCase();
 
     if (normalized == 'san fernando handball' ||
@@ -4064,7 +4094,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return null;
   }
-  
+
+
   List<PartidoModel> _customFixturesV2 = [];
 
   Future<void> _loadEstadoRealV2() async {
@@ -4130,7 +4161,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   ActiveContext get _activeContext {
     return ActiveContext(
       hasInstitution: true,
-      institutionName: '',
+      institutionName: _institutionName,
+      institutionId: widget.institutionId,
       season: widget.temporada,
       competition: widget.competencia,
       tournament: widget.torneo,
@@ -4160,6 +4192,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return value;
   }
+
+  String get _institutionName => _institutionTitle;
 
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
@@ -5065,11 +5099,9 @@ final ownTeamName = widget.institutionName.trim().isEmpty
     ? 'Institución'
     : widget.institutionName.trim();
 
+proximoPartido['institutionId'] = widget.institutionId;
 proximoPartido['equipoPropio'] = ownTeamName;
-proximoPartido['escudoPropio'] =
-    ownTeamName.toLowerCase() == 'san fernando handball'
-        ? 'assets/images/san_fernando.png'
-        : null;
+proximoPartido['escudoPropio'] = _institutionShieldPath;
 
 await Navigator.push(
       context,
@@ -5150,7 +5182,7 @@ await Navigator.push(
           competencia: widget.competencia,
           torneo: widget.torneo,
           categoria: widget.categoria,
-          institutionId: null,
+          institutionId: widget.institutionId,
           equipoPropio: _institutionName,
           escudoPropio: _institutionShieldPath,
         ),
@@ -10021,6 +10053,8 @@ class FixtureScreen extends StatefulWidget {
   final String torneo;
   final String categoria;
   final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const FixtureScreen({
     super.key,
@@ -10029,6 +10063,8 @@ class FixtureScreen extends StatefulWidget {
     required this.torneo,
     required this.categoria,
     required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -10062,7 +10098,13 @@ class _FixtureScreenState extends State<FixtureScreen> {
     return value;
   }
 
-  String? get _institutionShieldPath {
+    String? get _institutionShieldPath {
+    final direct = (widget.institutionShieldPath ?? '').trim();
+
+    if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
+      return direct;
+    }
+
     final normalized = _institutionName.trim().toLowerCase();
 
     if (normalized == 'san fernando handball' ||
@@ -10712,6 +10754,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
       Map<String, dynamic>.from(partido),
     );
 
+    partidoReal['institutionId'] = widget.institutionId;
     partidoReal['equipoPropio'] = _institutionName;
     partidoReal['escudoPropio'] = _institutionShieldPath;
 
