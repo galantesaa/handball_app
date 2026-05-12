@@ -26,6 +26,59 @@ import 'features/matches/presentation/screens/match_editor_screen.dart';
 /// PUNTO DE ENTRADA
 /// ===============================
 ///
+///
+bool isAssetShieldPath(String? value) {
+  return (value ?? '').trim().startsWith('assets/');
+}
+
+Widget buildShieldAvatar(
+  String? path, {
+  double size = 58,
+  double padding = 8,
+}) {
+  final cleanPath = (path ?? '').trim();
+
+  Widget fallback() {
+    return Icon(
+      Icons.sports_handball,
+      color: const Color(0xFF1C2B44),
+      size: size * 0.42,
+    );
+  }
+
+  Widget image;
+
+  if (cleanPath.isEmpty) {
+    image = fallback();
+  } else if (isAssetShieldPath(cleanPath)) {
+    image = Image.asset(
+      cleanPath,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => fallback(),
+    );
+  } else {
+    image = Image.file(
+      File(cleanPath),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => fallback(),
+    );
+  }
+
+  return Container(
+    width: size,
+    height: size,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white,
+    ),
+    padding: EdgeInsets.all(padding),
+    child: ClipOval(
+      child: Center(child: image),
+    ),
+  );
+}
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -2504,6 +2557,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
                 tieneFixture: competenciaActualTieneFixture,
+                institutionName: institucionNombre,
               );
 
             case 'Partidos jugados':
@@ -3938,6 +3992,7 @@ class ProximoPartidoScreen extends StatefulWidget {
   final String torneo;
   final String categoria;
   final bool tieneFixture;
+  final String institutionName;
 
   const ProximoPartidoScreen({
     super.key,
@@ -3946,6 +4001,7 @@ class ProximoPartidoScreen extends StatefulWidget {
     required this.torneo,
     required this.categoria,
     required this.tieneFixture,
+    required this.institutionName,
   });
 
   @override
@@ -4053,6 +4109,16 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   String get _partidosFinalizadosStorageKey =>
       'finalizados_$_contextStorageSuffix';
+
+  String get _institutionTitle {
+    final value = widget.institutionName.trim();
+
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return 'Institución';
+    }
+
+    return value;
+  }
 
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
@@ -4953,7 +5019,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     }
 
     proximoPartido['esPartidoReal'] ??= false;
-    await Navigator.push(
+
+final ownTeamName = widget.institutionName.trim().isEmpty
+    ? 'Institución'
+    : widget.institutionName.trim();
+
+proximoPartido['equipoPropio'] = ownTeamName;
+proximoPartido['escudoPropio'] =
+    ownTeamName.toLowerCase() == 'san fernando handball'
+        ? 'assets/images/san_fernando.png'
+        : null;
+
+await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
@@ -5396,9 +5473,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'San Fernando Handball',
-          style: TextStyle(
+                Text(
+          _institutionTitle,
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Colors.white,
@@ -5423,9 +5500,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'San Fernando Handball',
-          style: TextStyle(
+                Text(
+          _institutionTitle,
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Colors.white,
@@ -10843,27 +10920,72 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// Estos getters siguen manejando la UI actual,
   /// pero algunos datos ya se leen desde PartidoModel.
   /// ===============================
+  
   bool get _partidoFinalizado => estadoPartido == 'finalizado';
-  bool get _somosLocales => partidoV2.condicion == 'Local';
 
-  String get _nombreLocal => _somosLocales ? 'San Fernando' : partidoV2.rival;
+  bool get _somosLocales => partidoV2.condicion.trim().toLowerCase() == 'local';
 
-  String get _nombreVisitante =>
-      _somosLocales ? partidoV2.rival : 'San Fernando';
+  String get _equipoPropioNombre {
+    final raw = (widget.partido['equipoPropio'] ?? '').toString().trim();
 
-  int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
-  int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return fixTextoRoto(raw);
+    }
 
-  String get _escudoLocalPath {
-    if (_somosLocales) return 'assets/images/san_fernando.png';
-    return partidoV2.escudoRival ?? 'assets/images/san_fernando.png';
+    return 'Institución';
   }
 
-  String get _escudoVisitantePath {
-    if (_somosLocales) {
-      return partidoV2.escudoRival ?? 'assets/images/san_fernando.png';
+  String? get _equipoPropioEscudo {
+    final raw = (widget.partido['escudoPropio'] ?? '').toString().trim();
+
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return raw;
     }
-    return 'assets/images/san_fernando.png';
+
+    final normalized = _equipoPropioNombre.trim().toLowerCase();
+
+    if (normalized == 'san fernando handball' ||
+        normalized == 'san fernando') {
+      return 'assets/images/san_fernando.png';
+    }
+
+    return null;
+  }
+
+  String? get _rivalEscudoResuelto {
+    final directo = (partidoV2.escudoRival ?? '').trim();
+
+    if (directo.isNotEmpty && directo.toLowerCase() != 'null') {
+      return directo;
+    }
+
+    final fallback = rivalShieldAssetGlobal(partidoV2.rival);
+
+    if (fallback != null && fallback.trim().isNotEmpty) {
+      return fallback;
+    }
+
+    return null;
+  }
+
+  String get _nombreLocal {
+    return _somosLocales ? _equipoPropioNombre : partidoV2.rival;
+  }
+
+  String get _nombreVisitante {
+    return _somosLocales ? partidoV2.rival : _equipoPropioNombre;
+  }
+
+  int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
+
+  int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
+
+  String? get _escudoLocalPath {
+    return _somosLocales ? _equipoPropioEscudo : _rivalEscudoResuelto;
+  }
+
+  String? get _escudoVisitantePath {
+    return _somosLocales ? _rivalEscudoResuelto : _equipoPropioEscudo;
   }
 
   Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
@@ -11407,7 +11529,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   Widget _buildTeamSide({
     required String nombre,
     required String condicion,
-    required String assetPath,
+    required String? assetPath,
   }) {
     return Column(
       children: [
@@ -11421,16 +11543,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: 62,
-          height: 62,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-          padding: const EdgeInsets.all(10),
-          child: Center(child: Image.asset(assetPath, fit: BoxFit.contain)),
-        ),
+        buildShieldAvatar(assetPath, size: 62, padding: 10),
         const SizedBox(height: 8),
         Text(
           nombre,

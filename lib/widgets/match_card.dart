@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/match_model.dart';
+import 'dart:io';
 
 class MatchCardPro extends StatelessWidget {
   final MatchModel match;
@@ -234,8 +235,40 @@ class _Shield extends StatelessWidget {
 
   const _Shield({required this.assetPath});
 
+  bool _isAssetPath(String value) {
+    return value.trim().startsWith('assets/');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final path = (assetPath ?? '').trim();
+
+    Widget fallback() {
+      return const Icon(
+        Icons.sports_handball,
+        color: Color(0xFF1C2B44),
+        size: 18,
+      );
+    }
+
+    Widget image;
+
+    if (path.isEmpty) {
+      image = fallback();
+    } else if (_isAssetPath(path)) {
+      image = Image.asset(
+        path,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    } else {
+      image = Image.file(
+        File(path),
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    }
+
     return Container(
       width: 34,
       height: 34,
@@ -244,22 +277,8 @@ class _Shield extends StatelessWidget {
         color: Colors.white,
       ),
       padding: const EdgeInsets.all(5),
-      child: Center(
-        child: assetPath == null
-            ? const Icon(
-                Icons.sports_handball,
-                color: Color(0xFF1C2B44),
-                size: 18,
-              )
-            : Image.asset(
-                assetPath!,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.sports_handball,
-                  color: Color(0xFF1C2B44),
-                  size: 18,
-                ),
-              ),
+      child: ClipOval(
+        child: Center(child: image),
       ),
     );
   }
