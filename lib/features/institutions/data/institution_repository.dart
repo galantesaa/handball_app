@@ -143,7 +143,9 @@ class InstitutionRepository {
   final raw = prefs.getString(AppStorageKeys.institutions);
 
   if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
-    return const [];
+    final seeded = _defaultInstitutions();
+    await saveInstitutions(seeded);
+    return seeded;
   }
 
   try {
@@ -151,7 +153,9 @@ class InstitutionRepository {
 
     if (decoded is! List) {
       await prefs.remove(AppStorageKeys.institutions);
-      return const [];
+      final seeded = _defaultInstitutions();
+      await saveInstitutions(seeded);
+      return seeded;
     }
 
     final result = <InstitutionModel>[];
@@ -172,14 +176,22 @@ class InstitutionRepository {
       if (!exists) result.add(institution);
     }
 
+    if (result.isEmpty) {
+      final seeded = _defaultInstitutions();
+      await saveInstitutions(seeded);
+      return seeded;
+    }
+
     result.sort((a, b) => a.name.compareTo(b.name));
     return result;
   } catch (_) {
     await prefs.remove(AppStorageKeys.institutions);
-    return const [];
+    final seeded = _defaultInstitutions();
+    await saveInstitutions(seeded);
+    return seeded;
   }
 }
-
+  
   Future<void> saveInstitutions(List<InstitutionModel> institutions) async {
     final prefs = await SharedPreferences.getInstance();
 
