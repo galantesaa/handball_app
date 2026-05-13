@@ -20,8 +20,6 @@ class MatchCardPro extends StatelessWidget {
     this.compact = false,
   });
 
-  static const String _sanFernandoAsset = 'assets/images/san_fernando.png';
-
   @override
   Widget build(BuildContext context) {
     final buttonColor = match.finalizado
@@ -113,13 +111,31 @@ class MatchCardPro extends StatelessWidget {
   }
 
   String? _localShield() {
-    if (match.somosLocales) return _sanFernandoAsset;
-    return match.escudoRival;
+    final shield = (match.escudoLocal ?? '').trim();
+
+    if (shield.isNotEmpty && shield.toLowerCase() != 'null') {
+      return shield;
+    }
+
+    if (!match.somosLocales) {
+      return match.escudoRival;
+    }
+
+    return null;
   }
 
   String? _visitorShield() {
-    if (match.somosLocales) return match.escudoRival;
-    return _sanFernandoAsset;
+    final shield = (match.escudoVisitante ?? '').trim();
+
+    if (shield.isNotEmpty && shield.toLowerCase() != 'null') {
+      return shield;
+    }
+
+    if (match.somosLocales) {
+      return match.escudoRival;
+    }
+
+    return null;
   }
 }
 
@@ -277,9 +293,7 @@ class _Shield extends StatelessWidget {
         color: Colors.white,
       ),
       padding: const EdgeInsets.all(5),
-      child: ClipOval(
-        child: Center(child: image),
-      ),
+      child: ClipOval(child: Center(child: image)),
     );
   }
 }
