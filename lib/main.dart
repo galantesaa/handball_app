@@ -4630,6 +4630,66 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   String get _partidosFinalizadosStorageKey =>
       'finalizados_$_contextStorageSuffix';
 
+String get _legacyProximoPartidoStorageKey =>
+    'proximo_partido_${widget.categoria}_${widget.torneo}';
+
+String get _legacySiguientesPartidosStorageKey =>
+    'siguientes_${widget.categoria}_${widget.torneo}';
+
+Map<String, dynamic> _normalizeLegacyUpcomingMap(Map<String, dynamic> raw) {
+  return {
+    ...raw,
+    'temporada': raw['temporada'] ?? widget.temporada,
+    'competencia': raw['competencia'] ?? widget.competencia,
+    'institutionId': raw['institutionId'] ?? widget.institutionId,
+    'equipoPropio': raw['equipoPropio'] ?? _institutionName,
+    'escudoPropio': raw['escudoPropio'] ?? _institutionShieldPath,
+    'estado': raw['estado'] ?? 'Pendiente',
+    'estadoPartido': raw['estadoPartido'] ?? 'no_iniciado',
+  };
+}
+
+Future<List<Map<String, dynamic>>> _readLegacyUpcomingMaps() async {
+  final prefs = await SharedPreferences.getInstance();
+  final result = <Map<String, dynamic>>[];
+
+  final rawProximo = prefs.getString(_legacyProximoPartidoStorageKey);
+
+  if (rawProximo != null &&
+      rawProximo.trim().isNotEmpty &&
+      rawProximo.trim() != 'null') {
+    try {
+      final decoded = jsonDecode(rawProximo);
+      if (decoded is Map) {
+        result.add(
+          _normalizeLegacyUpcomingMap(Map<String, dynamic>.from(decoded)),
+        );
+      }
+    } catch (_) {}
+  }
+
+  final rawSiguientes = prefs.getString(_legacySiguientesPartidosStorageKey);
+
+  if (rawSiguientes != null &&
+      rawSiguientes.trim().isNotEmpty &&
+      rawSiguientes.trim() != 'null') {
+    try {
+      final decoded = jsonDecode(rawSiguientes);
+      if (decoded is List) {
+        for (final item in decoded) {
+          if (item is Map) {
+            result.add(
+              _normalizeLegacyUpcomingMap(Map<String, dynamic>.from(item)),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  return result;
+}
+
   String get _institutionTitle {
     final value = widget.institutionName.trim();
 
@@ -5158,6 +5218,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
 
     final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
+    final legacyUpcomingMaps = await _readLegacyUpcomingMaps();
 
     final baseMaps = <Map<String, dynamic>>[];
 
@@ -5195,6 +5256,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         item,
       );
     }
+
+    for (final item in legacyUpcomingMaps) {
+  if (!_matchesCurrentContext(item)) continue;
+
+  mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+    item,
+  )] = Map<String, dynamic>.from(item);
+}
 
     final todos = mergedByIdentity.values.toList();
 
