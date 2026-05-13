@@ -452,7 +452,9 @@ class StructureRepository {
     final cleanName = _cleanText(name);
     if (cleanName.isEmpty) return false;
 
-    final competitions = await getCompetitions();
+    final competitions = await getCompetitions(
+  institutionId: institutionId,
+);
 
     final exists = competitions.any(
       (e) => _normalize(e.name) == _normalize(cleanName),
@@ -505,8 +507,9 @@ class StructureRepository {
           })
         : stages;
 
-    await saveCompetitions([
-      ...competitions,
+    await saveCompetitions(
+  [
+    ...competitions,
       CompetitionConfig(
         name: cleanName,
         type: cleanType,
@@ -517,7 +520,9 @@ class StructureRepository {
         allowKnockoutRounds: resolvedAllowKnockoutRounds,
         stages: resolvedStages,
       ),
-    ]);
+    ],
+    institutionId: institutionId,
+  );
 
     return true;
   }
@@ -532,7 +537,9 @@ class StructureRepository {
 
     if (cleanCompetitionName.isEmpty || cleanTournament.isEmpty) return false;
 
-    final competitions = await getCompetitions();
+    final competitions = await getCompetitions(
+  institutionId: institutionId,
+);
 
     final index = competitions.indexWhere(
       (e) => _normalize(e.name) == _normalize(cleanCompetitionName),
@@ -574,11 +581,15 @@ class StructureRepository {
     final newList = [...competitions];
     newList[index] = updated;
 
-    await saveCompetitions(newList);
-    return true;
-  }
+   await saveCompetitions(
+  newList,
+  institutionId: institutionId,
+);
 
-  Future<void> ensureInitialStructureFromActiveContext({
+return true;
+}
+
+Future<void> ensureInitialStructureFromActiveContext({
     required String season,
     required String competition,
     required String tournament,
@@ -591,28 +602,40 @@ class StructureRepository {
     final cleanCategory = _cleanText(category);
 
     if (cleanSeason.isNotEmpty) {
-      final seasons = await getSeasons();
+      final seasons = await getSeasons(
+  institutionId: institutionId,
+);
       final exists = seasons.any(
         (e) => _normalize(e) == _normalize(cleanSeason),
       );
       if (!exists) {
-        await saveSeasons([...seasons, cleanSeason]);
+        await saveSeasons(
+  [...seasons, cleanSeason],
+  institutionId: institutionId,
+);
       }
     }
 
     if (cleanCategory.isNotEmpty) {
-      final categories = await getCategories();
+      final categories = await getCategories(
+  institutionId: institutionId,
+);
       final exists = categories.any(
         (e) => _normalize(e) == _normalize(cleanCategory),
       );
       if (!exists) {
-        await saveCategories([...categories, cleanCategory]);
+  await saveCategories(
+  [...categories, cleanCategory],
+  institutionId: institutionId,
+);
       }
     }
 
     if (cleanCompetition.isEmpty) return;
 
-    final competitions = await getCompetitions();
+    final competitions = await getCompetitions(
+  institutionId: institutionId,
+);
     final exists = competitions.any(
       (c) => _normalize(c.name) == _normalize(cleanCompetition),
     );
@@ -627,6 +650,7 @@ class StructureRepository {
 
     await addCompetition(
       name: cleanCompetition,
+      institutionId: institutionId,
       type: isLocal ? 'local' : 'single',
       tournaments: tournaments,
       mode: isLocal ? 'split_fixture' : 'single_fixture',

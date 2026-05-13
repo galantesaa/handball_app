@@ -2188,7 +2188,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!exists) {
-      final created = await _structureRepository.addSeason(value);
+      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -2315,7 +2315,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!exists) {
-      final created = await _structureRepository.addCategory(value);
+      final created = await _structureRepository.addCategory(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -2337,13 +2337,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     await _structureRepository.ensureInitialStructureFromActiveContext(
-      season: activeContext.season,
-      competition: activeContext.competition,
-      tournament: activeContext.tournament,
-      category: activeContext.category,
-    );
+  institutionId: activeContext.institutionId,
+  season: activeContext.season,
+  competition: activeContext.competition,
+  tournament: activeContext.tournament,
+  category: activeContext.category,
+);
 
-    await _loadStructureData();
+await _loadStructureData(institutionId: activeContext.institutionId);
     final resolvedInstitutionShield = await _resolveInstitutionShieldPath(
       institutionId: activeContext.institutionId,
       institutionName: activeContext.institutionName,
@@ -2485,19 +2486,29 @@ class _HomeScreenState extends State<HomeScreen> {
     return institution?.displayShieldPath;
   }
 
-  Future<void> _loadStructureData() async {
-    final seasons = await _structureRepository.getSeasons();
-    final categories = await _structureRepository.getCategories();
-    final competitions = await _structureRepository.getCompetitions();
+  Future<void> _loadStructureData({String? institutionId}) async {
+  final targetInstitutionId = institutionId ?? institucionId;
 
-    if (!mounted) return;
+  final seasons = await _structureRepository.getSeasons(
+    institutionId: targetInstitutionId,
+  );
 
-    setState(() {
-      temporadasDinamicas = seasons;
-      categoriasDinamicas = categories;
-      competenciasDinamicas = competitions;
-    });
-  }
+  final categories = await _structureRepository.getCategories(
+    institutionId: targetInstitutionId,
+  );
+
+  final competitions = await _structureRepository.getCompetitions(
+    institutionId: targetInstitutionId,
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    temporadasDinamicas = seasons;
+    categoriasDinamicas = categories;
+    competenciasDinamicas = competitions;
+  });
+}
 
   Future<void> _saveActiveContext() async {
     await _settingsRepository.saveActiveContext(
@@ -2607,7 +2618,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!exists) {
-      final created = await _structureRepository.addSeason(value);
+      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -2639,7 +2650,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (value == null) return null;
 
-    final created = await _structureRepository.addSeason(value);
+    final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
     if (!mounted) return null;
 
@@ -2660,7 +2671,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (value == null) return;
 
-    final created = await _structureRepository.addCategory(value);
+    final created = await _structureRepository.addCategory(value, institutionId: institucionId);
 
     if (!mounted) return;
 
@@ -2695,9 +2706,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (value == null) return;
 
     final created = await _structureRepository.addTournamentToCompetition(
-      competitionName: competenciaSeleccionada,
-      tournament: value,
-    );
+  competitionName: competenciaSeleccionada,
+  tournament: value,
+  institutionId: institucionId,
+);
 
     if (!mounted) return;
 
@@ -2729,6 +2741,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final created = await _structureRepository.addCompetition(
       name: result.name,
+        institutionId: institucionId,
       type: result.type,
       tournaments: result.tournaments,
       mode: result.mode,
@@ -3967,7 +3980,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final value = selectedValue.trim();
 
     if (!temporadasDinamicas.contains(value)) {
-      final created = await _structureRepository.addSeason(value);
+      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
       if (!mounted) return;
 
