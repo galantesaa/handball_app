@@ -2911,6 +2911,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
+                institutionName: institucionNombre,
+                institutionId: institucionId,
+                institutionShieldPath: institucionEscudo,
               );
 
             case 'Equipo':
@@ -16669,6 +16672,9 @@ class EstadisticasScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const EstadisticasScreen({
     super.key,
@@ -16676,6 +16682,9 @@ class EstadisticasScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -16694,7 +16703,8 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
   ActiveContext get _activeContext {
     return ActiveContext(
       hasInstitution: true,
-      institutionName: '',
+      institutionName: widget.institutionName,
+      institutionId: widget.institutionId,
       season: widget.temporada,
       competition: widget.competencia,
       tournament: widget.torneo,
@@ -16702,7 +16712,45 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     );
   }
 
+  String _normalizeStatsText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool get _isSanFernandoContext {
+    final id = _normalizeStatsText(widget.institutionId);
+    final name = _normalizeStatsText(widget.institutionName);
+
+    return id == 'san_fernando_handball' ||
+        name == 'san fernando handball' ||
+        name == 'san fernando';
+  }
+
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
+    final currentInstitutionId = _normalizeStatsText(widget.institutionId);
+    final partidoInstitutionId = _normalizeStatsText(partido['institutionId']);
+
+    if (currentInstitutionId.isNotEmpty) {
+      if (partidoInstitutionId.isEmpty && !_isSanFernandoContext) {
+        return false;
+      }
+
+      if (partidoInstitutionId.isNotEmpty &&
+          partidoInstitutionId != currentInstitutionId) {
+        return false;
+      }
+    }
+
     return AppContextKey.matchesMap(data: partido, context: _activeContext);
   }
 
@@ -16729,8 +16777,21 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
 
       final merged = {
         ...base,
-        'matchIdentity': map['matchIdentity'],
-        'archivedAt': map['archivedAt'] ?? map['timestamp'],
+
+        'institutionId': map['institutionId'] ?? base['institutionId'],
+        'temporada': map['temporada'] ?? base['temporada'] ?? '2026',
+        'competencia': map['competencia'] ?? base['competencia'] ?? 'Local',
+        'torneo': map['torneo'] ?? base['torneo'],
+        'categoria': map['categoria'] ?? base['categoria'],
+
+        'matchIdentity': map['matchIdentity'] ?? base['matchIdentity'],
+        'archivedAt':
+            map['archivedAt'] ?? map['timestamp'] ?? base['archivedAt'],
+
+        'estado': 'Finalizado',
+        'estadoPartido': 'finalizado',
+        'finalizado': true,
+
         'golesSanFernando':
             map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
         'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
