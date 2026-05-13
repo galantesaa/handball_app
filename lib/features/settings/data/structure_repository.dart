@@ -589,7 +589,7 @@ class StructureRepository {
 return true;
 }
 
-Future<void> ensureInitialStructureFromActiveContext({
+  Future<void> ensureInitialStructureFromActiveContext({
     required String season,
     required String competition,
     required String tournament,

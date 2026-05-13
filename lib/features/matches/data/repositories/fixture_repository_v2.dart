@@ -126,14 +126,22 @@ class FixtureRepositoryV2 {
   final all = await readFixtures();
 
   final currentInstitutionId = normalize(institutionId);
+final isSanFernandoContext = currentInstitutionId == 'san_fernando_handball' ||
+    currentInstitutionId == 'san_fernando';
 
-  final filtered = all.where((partido) {
-    final partidoInstitutionId = normalize(partido.institutionId);
+final filtered = all.where((partido) {
+  final partidoInstitutionId = normalize(partido.institutionId);
 
-    if (currentInstitutionId.isNotEmpty) {
-      if (partidoInstitutionId.isEmpty) return false;
-      if (partidoInstitutionId != currentInstitutionId) return false;
+  if (currentInstitutionId.isNotEmpty) {
+    final isLegacyFixture = partidoInstitutionId.isEmpty ||
+        partidoInstitutionId == 'legacy_institution';
+
+    if (isLegacyFixture && !isSanFernandoContext) return false;
+
+    if (!isLegacyFixture && partidoInstitutionId != currentInstitutionId) {
+      return false;
     }
+  }
 
     final sameBase =
         normalize(partido.temporada) == normalize(temporada) &&
