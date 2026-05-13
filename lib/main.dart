@@ -4829,145 +4829,66 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return '$dd/$mm';
   }
 
-  List<Map<String, dynamic>> _buildAperturaBase({required String categoria}) {
-    return [
-      {
-        'fechaNumero': 1,
-        'fecha': '21/03',
-        'hora': '13:00',
-        'local': 'Municipalidad de Vicente Lopez',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 2,
-        'fecha': '28/03',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'Colegio Ward',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 3,
-        'fecha': '11/04',
-        'hora': '13:00',
-        'local': 'S.A.G. Villa Ballester',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 4,
-        'fecha': '18/04',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'Argentinos Juniors',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 5,
-        'fecha': '25/04',
-        'hora': '13:00',
-        'local': 'Ferro Carril Oeste',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 6,
-        'fecha': '02/05',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'C.A. Velez Sarsfield',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 7,
-        'fecha': '09/05',
-        'hora': '13:00',
-        'local': 'Campana Boat Club',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 8,
-        'fecha': '16/05',
-        'hora': '13:00',
-        'local': 'S.A.G.A.B.',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 9,
-        'fecha': '23/05',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'C.A. River Plate',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 10,
-        'fecha': '30/05',
-        'hora': '13:00',
-        'local': 'Dorrego Handball',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 11,
-        'fecha': '06/06',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'Estudiantes de La Plata',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 12,
-        'fecha': '20/06',
-        'hora': '13:00',
-        'local': 'S.E.D.A.L.O.',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 13,
-        'fecha': '27/06',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'C.A. Lanus',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 14,
-        'fecha': '04/07',
-        'hora': '13:00',
-        'local': 'Nuestra Senora de Luján',
-        'visitante': 'San Fernando Handball',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-      {
-        'fechaNumero': 15,
-        'fecha': '11/07',
-        'hora': '13:00',
-        'local': 'San Fernando Handball',
-        'visitante': 'A.A.C.F. Quilmes',
-        'torneo': 'Apertura',
-        'categoria': categoria,
-      },
-    ];
-  }
+  List<Map<String, dynamic>> _buildAperturaBase({
+  required String categoria,
+}) {
+  final equipoPropio = _institutionName;
+  final escudoPropio = _institutionShieldPath;
+
+  return [
+    {
+      'fechaNumero': 1,
+      'fecha': '21/03',
+      'hora': '13:00',
+      'local': 'Municipalidad de Vicente Lopez',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+
+    {
+      'fechaNumero': 2,
+      'fecha': '28/03',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'Colegio Ward',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+
+    {
+      'fechaNumero': 3,
+      'fecha': '11/04',
+      'hora': '13:00',
+      'local': 'S.A.G. Villa Ballester',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+
+    {
+      'fechaNumero': 4,
+      'fecha': '18/04',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'Argentinos Juniors',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+  ];
+}
 
   List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
     final apertura = _buildAperturaBase(categoria: categoria);
