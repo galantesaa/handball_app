@@ -20,11 +20,59 @@ import 'services/stats_service.dart';
 import 'package:flutter/rendering.dart';
 import 'features/settings/data/settings_repository.dart';
 import 'features/matches/data/repositories/fixture_repository_v2.dart';
+import 'features/matches/presentation/screens/match_editor_screen.dart';
+import 'features/institutions/data/institution_repository.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
 /// ===============================
 ///
+///
+bool isAssetShieldPath(String? value) {
+  return (value ?? '').trim().startsWith('assets/');
+}
+
+Widget buildShieldAvatar(String? path, {double size = 58, double padding = 8}) {
+  final cleanPath = (path ?? '').trim();
+
+  Widget fallback() {
+    return Icon(
+      Icons.sports_handball,
+      color: const Color(0xFF1C2B44),
+      size: size * 0.42,
+    );
+  }
+
+  Widget image;
+
+  if (cleanPath.isEmpty) {
+    image = fallback();
+  } else if (isAssetShieldPath(cleanPath)) {
+    image = Image.asset(
+      cleanPath,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => fallback(),
+    );
+  } else {
+    image = Image.file(
+      File(cleanPath),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => fallback(),
+    );
+  }
+
+  return Container(
+    width: size,
+    height: size,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white,
+    ),
+    padding: EdgeInsets.all(padding),
+    child: ClipOval(child: Center(child: image)),
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -637,10 +685,15 @@ class RosterRepository {
     required String temporada,
     bool includeStaff = false,
   }) {
+    final categoriaNormalizada = normalizeHandballText(categoria);
+    final temporadaNormalizada = normalizeHandballText(temporada);
+
     final ids = assignments
         .where(
           (a) =>
-              a.categoria == categoria && a.temporada == temporada && a.activo,
+              normalizeHandballText(a.categoria) == categoriaNormalizada &&
+              normalizeHandballText(a.temporada) == temporadaNormalizada &&
+              a.activo,
         )
         .map((a) => a.playerId)
         .toSet();
@@ -654,9 +707,14 @@ class RosterRepository {
     result.sort((a, b) {
       final aNum = int.tryParse(a.numeroPreferido ?? '');
       final bNum = int.tryParse(b.numeroPreferido ?? '');
-      if (aNum == null && bNum == null) return a.apellido.compareTo(b.apellido);
+
+      if (aNum == null && bNum == null) {
+        return a.apellido.compareTo(b.apellido);
+      }
+
       if (aNum == null) return 1;
       if (bNum == null) return -1;
+
       return aNum.compareTo(bNum);
     });
 
@@ -670,6 +728,7 @@ class RosterRepository {
     return rosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      includeStaff: false,
     ).where((p) => p.esArquero).toList();
   }
 
@@ -688,21 +747,78 @@ class RosterRepository {
 /// Si no hay datos guardados, usa RosterRepository hardcodeado.
 /// ===============================
 class RosterStorage {
-  static String _key({required String categoria, required String temporada}) {
+  static String _normalize(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+  }
+
+  static bool _isSanFernandoInstitution(String? institutionId) {
+    final id = _normalize(institutionId);
+    return id == 'san_fernando_handball' || id == 'san_fernando';
+  }
+
+  static String _legacyKey({
+    required String categoria,
+    required String temporada,
+  }) {
     return 'roster_${temporada}_$categoria';
+  }
+
+  static String _key({
+    required String? institutionId,
+    required String categoria,
+    required String temporada,
+  }) {
+    final safeInstitutionId = _normalize(institutionId);
+
+    if (safeInstitutionId.isEmpty) {
+      return _legacyKey(categoria: categoria, temporada: temporada);
+    }
+
+    return 'roster_${safeInstitutionId}_${temporada}_$categoria';
   }
 
   static Future<List<PlayerProfile>> readRosterForCategory({
     required String categoria,
     required String temporada,
+    String? institutionId,
     bool includeStaff = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(
-      _key(categoria: categoria, temporada: temporada),
+
+    final scopedKey = _key(
+      institutionId: institutionId,
+      categoria: categoria,
+      temporada: temporada,
     );
 
-    if (raw == null || raw.isEmpty) {
+    final rawScoped = prefs.getString(scopedKey);
+
+    if (rawScoped != null && rawScoped.trim().isNotEmpty) {
+      return _decodeRoster(rawScoped, includeStaff: includeStaff);
+    }
+
+    final legacyKey = _legacyKey(categoria: categoria, temporada: temporada);
+    final rawLegacy = prefs.getString(legacyKey);
+
+    if (_isSanFernandoInstitution(institutionId) &&
+        rawLegacy != null &&
+        rawLegacy.trim().isNotEmpty) {
+      return _decodeRoster(rawLegacy, includeStaff: includeStaff);
+    }
+
+    if (_isSanFernandoInstitution(institutionId)) {
       return RosterRepository.rosterForCategory(
         categoria: categoria,
         temporada: temporada,
@@ -710,61 +826,94 @@ class RosterStorage {
       );
     }
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
+    return const [];
+  }
 
-    final players = decoded
-        .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)))
-        .where((p) => includeStaff || !p.esCuerpoTecnico)
-        .toList();
+  static List<PlayerProfile> _decodeRoster(
+    String raw, {
+    required bool includeStaff,
+  }) {
+    try {
+      final decoded = jsonDecode(raw);
 
-    players.sort((a, b) {
-      final aNum = int.tryParse(a.numeroPreferido ?? '');
-      final bNum = int.tryParse(b.numeroPreferido ?? '');
-
-      if (aNum == null && bNum == null) {
-        return a.apellido.compareTo(b.apellido);
+      if (decoded is! List) {
+        return const [];
       }
-      if (aNum == null) return 1;
-      if (bNum == null) return -1;
 
-      return aNum.compareTo(bNum);
-    });
+      final players = decoded
+          .whereType<Map>()
+          .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+          .where((p) => includeStaff || !p.esCuerpoTecnico)
+          .toList();
 
-    return players;
+      players.sort((a, b) {
+        final aNum = int.tryParse(a.numeroPreferido ?? '');
+        final bNum = int.tryParse(b.numeroPreferido ?? '');
+
+        if (aNum == null && bNum == null) {
+          return a.apellido.compareTo(b.apellido);
+        }
+
+        if (aNum == null) return 1;
+        if (bNum == null) return -1;
+
+        return aNum.compareTo(bNum);
+      });
+
+      return players;
+    } catch (_) {
+      return const [];
+    }
   }
 
   static Future<void> saveRosterForCategory({
     required String categoria,
     required String temporada,
+    String? institutionId,
     required List<PlayerProfile> players,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
+    final key = _key(
+      institutionId: institutionId,
+      categoria: categoria,
+      temporada: temporada,
+    );
+
     final data = players.map((p) => p.toMap()).toList();
 
-    await prefs.setString(
-      _key(categoria: categoria, temporada: temporada),
-      jsonEncode(data),
-    );
+    await prefs.setString(key, jsonEncode(data));
   }
 
   static Future<void> seedCategoryIfEmpty({
     required String categoria,
     required String temporada,
+    String? institutionId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = _key(categoria: categoria, temporada: temporada);
+
+    final key = _key(
+      institutionId: institutionId,
+      categoria: categoria,
+      temporada: temporada,
+    );
 
     if (prefs.containsKey(key)) return;
+
+    if (!_isSanFernandoInstitution(institutionId)) {
+      return;
+    }
 
     final base = RosterRepository.rosterForCategory(
       categoria: categoria,
       temporada: temporada,
       includeStaff: true,
     );
+
     await saveRosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
       players: base,
     );
   }
@@ -819,6 +968,15 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
 
   String get categoria => (widget.partido['categoria'] ?? 'Cadetes').toString();
   String get temporada => '2026';
+  String? get institutionId {
+    final value = widget.partido['institutionId']?.toString().trim();
+
+    if (value == null || value.isEmpty || value.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return value;
+  }
 
   late Future<List<PlayerProfile>> _rosterFuture;
 
@@ -858,11 +1016,13 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
     );
 
     final principal = await RosterStorage.readRosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
       includeStaff: false,
     );
 
@@ -872,11 +1032,13 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
       await RosterStorage.seedCategoryIfEmpty(
         categoria: cat,
         temporada: temporada,
+        institutionId: institutionId,
       );
 
       final rosterCat = await RosterStorage.readRosterForCategory(
         categoria: cat,
         temporada: temporada,
+        institutionId: institutionId,
         includeStaff: false,
       );
 
@@ -893,15 +1055,6 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     _rosterPrincipal = principal;
     _rosterExtras = extras;
 
-    /// =====================================================
-    /// CONVOCATORIA DEFAULT PROFESIONAL
-    /// =====================================================
-    /// Por ahora la app trabaja principalmente con arqueros.
-    /// Entonces:
-    /// - Los arqueros quedan convocados por defecto.
-    /// - Los jugadores de campo aparecen disponibles, pero NO seleccionados.
-    /// - Si el usuario quiere usar un jugador de campo, lo selecciona manualmente.
-    /// =====================================================
     if (convocadosIds.isEmpty && arquerosIds.isEmpty) {
       final arquerosDefault = principal
           .where((p) => p.esArquero && !p.esCuerpoTecnico)
@@ -912,7 +1065,7 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
       arquerosIds = {...arquerosDefault};
     }
 
-    return [...principal, ...extras];
+    return <PlayerProfile>[...principal, ...extras];
   }
 
   @override
@@ -1251,7 +1404,9 @@ class CompetitionCreationResult {
 }
 
 class CompetitionCreatorScreen extends StatefulWidget {
-  const CompetitionCreatorScreen({super.key});
+  final String initialName;
+
+  const CompetitionCreatorScreen({super.key, this.initialName = ''});
 
   @override
   State<CompetitionCreatorScreen> createState() =>
@@ -1269,6 +1424,13 @@ class _CompetitionCreatorScreenState extends State<CompetitionCreatorScreen> {
   @override
   void initState() {
     super.initState();
+
+    final initialName = widget.initialName.trim();
+
+    if (initialName.isNotEmpty) {
+      _nameController.text = initialName;
+    }
+
     _syncDefaultStages();
   }
 
@@ -1712,6 +1874,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool tieneInstitucion = false;
 
   String institucionNombre = '';
+  String? institucionId;
+  String? institucionEscudo;
   String temporadaSeleccionada = '';
   String competenciaSeleccionada = '';
   String torneoSeleccionado = '';
@@ -1720,6 +1884,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _contextStep = '';
 
   final SettingsRepository _settingsRepository = SettingsRepository();
+  final InstitutionRepository _institutionRepository =
+      const InstitutionRepository();
 
   final structure.StructureRepository _structureRepository =
       structure.StructureRepository();
@@ -1740,6 +1906,185 @@ class _HomeScreenState extends State<HomeScreen> {
     torneoSeleccionado,
     categoriaSeleccionada,
   ];
+
+  Future<void> _showInstitutionSwitcher() async {
+    final institutions = await _institutionRepository.readInstitutions();
+
+    if (!mounted) return;
+
+    String newInstitutionName = '';
+
+    final selected = await showModalBottomSheet<InstitutionModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F1722),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        Future<void> createInstitution() async {
+          final name = newInstitutionName.trim();
+          if (name.isEmpty) return;
+
+          FocusScope.of(sheetContext).unfocus();
+
+          await _institutionRepository.addInstitution(name: name);
+          final created = await _institutionRepository.findByName(name);
+
+          if (created != null && sheetContext.mounted) {
+            Navigator.pop(sheetContext, created);
+          }
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 28,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Cambiar institución',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  ...institutions.map((institution) {
+                    final isCurrent = institution.id == institucionId;
+
+                    return GestureDetector(
+                      onTap: () {
+                        FocusScope.of(sheetContext).unfocus();
+                        Navigator.pop(sheetContext, institution);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isCurrent
+                              ? const Color(0xFF4F8CFF).withOpacity(0.22)
+                              : const Color(0xFF182338),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isCurrent
+                                ? const Color(0xFF4F8CFF)
+                                : Colors.white.withOpacity(0.06),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            buildShieldAvatar(
+                              institution.displayShieldPath,
+                              size: 38,
+                              padding: 6,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                institution.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            if (isCurrent)
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF4F8CFF),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 12),
+                  TextField(
+                    textInputAction: TextInputAction.done,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Nueva institución',
+                      hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                      filled: true,
+                      fillColor: const Color(0xFF111A28),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Colors.white.withOpacity(0.08),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      newInstitutionName = value;
+                    },
+                    onSubmitted: (_) => createInstitution(),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: createInstitution,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Crear nueva institución'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F8CFF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selected == null) return;
+
+    setState(() {
+      tieneInstitucion = true;
+      institucionId = selected.id;
+      institucionNombre = selected.name;
+      institucionEscudo = selected.displayShieldPath;
+      temporadaSeleccionada = '';
+      competenciaSeleccionada = '';
+      torneoSeleccionado = '';
+      categoriaSeleccionada = '';
+      _contextStep = 'temporada';
+    });
+
+    await _saveActiveContext();
+
+    if (!mounted) return;
+
+    await _showMessage('Institución seleccionada correctamente.');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1764,9 +2109,22 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    await _institutionRepository.addInstitution(name: name);
+
+    final institution = await _institutionRepository.findByName(name);
+
+    if (!mounted) return;
+
+    if (institution == null) {
+      await _showMessage('No se pudo crear la institución.');
+      return;
+    }
+
     setState(() {
       tieneInstitucion = true;
-      institucionNombre = name;
+      institucionId = institution.id;
+      institucionNombre = institution.name;
+      institucionEscudo = institution.displayShieldPath;
       temporadaSeleccionada = '';
       competenciaSeleccionada = '';
       torneoSeleccionado = '';
@@ -1830,7 +2188,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!exists) {
-      final created = await _structureRepository.addSeason(value);
+      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -1865,37 +2223,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _createOrSelectCompetitionFlow() async {
     final value = _competitionController.text.trim();
 
-    if (value.isEmpty) {
-      await _showMessage('Ingresá una competencia válida.');
-      return;
-    }
-
-    final exists = competenciasDinamicas.any(
-      (e) => e.name.trim().toLowerCase() == value.toLowerCase(),
-    );
-
-    if (!exists) {
-      final isLocal = value.toLowerCase() == 'local';
-
-      final created = await _structureRepository.addCompetition(
-        name: value,
-        type: isLocal ? 'local' : 'single',
-        tournaments: isLocal ? const ['Apertura', 'Clausura'] : const ['Único'],
+    if (value.isNotEmpty) {
+      final exists = competenciasDinamicas.any(
+        (e) => e.name.trim().toLowerCase() == value.toLowerCase(),
       );
 
-      if (!mounted) return;
-
-      if (!created) {
-        await _showMessage('La competencia ya existe o no es válida.');
+      if (exists) {
+        await _selectCompetitionFlow(value);
         return;
       }
 
-      await _loadStructureData();
+      _competitionController.clear();
 
-      if (!mounted) return;
+      await _crearCompetencia(initialName: value);
+      return;
     }
 
-    await _selectCompetitionFlow(value);
+    await _crearCompetencia();
   }
 
   Future<void> _selectTournamentFlow(String tournament) async {
@@ -1971,7 +2315,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!exists) {
-      final created = await _structureRepository.addCategory(value);
+      final created = await _structureRepository.addCategory(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -1993,16 +2337,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     await _structureRepository.ensureInitialStructureFromActiveContext(
-      season: activeContext.season,
-      competition: activeContext.competition,
-      tournament: activeContext.tournament,
-      category: activeContext.category,
+  institutionId: activeContext.institutionId,
+  season: activeContext.season,
+  competition: activeContext.competition,
+  tournament: activeContext.tournament,
+  category: activeContext.category,
+);
+
+await _loadStructureData(institutionId: activeContext.institutionId);
+    final resolvedInstitutionShield = await _resolveInstitutionShieldPath(
+      institutionId: activeContext.institutionId,
+      institutionName: activeContext.institutionName,
     );
 
-    await _loadStructureData();
+    if (!mounted) return;
     setState(() {
       tieneInstitucion = activeContext.hasInstitution;
+      institucionId = activeContext.institutionId;
       institucionNombre = activeContext.institutionName;
+      institucionEscudo = resolvedInstitutionShield;
       temporadaSeleccionada = activeContext.season;
       competenciaSeleccionada = activeContext.competition;
       torneoSeleccionado = activeContext.tournament;
@@ -2011,25 +2364,158 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _loadStructureData() async {
-    final seasons = await _structureRepository.getSeasons();
-    final categories = await _structureRepository.getCategories();
-    final competitions = await _structureRepository.getCompetitions();
+  Future<void> _pickAndAssignInstitutionShield() async {
+    final cleanId = (institucionId ?? '').trim();
+    final cleanName = institucionNombre.trim();
+
+    if (cleanId.isEmpty && cleanName.isEmpty) {
+      await _showMessage('Primero creá o seleccioná una institución.');
+      return;
+    }
+
+    InstitutionModel? institution;
+
+    if (cleanId.isNotEmpty) {
+      institution = await _institutionRepository.findById(cleanId);
+    }
+
+    institution ??= await _institutionRepository.findByName(cleanName);
 
     if (!mounted) return;
 
+    if (institution == null) {
+      await _showMessage('No se encontró la institución actual.');
+      return;
+    }
+
+    if ((institution.shieldAsset ?? '').trim().isNotEmpty) {
+      await _showMessage(
+        'Esta institución ya tiene un escudo incluido en la app.',
+      );
+      return;
+    }
+
+    const typeGroup = XTypeGroup(
+      label: 'Imágenes',
+      extensions: <String>['png', 'jpg', 'jpeg', 'webp'],
+    );
+
+    final file = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[typeGroup],
+    );
+
+    if (file == null) return;
+
+    final sourcePath = file.path;
+
+    if (sourcePath.isEmpty) {
+      await _showMessage('No se pudo leer la imagen seleccionada.');
+      return;
+    }
+
+    final sourceFile = File(sourcePath);
+
+    if (!await sourceFile.exists()) {
+      await _showMessage('La imagen seleccionada no existe.');
+      return;
+    }
+
+    final extension = sourcePath.split('.').last.toLowerCase();
+    final safeExtension = ['png', 'jpg', 'jpeg', 'webp'].contains(extension)
+        ? extension
+        : 'png';
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final shieldsDir = Directory('${appDir.path}/institution_shields');
+
+    if (!await shieldsDir.exists()) {
+      await shieldsDir.create(recursive: true);
+    }
+
+    final targetPath =
+        '${shieldsDir.path}/${institution.id}_${DateTime.now().millisecondsSinceEpoch}.$safeExtension';
+
+    await sourceFile.copy(targetPath);
+
+    final updated = await _institutionRepository
+        .updateInstitutionShieldFilePath(
+          institutionId: institution.id,
+          shieldFilePath: targetPath,
+        );
+
+    if (!mounted) return;
+
+    if (!updated) {
+      await _showMessage('No se pudo guardar el escudo institucional.');
+      return;
+    }
+
+    final refreshed = await _institutionRepository.findById(institution.id);
+
+    if (!mounted) return;
+
+    final resolvedInstitution = refreshed ?? institution;
+
     setState(() {
-      temporadasDinamicas = seasons;
-      categoriasDinamicas = categories;
-      competenciasDinamicas = competitions;
+      institucionId = resolvedInstitution.id;
+      institucionNombre = resolvedInstitution.name;
+      institucionEscudo = resolvedInstitution.displayShieldPath ?? targetPath;
     });
+
+    await _saveActiveContext();
+
+    if (!mounted) return;
+
+    await _showMessage('Escudo institucional guardado correctamente.');
   }
+
+  Future<String?> _resolveInstitutionShieldPath({
+    required String? institutionId,
+    required String institutionName,
+  }) async {
+    InstitutionModel? institution;
+
+    final cleanId = (institutionId ?? '').trim();
+
+    if (cleanId.isNotEmpty) {
+      institution = await _institutionRepository.findById(cleanId);
+    }
+
+    institution ??= await _institutionRepository.findByName(institutionName);
+
+    return institution?.displayShieldPath;
+  }
+
+  Future<void> _loadStructureData({String? institutionId}) async {
+  final targetInstitutionId = institutionId ?? institucionId;
+
+  final seasons = await _structureRepository.getSeasons(
+    institutionId: targetInstitutionId,
+  );
+
+  final categories = await _structureRepository.getCategories(
+    institutionId: targetInstitutionId,
+  );
+
+  final competitions = await _structureRepository.getCompetitions(
+    institutionId: targetInstitutionId,
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    temporadasDinamicas = seasons;
+    categoriasDinamicas = categories;
+    competenciasDinamicas = competitions;
+  });
+}
 
   Future<void> _saveActiveContext() async {
     await _settingsRepository.saveActiveContext(
       ActiveContext(
         hasInstitution: tieneInstitucion,
         institutionName: institucionNombre,
+        institutionId: institucionId,
         season: temporadaSeleccionada,
         competition: competenciaSeleccionada,
         tournament: torneoSeleccionado,
@@ -2132,7 +2618,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (!exists) {
-      final created = await _structureRepository.addSeason(value);
+      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -2164,7 +2650,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (value == null) return null;
 
-    final created = await _structureRepository.addSeason(value);
+    final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
     if (!mounted) return null;
 
@@ -2185,7 +2671,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (value == null) return;
 
-    final created = await _structureRepository.addCategory(value);
+    final created = await _structureRepository.addCategory(value, institutionId: institucionId);
 
     if (!mounted) return;
 
@@ -2220,9 +2706,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (value == null) return;
 
     final created = await _structureRepository.addTournamentToCompetition(
-      competitionName: competenciaSeleccionada,
-      tournament: value,
-    );
+  competitionName: competenciaSeleccionada,
+  tournament: value,
+  institutionId: institucionId,
+);
 
     if (!mounted) return;
 
@@ -2242,11 +2729,11 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveActiveContext();
   }
 
-    Future<void> _crearCompetencia() async {
+  Future<void> _crearCompetencia({String initialName = ''}) async {
     final result = await Navigator.push<CompetitionCreationResult>(
       context,
       MaterialPageRoute(
-        builder: (_) => const CompetitionCreatorScreen(),
+        builder: (_) => CompetitionCreatorScreen(initialName: initialName),
       ),
     );
 
@@ -2254,6 +2741,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final created = await _structureRepository.addCompetition(
       name: result.name,
+        institutionId: institucionId,
       type: result.type,
       tournaments: result.tournaments,
       mode: result.mode,
@@ -2291,7 +2779,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _showMessage('Competencia creada correctamente.');
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2507,6 +2995,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
+                tieneFixture: competenciaActualTieneFixture,
+                institutionName: institucionNombre,
+                institutionId: institucionId,
+                institutionShieldPath: institucionEscudo,
               );
 
             case 'Partidos jugados':
@@ -2515,6 +3007,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
+                institutionName: institucionNombre,
+                institutionId: institucionId,
+                institutionShieldPath: institucionEscudo,
               );
 
             case 'Estadísticas':
@@ -2523,6 +3018,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoria: categoriaSeleccionada,
+                institutionName: institucionNombre,
+                institutionId: institucionId,
+                institutionShieldPath: institucionEscudo,
               );
 
             case 'Equipo':
@@ -2531,6 +3029,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoriaInicial: categoriaSeleccionada,
+                institutionId: institucionId,
               );
 
             default:
@@ -2545,6 +3044,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _abrirFixtureActual() {
+    if (!competenciaActualTieneFixture) {
+      _showMessage('Esta competencia usa partidos sueltos y no tiene fixture.');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -2553,6 +3057,9 @@ class _HomeScreenState extends State<HomeScreen> {
           competencia: competenciaSeleccionada,
           torneo: torneoSeleccionado,
           categoria: categoriaSeleccionada,
+          institutionName: institucionNombre,
+          institutionId: institucionId,
+          institutionShieldPath: institucionEscudo,
         ),
       ),
     );
@@ -2596,6 +3103,33 @@ class _HomeScreenState extends State<HomeScreen> {
     if (selected.isEmpty) return const [];
 
     return selected.first.tournaments;
+  }
+
+  structure.CompetitionConfig? get competenciaActualConfig {
+    final actual = competenciaSeleccionada.trim().toLowerCase();
+
+    if (actual.isEmpty) return null;
+
+    for (final competition in competenciasDinamicas) {
+      if (competition.name.trim().toLowerCase() == actual) {
+        return competition;
+      }
+    }
+
+    return null;
+  }
+
+  bool get competenciaActualTieneFixture {
+    final competition = competenciaActualConfig;
+
+    if (competenciaSeleccionada.trim().isEmpty) return false;
+
+    // Compatibilidad defensiva:
+    // si por algún motivo la competencia todavía no está cargada en memoria,
+    // no bloqueamos el flujo existente.
+    if (competition == null) return true;
+
+    return competition.hasFixture && !competition.isLooseMatches;
   }
 
   Future<void> _setCompetencia(String competencia) async {
@@ -2664,74 +3198,6 @@ class _HomeScreenState extends State<HomeScreen> {
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCompetenciaYTorneoSelector() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.88),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Competencia',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildSelectableChip(
-                text: 'Local',
-                selected: competenciaSeleccionada == 'Local',
-                onTap: () => _setCompetencia('Local'),
-              ),
-              _buildSelectableChip(
-                text: 'Amistoso',
-                selected: competenciaSeleccionada == 'Amistoso',
-                onTap: () => _setCompetencia('Amistoso'),
-              ),
-              _buildSelectableChip(
-                text: 'Nacional',
-                selected: competenciaSeleccionada == 'Nacional',
-                onTap: () => _setCompetencia('Nacional'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Torneo',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: torneosDisponibles.map((torneo) {
-              return _buildSelectableChip(
-                text: torneo,
-                selected: torneoSeleccionado == torneo,
-                onTap: () => _setTorneo(torneo),
-              );
-            }).toList(),
-          ),
-        ],
       ),
     );
   }
@@ -2917,13 +3383,16 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildContextSection(),
 
-                const SizedBox(height: 12),
-                _buildPrimaryOutlineAction(
-                  text: 'Ver fixture actual',
-                  icon: Icons.calendar_month_rounded,
-                  onTap: _abrirFixtureActual,
-                ),
-                const SizedBox(height: 18),
+                if (competenciaActualTieneFixture) ...[
+                  const SizedBox(height: 12),
+                  _buildPrimaryOutlineAction(
+                    text: 'Ver fixture actual',
+                    icon: Icons.calendar_month_rounded,
+                    onTap: _abrirFixtureActual,
+                  ),
+                  const SizedBox(height: 18),
+                ] else
+                  const SizedBox(height: 12),
                 _buildHomeActionCard(
                   icon: Icons.sports_handball_rounded,
                   title: 'Proximo partido',
@@ -2963,34 +3432,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildInstitutionHeaderMounted() {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0A1018).withOpacity(0.95),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildInstitutionBadge(),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  institucionNombre,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    height: 1.1,
+      child: GestureDetector(
+        onTap: _showInstitutionSwitcher,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A1018).withOpacity(0.95),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildInstitutionBadge(),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    institucionNombre,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.1,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: Color(0xFF7DB7FF),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2998,37 +3476,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInstitutionBadge() {
-    final institution = institucionNombre.trim().toLowerCase();
-
-    final useSanFernandoLogo =
-        tieneInstitucion && institution == 'san fernando handball';
-
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      padding: const EdgeInsets.all(8),
-      child: Center(
-        child: useSanFernandoLogo
-            ? Image.asset(
-                'assets/images/san_fernando.png',
-                fit: BoxFit.contain,
-                alignment: Alignment.center,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.shield_outlined,
-                  color: Color(0xFF1C2B44),
-                  size: 26,
-                ),
-              )
-            : const Icon(
-                Icons.add_business_rounded,
-                color: Color(0xFF1C2B44),
-                size: 26,
-              ),
-      ),
+    return GestureDetector(
+      onTap: tieneInstitucion ? _pickAndAssignInstitutionShield : null,
+      child: buildShieldAvatar(institucionEscudo, size: 48, padding: 8),
     );
   }
 
@@ -3530,7 +3980,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final value = selectedValue.trim();
 
     if (!temporadasDinamicas.contains(value)) {
-      final created = await _structureRepository.addSeason(value);
+      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
 
       if (!mounted) return;
 
@@ -3697,140 +4147,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }).toList(),
           onChanged: onChanged,
         ),
-      ),
-    );
-  }
-
-  Widget _buildSwitcherRow() {
-    List<String> opciones = <String>[];
-    String titulo = '';
-
-    if (_contextStep == 'temporada') {
-      titulo = 'Elegí temporada';
-      opciones = ['2026', '+ Crear temporada'];
-    } else if (_contextStep == 'competencia') {
-      titulo = 'Elegí competencia';
-      opciones = [
-        'Local',
-        'Nacional A',
-        'Nacional B',
-        /*'Nacional C',*/
-        'Amistoso',
-        '+ Crear competencia',
-      ];
-    } else if (_contextStep == 'torneo') {
-      titulo = 'Elegí torneo';
-
-      if (competenciaSeleccionada == 'Local') {
-        opciones = ['Apertura', 'Clausura', '+ Crear torneo'];
-      } else if (competenciaSeleccionada.startsWith('Nacional')) {
-        opciones = ['Único', '+ Crear torneo'];
-      } else if (competenciaSeleccionada == 'Amistoso') {
-        opciones = ['Amistoso', '+ Crear torneo'];
-      } else {
-        opciones = ['Único', '+ Crear torneo'];
-      }
-    } else {
-      titulo = 'Elegí categoría';
-      opciones = ['Cadetes', 'Juveniles', '+ Crear categoría'];
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.78),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.04)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            titulo,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: opciones.map((opcion) {
-              final bool selected =
-                  opcion == temporadaSeleccionada ||
-                  opcion == competenciaSeleccionada ||
-                  opcion == torneoSeleccionado ||
-                  opcion == categoriaSeleccionada;
-
-              return GestureDetector(
-                onTap: () {
-                  if (opcion.startsWith('+')) {
-                    debugPrint(opcion);
-                    return;
-                  }
-
-                  setState(() {
-                    if (_contextStep == 'temporada') {
-                      temporadaSeleccionada = opcion;
-                      _contextStep = 'competencia';
-                    } else if (_contextStep == 'competencia') {
-                      competenciaSeleccionada = opcion;
-
-                      if (competenciaSeleccionada == 'Local') {
-                        torneoSeleccionado = 'Apertura';
-                      } else if (competenciaSeleccionada.startsWith(
-                        'Nacional',
-                      )) {
-                        torneoSeleccionado = 'Único';
-                      } else if (competenciaSeleccionada == 'Amistoso') {
-                        torneoSeleccionado = 'Amistoso';
-                      } else {
-                        torneoSeleccionado = 'Único';
-                      }
-
-                      _contextStep = 'torneo';
-                    } else if (_contextStep == 'torneo') {
-                      torneoSeleccionado = opcion;
-                      _contextStep = 'categoria';
-                    } else {
-                      categoriaSeleccionada = opcion;
-                      _contextStep = 'completo';
-                    }
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFF4F8CFF).withOpacity(0.95)
-                        : const Color(0xFF182338).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: selected
-                          ? const Color(0xFF4F8CFF)
-                          : Colors.white.withOpacity(0.05),
-                    ),
-                  ),
-                  child: Text(
-                    opcion,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
       ),
     );
   }
@@ -4102,353 +4418,15 @@ class _PressableTileState extends State<_PressableTile> {
 /// ===============================
 /// ===============================
 
-class MatchEditorScreen extends StatefulWidget {
-  final PartidoModel? initial;
-  final String temporada;
-  final String competencia;
-  final String torneo;
-  final String categoria;
-
-  const MatchEditorScreen({
-    super.key,
-    required this.temporada,
-    required this.competencia,
-    required this.torneo,
-    required this.categoria,
-    this.initial,
-  });
-
-  @override
-  State<MatchEditorScreen> createState() => _MatchEditorScreenState();
-}
-
-class _MatchEditorScreenState extends State<MatchEditorScreen> {
-  late final TextEditingController _rivalController;
-  late final TextEditingController _fechaController;
-  late final TextEditingController _horaController;
-  late final TextEditingController _fechaNumeroController;
-
-  String _condicion = 'Local';
-  bool _saving = false;
-
-  bool get _isEditing => widget.initial != null;
-
-  @override
-  void initState() {
-    super.initState();
-
-    final initial = widget.initial;
-
-    _rivalController = TextEditingController(text: initial?.rival ?? '');
-    _fechaController = TextEditingController(text: initial?.fecha ?? '');
-    _horaController = TextEditingController(text: initial?.hora ?? '13:00');
-    _fechaNumeroController = TextEditingController(
-      text: initial?.fechaNumero?.toString() ?? '',
-    );
-
-    final condicionInicial = initial?.condicion.trim();
-    if (condicionInicial == 'Visitante') {
-      _condicion = 'Visitante';
-    }
-  }
-
-  @override
-  void dispose() {
-    _rivalController.dispose();
-    _fechaController.dispose();
-    _horaController.dispose();
-    _fechaNumeroController.dispose();
-    super.dispose();
-  }
-
-  int? _parseFechaNumero() {
-    final raw = _fechaNumeroController.text.trim();
-    if (raw.isEmpty) return null;
-    return int.tryParse(raw);
-  }
-
-  Future<void> _guardar() async {
-    if (_saving) return;
-
-    final rival = _rivalController.text.trim();
-    final fecha = _fechaController.text.trim();
-    final hora = _horaController.text.trim();
-
-    if (rival.isEmpty) {
-      _showLocalMessage('Ingresá el rival.');
-      return;
-    }
-
-    if (fecha.isEmpty) {
-      _showLocalMessage('Ingresá la fecha.');
-      return;
-    }
-
-    if (hora.isEmpty) {
-      _showLocalMessage('Ingresá la hora.');
-      return;
-    }
-
-    final fechaNumero = _parseFechaNumero();
-
-    setState(() => _saving = true);
-
-    final partido = PartidoModel(
-      temporada: widget.temporada,
-      competencia: widget.competencia,
-      rival: rival,
-      fechaNumero: fechaNumero,
-      fecha: fecha,
-      hora: hora,
-      condicion: _condicion,
-      torneo: widget.torneo,
-      categoria: widget.categoria,
-      estado: 'Pendiente',
-      estadoPartido: 'no_iniciado',
-      golesSanFernando: 0,
-      golesRival: 0,
-      golesRecibidos: 0,
-      atajadas: 0,
-      penales: 0,
-      exclusiones2Min: 0,
-      amarillas: 0,
-      rojas: 0,
-      perdidas: 0,
-      recuperaciones: 0,
-      penalesConvertidosSanFernando: 0,
-      penalesConvertidosRival: 0,
-      eventos: const [],
-      escudoRival: rivalShieldAssetGlobal(rival),
-      matchSquad: widget.initial?.matchSquad,
-    );
-
-    if (!mounted) return;
-
-    Navigator.pop(context, partido);
-  }
-
-  void _showLocalMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar partido' : 'Crear partido'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondohd.jpeg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              children: [
-                Text(
-                  '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · ${widget.categoria}',
-                  style: const TextStyle(
-                    color: Color(0xFFAAB4C3),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _buildCard(
-                  children: [
-                    _buildTextField(
-                      controller: _rivalController,
-                      label: 'Rival',
-                      hint: 'Ejemplo: C.A. River Plate',
-                      textInputType: TextInputType.text,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildTextField(
-                      controller: _fechaNumeroController,
-                      label: 'Fecha número',
-                      hint: 'Ejemplo: 1',
-                      textInputType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildTextField(
-                      controller: _fechaController,
-                      label: 'Fecha',
-                      hint: 'Ejemplo: 21/03',
-                      textInputType: TextInputType.datetime,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildTextField(
-                      controller: _horaController,
-                      label: 'Hora',
-                      hint: 'Ejemplo: 13:00',
-                      textInputType: TextInputType.datetime,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Condición',
-                      style: TextStyle(
-                        color: Color(0xFFAAB4C3),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildConditionButton(
-                            text: 'Local',
-                            selected: _condicion == 'Local',
-                            onTap: () => setState(() {
-                              _condicion = 'Local';
-                            }),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildConditionButton(
-                            text: 'Visitante',
-                            selected: _condicion == 'Visitante',
-                            onTap: () => setState(() {
-                              _condicion = 'Visitante';
-                            }),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _saving ? null : _guardar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F8CFF),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFF263244),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                    ),
-                    child: Text(
-                      _saving ? 'Guardando...' : 'Guardar partido',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCard({required List<Widget> children}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1722).withOpacity(0.92),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required TextInputType textInputType,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: textInputType,
-      textInputAction: TextInputAction.next,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        labelStyle: const TextStyle(color: Color(0xFFAAB4C3)),
-        hintStyle: const TextStyle(color: Color(0xFF6B7280)),
-        filled: true,
-        fillColor: const Color(0xFF111A28),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Color(0xFF4F8CFF)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConditionButton({
-    required String text,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        height: 44,
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFF4F8CFF)
-              : const Color(0xFF182338),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: selected
-                ? const Color(0xFF7DB7FF)
-                : Colors.white.withOpacity(0.06),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class ProximoPartidoScreen extends StatefulWidget {
   final String temporada;
   final String competencia;
   final String torneo;
   final String categoria;
+  final bool tieneFixture;
+  final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const ProximoPartidoScreen({
     super.key,
@@ -4456,6 +4434,10 @@ class ProximoPartidoScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.tieneFixture,
+    required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -4478,6 +4460,23 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// ===============================
 
   final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+
+  String? get _institutionShieldPath {
+    final direct = (widget.institutionShieldPath ?? '').trim();
+
+    if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
+      return direct;
+    }
+
+    final normalized = _institutionName.trim().toLowerCase();
+
+    if (normalized == 'san fernando handball' || normalized == 'san fernando') {
+      return 'assets/images/san_fernando.png';
+    }
+
+    return null;
+  }
+
   List<PartidoModel> _customFixturesV2 = [];
 
   Future<void> _loadEstadoRealV2() async {
@@ -4492,6 +4491,48 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     });
   }
 
+  bool _isAssetShieldPath(String? value) {
+    return (value ?? '').trim().startsWith('assets/');
+  }
+
+  Widget _buildShieldImage(String? path, {double size = 18}) {
+    final cleanPath = (path ?? '').trim();
+
+    if (cleanPath.isEmpty) {
+      return Icon(
+        Icons.sports_handball,
+        size: size,
+        color: const Color(0xFF1C2B44),
+      );
+    }
+
+    if (_isAssetShieldPath(cleanPath)) {
+      return Image.asset(
+        cleanPath,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) {
+          return Icon(
+            Icons.sports_handball,
+            size: size,
+            color: const Color(0xFF1C2B44),
+          );
+        },
+      );
+    }
+
+    return Image.file(
+      File(cleanPath),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) {
+        return Icon(
+          Icons.sports_handball,
+          size: size,
+          color: const Color(0xFF1C2B44),
+        );
+      },
+    );
+  }
+
   bool hayPartido = true;
 
   Map<String, dynamic> proximoPartido = {};
@@ -4501,7 +4542,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   ActiveContext get _activeContext {
     return ActiveContext(
       hasInstitution: true,
-      institutionName: '',
+      institutionName: _institutionName,
+      institutionId: widget.institutionId,
       season: widget.temporada,
       competition: widget.competencia,
       tournament: widget.torneo,
@@ -4521,6 +4563,18 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   String get _partidosFinalizadosStorageKey =>
       'finalizados_$_contextStorageSuffix';
+
+  String get _institutionTitle {
+    final value = widget.institutionName.trim();
+
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return 'Institución';
+    }
+
+    return value;
+  }
+
+  String get _institutionName => _institutionTitle;
 
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
@@ -4597,18 +4651,26 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// Usa solo el fixture base del torneo/categoría actual
   /// y filtra por partidos no finalizados segun V2.
   /// ===============================
-  
+
   void _recalcularProximoYSiguientesDesdeBase() {
     final todos = _buildFixtureCompleto(
       categoria: widget.categoria,
-    ).where((p) => (p['torneo'] ?? '').toString() == widget.torneo).toList();
+    ).where(_matchesCurrentContext).toList();
 
-    final pendientes = todos.where((p) => !_estaFinalizadoGlobal(p)).toList();
+    final pendientes = todos.where((p) {
+      return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
+    }).toList();
 
     pendientes.sort((a, b) {
-      final fa = (a['fechaNumero'] ?? 0) as int;
-      final fb = (b['fechaNumero'] ?? 0) as int;
-      return fa.compareTo(fb);
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     if (pendientes.isEmpty) {
@@ -4618,11 +4680,16 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       return;
     }
 
-    final proximo = Map<String, dynamic>.from(pendientes.first);
+    proximoPartido = Map<String, dynamic>.from(pendientes.first);
 
-    final siguientes = pendientes.skip(1).map((p) {
+    siguientesPartidos = pendientes.skip(1).map((p) {
       return {
+        'temporada': p['temporada'],
+        'competencia': p['competencia'],
         'rival': p['rival'],
+        'institutionId': p['institutionId'] ?? widget.institutionId,
+        'equipoPropio': p['equipoPropio'] ?? _institutionName,
+        'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
         'fechaNumero': p['fechaNumero'],
         'fecha': p['fecha'],
         'hora': p['hora'],
@@ -4630,25 +4697,39 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         'torneo': p['torneo'],
         'categoria': p['categoria'],
         'escudoRival': p['escudoRival'],
+        'estado': p['estado'],
+        'estadoPartido': p['estadoPartido'],
       };
     }).toList();
 
-    proximoPartido = proximo;
-    siguientesPartidos = siguientes;
     hayPartido = true;
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    return AppContextKey.matchesMap(data: partido, context: _activeContext);
+    final sameBase =
+        FixtureRepositoryV2.normalize(partido['temporada']) ==
+            FixtureRepositoryV2.normalize(widget.temporada) &&
+        FixtureRepositoryV2.normalize(partido['competencia']) ==
+            FixtureRepositoryV2.normalize(widget.competencia) &&
+        FixtureRepositoryV2.normalize(partido['categoria']) ==
+            FixtureRepositoryV2.normalize(widget.categoria);
+
+    if (!sameBase) return false;
+
+    return FixtureRepositoryV2.normalize(partido['torneo']) ==
+            FixtureRepositoryV2.normalize(widget.torneo) ||
+        FixtureRepositoryV2.isLooseStageAlias(
+          partido['torneo'].toString(),
+          widget.torneo,
+        );
   }
 
-     @override
+  @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadEstadoRealV2();
-      await _loadCustomFixturesV2();
       await _loadFixtureState();
 
       if (!mounted) return;
@@ -4656,7 +4737,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       setState(() {});
     });
   }
-  
+
   Map<String, dynamic> _defaultProximoPartido() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -4886,7 +4967,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
-    String _normalizeContextText(dynamic value) {
+  String _normalizeContextText(dynamic value) {
     return (value ?? '')
         .toString()
         .trim()
@@ -4918,6 +4999,16 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
+    final partidoInstitutionId = _normalizeContextText(partido.institutionId);
+    final currentInstitutionId = _normalizeContextText(widget.institutionId);
+
+    final sameInstitution =
+        partidoInstitutionId.isNotEmpty &&
+        currentInstitutionId.isNotEmpty &&
+        partidoInstitutionId == currentInstitutionId;
+
+    if (!sameInstitution) return false;
+
     final temporada = _normalizeContextText(partido.temporada);
     final competencia = _normalizeContextText(partido.competencia);
     final torneo = _normalizeContextText(partido.torneo);
@@ -4963,6 +5054,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
     return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
       ...partido,
+      'institutionId': partido['institutionId'] ?? widget.institutionId,
       'temporada': partido['temporada'] ?? widget.temporada,
       'competencia': partido['competencia'] ?? widget.competencia,
       'torneo': partido['torneo'] ?? widget.torneo,
@@ -4994,15 +5086,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return result;
   }
-  
+
   List<Map<String, dynamic>> _buildFixtureCompleto({
     required String categoria,
   }) {
@@ -5023,7 +5114,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
     return _mergeBaseWithCustomFixtures(base);
   }
-  
+
   List<Map<String, dynamic>> _defaultSiguientesPartidos() {
     final fixture = _buildFixtureCompleto(categoria: widget.categoria);
 
@@ -5063,282 +5154,141 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _loadFixtureState() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final proximoRaw = prefs.getString(_proximoPartidoStorageKey);
-    final siguientesRaw = prefs.getString(_siguientesPartidosStorageKey);
-    final finalizadosRaw = prefs.getString(_partidosFinalizadosStorageKey);
-    final finishedHistoryRaw = prefs.getString(_finishedMatchesStorageKey);
-
-    List<Map<String, dynamic>> finalizadosDesdeProximo = [];
-    List<Map<String, dynamic>> finalizadosDesdeHistory = [];
-
-    if (finalizadosRaw != null && finalizadosRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(finalizadosRaw);
-        if (decoded is List) {
-          finalizadosDesdeProximo = decoded
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-        }
-      } catch (_) {
-        finalizadosDesdeProximo = [];
-      }
-    }
-
-    if (finishedHistoryRaw != null && finishedHistoryRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(finishedHistoryRaw);
-        if (decoded is List) {
-          finalizadosDesdeHistory = decoded.whereType<Map>().map((e) {
-            return _partidoDesdeFinishedHistoryEntry(
-              Map<String, dynamic>.from(e),
-            );
-          }).toList();
-        }
-      } catch (_) {
-        finalizadosDesdeHistory = [];
-      }
-    }
-
-    partidosFinalizados = _mergeFinalizados(
-      desdeProximoScreen: finalizadosDesdeProximo,
-      desdeFinishedHistory: finalizadosDesdeHistory,
-    ).where(_matchesCurrentContext).toList();
-
-    proximoPartido = {};
-    siguientesPartidos = [];
-
-    if (proximoRaw != null && proximoRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(proximoRaw);
-        if (decoded is Map) {
-          final loaded = Map<String, dynamic>.from(decoded);
-
-          if (_matchesCurrentContext(loaded) && _esPartidoValido(loaded)) {
-            proximoPartido = loaded;
-          }
-        }
-      } catch (_) {
-        proximoPartido = {};
-      }
-    }
-
-    if (siguientesRaw != null && siguientesRaw.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(siguientesRaw);
-        if (decoded is List) {
-          siguientesPartidos = decoded
-              .whereType<Map>()
-              .map((e) {
-                final item = Map<String, dynamic>.from(e);
-                item['escudoRival'] =
-                    item['escudoRival'] ??
-                    _rivalShieldAssetByName((item['rival'] ?? '').toString());
-                return item;
-              })
-              .where(_matchesCurrentContext)
-              .where(_esPartidoValido)
-              .toList();
-        }
-      } catch (_) {
-        siguientesPartidos = [];
-      }
-    }
-
-    final hayProximoValido =
-        _esPartidoValido(proximoPartido) &&
-        !_estaFinalizadoGlobal(proximoPartido);
-
-    if (hayProximoValido) {
-      hayPartido = true;
-      return;
-    }
-
-    _recalcularProximoYSiguientesDesdeBase();
-
-    if (_esPartidoValido(proximoPartido)) {
-      hayPartido = true;
-      await _persistFixtureState();
-      return;
-    }
-
-    hayPartido = false;
-  }
-
-  Future<void> _persistFixtureState() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    if (hayPartido && proximoPartido.isNotEmpty) {
-      await prefs.setString(
-        _proximoPartidoStorageKey,
-        jsonEncode(proximoPartido),
-      );
-    } else {
-      await prefs.remove(_proximoPartidoStorageKey);
-    }
-
-    await prefs.setString(
-      _siguientesPartidosStorageKey,
-      jsonEncode(siguientesPartidos),
-    );
-
-    await prefs.setString(
-      _partidosFinalizadosStorageKey,
-      jsonEncode(partidosFinalizados),
-    );
-  }
-
-  Future<void> _resetPartidosDePrueba() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final fixture = _buildFixtureCompleto(
+    final repositoryFixtures = await _fixtureRepository.readFixturesFlexible(
+      temporada: widget.temporada,
+      competencia: widget.competencia,
+      torneo: widget.torneo,
       categoria: widget.categoria,
-    ).where((p) => p['torneo'] == widget.torneo).toList();
+      institutionId: widget.institutionId,
+    );
 
-    final Map<String, Map<String, dynamic>> finalizadosPorId = {
-      for (final p in partidosFinalizados)
-        _identityFromMap(p): Map<String, dynamic>.from(p),
-    };
+    final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
 
-    final List<Map<String, dynamic>> pendientes = [];
-    final List<Map<String, dynamic>> finalizadosConservados = [];
+    final baseMaps = <Map<String, dynamic>>[];
 
-    for (final partido in fixture) {
-      final id = _identityFromMap(partido);
+    if (FixtureRepositoryV2.normalize(widget.competencia) == 'local') {
+      final apertura = _buildAperturaBase(
+        categoria: widget.categoria,
+      ).map(_convertirAFixturePartido).toList();
 
-      if (finalizadosPorId.containsKey(id)) {
-        final partidoFinalizado =
-            Map<String, dynamic>.from(finalizadosPorId[id]!)
-              ..['estado'] = 'Finalizado'
-              ..['estadoPartido'] = 'finalizado';
-        finalizadosConservados.add(partidoFinalizado);
-      } else {
-        pendientes.add(Map<String, dynamic>.from(partido));
-      }
+      final clausura = _buildClausuraBase(
+        categoria: widget.categoria,
+      ).map(_convertirAFixturePartido).toList();
+
+      baseMaps.addAll(apertura);
+      baseMaps.addAll(clausura);
     }
 
-    setState(() {
-      partidosFinalizados = finalizadosConservados;
+    final mergedByIdentity = <String, Map<String, dynamic>>{};
 
-      if (pendientes.isNotEmpty) {
-        proximoPartido = pendientes.first;
-        siguientesPartidos = pendientes.skip(1).map((p) {
-          return {
-            'temporada': p['temporada'],
-            'competencia': p['competencia'],
-            'rival': p['rival'],
-            'fecha': p['fecha'],
-            'hora': p['hora'],
-            'condicion': p['condicion'],
-            'torneo': p['torneo'],
-            'categoria': p['categoria'],
-            'fechaNumero': p['fechaNumero'],
-            'escudoRival': p['escudoRival'],
-            'estado': p['estado'],
-          };
-        }).toList();
-        hayPartido = true;
-      } else {
-        proximoPartido = {};
-        siguientesPartidos = [];
-        hayPartido = false;
-      }
+    for (final item in baseMaps) {
+      if (!_matchesCurrentContext(item)) continue;
+
+      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+        item,
+      )] = Map<String, dynamic>.from(
+        item,
+      );
+    }
+
+    for (final item in customMaps) {
+      if (!_matchesCurrentContext(item)) continue;
+
+      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+        item,
+      )] = Map<String, dynamic>.from(
+        item,
+      );
+    }
+
+    final todos = mergedByIdentity.values.toList();
+
+    todos.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
-    if (hayPartido && proximoPartido.isNotEmpty) {
-      await prefs.setString(
-        _proximoPartidoStorageKey,
-        jsonEncode(proximoPartido),
-      );
-    } else {
-      await prefs.remove(_proximoPartidoStorageKey);
-    }
-
-    await prefs.setString(
-      _siguientesPartidosStorageKey,
-      jsonEncode(siguientesPartidos),
-    );
-
-    await prefs.setString(
-      _partidosFinalizadosStorageKey,
-      jsonEncode(partidosFinalizados),
-    );
-  }
-
-  Future<void> _eliminarPartidosDePrueba() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    int eliminados = 0;
-
-    final rawFinished = prefs.getString(_finishedMatchesStorageKey);
-
-    if (rawFinished != null && rawFinished.isNotEmpty) {
-      final decoded = jsonDecode(rawFinished) as List<dynamic>;
-
-      final soloReales = decoded.where((item) {
-        if (item is! Map) return false;
-
-        final map = Map<String, dynamic>.from(item);
-
-        final partidoInterno = Map<String, dynamic>.from(
-          (map['partido'] as Map?)?.cast<String, dynamic>() ??
-              <String, dynamic>{},
-        );
-
-        return map['isReal'] == true ||
-            map['esPartidoReal'] == true ||
-            partidoInterno['isReal'] == true ||
-            partidoInterno['esPartidoReal'] == true;
-      }).toList();
-
-      eliminados = decoded.length - soloReales.length;
-
-      await prefs.setString(_finishedMatchesStorageKey, jsonEncode(soloReales));
-    }
-
-    await prefs.remove(_partidosFinalizadosStorageKey);
+    final pendientes = todos.where((p) {
+      return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
+    }).toList();
 
     if (!mounted) return;
 
+    setState(() {
+      _customFixturesV2 = repositoryFixtures;
+
+      if (pendientes.isEmpty) {
+        proximoPartido = {};
+        siguientesPartidos = [];
+        hayPartido = false;
+        return;
+      }
+
+      proximoPartido = Map<String, dynamic>.from(pendientes.first);
+
+      siguientesPartidos = pendientes.skip(1).map((p) {
+        return {
+          'temporada': p['temporada'],
+          'competencia': p['competencia'],
+          'rival': p['rival'],
+          'institutionId': p['institutionId'] ?? widget.institutionId,
+          'equipoPropio': p['equipoPropio'] ?? _institutionName,
+          'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
+          'fechaNumero': p['fechaNumero'],
+          'fecha': p['fecha'],
+          'hora': p['hora'],
+          'condicion': p['condicion'],
+          'torneo': p['torneo'],
+          'categoria': p['categoria'],
+          'escudoRival': p['escudoRival'],
+          'estado': p['estado'],
+          'estadoPartido': p['estadoPartido'],
+        };
+      }).toList();
+
+      hayPartido = true;
+    });
+  }
+
+  Future<void> _persistFixtureState() async {
+    // Fuente única actual:
+    // - fixtures_v1 para pendientes / fixture / partidos sueltos.
+    // - finished_matches_history_v1 para finalizados.
+    //
+    // Este método queda intencionalmente como no-op para evitar volver a
+    // escribir estados legacy:
+    // - proximo_partido_*
+    // - siguientes_*
+    // - finalizados_*
+    return;
+  }
+
+  Future<void> _resetPartidosDePrueba() async {
+    // Método legacy desactivado.
+    // La fuente única actual para fixture/pendientes es fixtures_v1
+    // mediante FixtureRepositoryV2.
+    await _loadEstadoRealV2();
+    await _loadFixtureState();
+  }
+
+  Future<void> _eliminarPartidosDePrueba() async {
+    // Método legacy desactivado.
+    // No debe escribir proximo_partido_*, siguientes_* ni finalizados_*.
     await _loadEstadoRealV2();
     await _loadFixtureState();
 
     if (!mounted) return;
 
-    setState(() {
-      _recalcularProximoYSiguientesDesdeBase();
-    });
-
-    if (hayPartido && proximoPartido.isNotEmpty) {
-      await prefs.setString(
-        _proximoPartidoStorageKey,
-        jsonEncode(proximoPartido),
-      );
-    } else {
-      await prefs.remove(_proximoPartidoStorageKey);
-    }
-
-    await prefs.setString(
-      _siguientesPartidosStorageKey,
-      jsonEncode(siguientesPartidos),
-    );
-
-    await prefs.setString(
-      _partidosFinalizadosStorageKey,
-      jsonEncode(partidosFinalizados),
-    );
-
-    if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          eliminados == 1
-              ? 'Se eliminó 1 partido de prueba'
-              : 'Se eliminaron $eliminados partidos de prueba',
-        ),
+      const SnackBar(
+        content: Text('Limpieza legacy desactivada. No se modificaron datos.'),
       ),
     );
   }
@@ -5543,6 +5493,15 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     }
 
     proximoPartido['esPartidoReal'] ??= false;
+
+    final ownTeamName = widget.institutionName.trim().isEmpty
+        ? 'Institución'
+        : widget.institutionName.trim();
+
+    proximoPartido['institutionId'] = widget.institutionId;
+    proximoPartido['equipoPropio'] = ownTeamName;
+    proximoPartido['escudoPropio'] = _institutionShieldPath;
+
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -5586,6 +5545,33 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     });
   }
 
+  bool _sameContextForPartidoModel(PartidoModel partido) {
+    final sameSeason =
+        _normalizeContextText(partido.temporada) ==
+        _normalizeContextText(widget.temporada);
+
+    final sameCompetition =
+        _normalizeContextText(partido.competencia) ==
+        _normalizeContextText(widget.competencia);
+
+    final sameCategory =
+        _normalizeContextText(partido.categoria) ==
+        _normalizeContextText(widget.categoria);
+
+    if (!sameSeason || !sameCompetition || !sameCategory) return false;
+
+    final partidoTorneo = _normalizeContextText(partido.torneo);
+    final widgetTorneo = _normalizeContextText(widget.torneo);
+
+    return partidoTorneo == widgetTorneo ||
+        _sameLooseStage(partidoTorneo, widgetTorneo);
+  }
+
+  bool _sameFixtureStableIdentity(PartidoModel a, PartidoModel b) {
+    return FixtureRepositoryV2.buildStableFixtureIdentity(a) ==
+        FixtureRepositoryV2.buildStableFixtureIdentity(b);
+  }
+
   Future<void> _crearPartidoManual() async {
     final result = await Navigator.push<PartidoModel>(
       context,
@@ -5595,44 +5581,29 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           competencia: widget.competencia,
           torneo: widget.torneo,
           categoria: widget.categoria,
+          institutionId: widget.institutionId,
+          equipoPropio: _institutionName,
+          escudoPropio: _institutionShieldPath,
         ),
       ),
     );
 
     if (!mounted || result == null) return;
 
-    await _fixtureRepository.upsertFixture(result);
-    await _loadCustomFixturesV2();
+    final saved = await _fixtureRepository.upsertFixture(result);
 
-    final map = result.toMap();
+    if (!mounted) return;
 
-    setState(() {
-      if (!hayPartido || !_esPartidoValido(proximoPartido)) {
-        proximoPartido = map;
-        hayPartido = true;
-      } else {
-        final newIdentity = PartidoRepositoryV2.buildMatchIdentityFromMap(map);
+    if (!saved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo guardar el partido en fixtures_v1.'),
+        ),
+      );
+      return;
+    }
 
-        final existsInSiguientes = siguientesPartidos.any((item) {
-          return PartidoRepositoryV2.buildMatchIdentityFromMap(item) ==
-              newIdentity;
-        });
-
-        final currentIdentity =
-            PartidoRepositoryV2.buildMatchIdentityFromMap(proximoPartido);
-
-        if (!existsInSiguientes && currentIdentity != newIdentity) {
-          siguientesPartidos.add(map);
-          siguientesPartidos.sort((a, b) {
-            final fa = (a['fechaNumero'] as int?) ?? 999999;
-            final fb = (b['fechaNumero'] as int?) ?? 999999;
-            return fa.compareTo(fb);
-          });
-        }
-      }
-    });
-
-    await _persistFixtureState();
+    await _loadFixtureState();
 
     if (!mounted) return;
 
@@ -5663,6 +5634,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           competencia: widget.competencia,
           torneo: widget.torneo,
           categoria: widget.categoria,
+          institutionId: oldModel.institutionId ?? widget.institutionId,
+          equipoPropio: oldModel.equipoPropio ?? _institutionName,
+          escudoPropio: oldModel.escudoPropio ?? _institutionShieldPath,
         ),
       ),
     );
@@ -5675,15 +5649,17 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
 
     if (!replaced) {
-      await _fixtureRepository.upsertFixture(result);
+      final saved = await _fixtureRepository.upsertFixture(result);
+
+      if (!saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo actualizar el partido.')),
+        );
+        return;
+      }
     }
-      await _loadCustomFixturesV2();
 
-        setState(() {
-      _recalcularProximoYSiguientesDesdeBase();
-    });
-
-    await _persistFixtureState();
+    await _loadFixtureState();
 
     if (!mounted) return;
 
@@ -5695,9 +5671,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   Future<void> _showEditError(String message) async {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -5846,24 +5822,27 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             },
           ),
         ],*/
-        const SizedBox(height: 10),
-        _buildSecondaryAction(
-          text: 'Ver fixture completo',
-          icon: Icons.calendar_month_outlined,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => FixtureScreen(
-                  temporada: widget.temporada,
-                  competencia: widget.competencia,
-                  torneo: widget.torneo,
-                  categoria: widget.categoria,
+        if (widget.tieneFixture) ...[
+          const SizedBox(height: 10),
+          _buildSecondaryAction(
+            text: 'Ver fixture completo',
+            icon: Icons.calendar_month_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FixtureScreen(
+                    temporada: widget.temporada,
+                    competencia: widget.competencia,
+                    torneo: widget.torneo,
+                    categoria: widget.categoria,
+                    institutionName: widget.institutionName,
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
+        ],
         const SizedBox(height: 20),
         _buildPrimaryAction(
           text: _estaFinalizadoV2(proximoPartido)
@@ -5898,7 +5877,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           text: 'Editar partido',
           onTap: _editarProximoPartido,
         ),
-        
+
         const SizedBox(height: 12),
         _buildOutlinedAction(
           text: 'Eliminar partidos de prueba',
@@ -5962,7 +5941,6 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 text: 'Crear partido',
                 onTap: _crearPartidoManual,
               ),
-              
             ],
           ),
         ),
@@ -5974,9 +5952,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'San Fernando Handball',
-          style: TextStyle(
+        Text(
+          _institutionTitle,
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Colors.white,
@@ -6001,9 +5979,9 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'San Fernando Handball',
-          style: TextStyle(
+        Text(
+          _institutionTitle,
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Colors.white,
@@ -6265,15 +6243,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 color: Colors.white,
               ),
               padding: const EdgeInsets.all(6),
-              child: Center(
-                child: escudoRival == null
-                    ? const Icon(
-                        Icons.sports_handball,
-                        size: 18,
-                        color: Color(0xFF1C2B44),
-                      )
-                    : Image.asset(escudoRival, fit: BoxFit.contain),
-              ),
+              child: Center(child: _buildShieldImage(escudoRival, size: 18)),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -6310,21 +6280,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         color: Colors.white,
       ),
       padding: const EdgeInsets.all(8),
-      child: Center(
-        child: assetPath == null
-            ? const Icon(
-                Icons.sports_handball,
-                color: Color(0xFF1C2B44),
-                size: 24,
-              )
-            : Image.asset(assetPath, fit: BoxFit.contain),
-      ),
+      child: Center(child: _buildShieldImage(assetPath, size: 24)),
     );
   }
 
   /// ===============================
   /// CHIP DE ESTADO (MEJORADO CON COLOR DINÁMICO)
   /// ===============================
+
   Widget _buildStatusChip(String label, {Color? color}) {
     final baseColor = color ?? const Color(0xFF4F8CFF);
 
@@ -10491,6 +10454,9 @@ class FixtureScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const FixtureScreen({
     super.key,
@@ -10498,6 +10464,9 @@ class FixtureScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -10508,6 +10477,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   static const String _liveMatchStorageKey = 'live_match_current_v1';
   static const String _finishedMatchesStorageKey =
       'finished_matches_history_v1';
+  late Future<List<PartidoModel>> _fixturesFuture;
 
   /// ===============================
   /// PARTIDOS FINALIZADOS V2
@@ -10516,9 +10486,35 @@ class _FixtureScreenState extends State<FixtureScreen> {
   /// ===============================
   List<PartidoModel> _finalizadosV2 = [];
 
-    final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
+  final FixtureRepositoryV2 _fixtureRepository = const FixtureRepositoryV2();
 
   List<PartidoModel> _customFixturesV2 = [];
+
+  String get _institutionName {
+    final value = widget.institutionName.trim();
+
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return 'Institución';
+    }
+
+    return value;
+  }
+
+  String? get _institutionShieldPath {
+    final direct = (widget.institutionShieldPath ?? '').trim();
+
+    if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
+      return direct;
+    }
+
+    final normalized = _institutionName.trim().toLowerCase();
+
+    if (normalized == 'san fernando handball' || normalized == 'san fernando') {
+      return 'assets/images/san_fernando.png';
+    }
+
+    return null;
+  }
 
   ActiveContext get _activeContext {
     return ActiveContext(
@@ -10531,9 +10527,11 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-    @override
+  @override
   void initState() {
     super.initState();
+
+    _fixturesFuture = _fixtureRepository.readFixtures();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadFinalizadosV2();
@@ -10541,7 +10539,54 @@ class _FixtureScreenState extends State<FixtureScreen> {
     });
   }
 
-  
+  List<Map<String, dynamic>> _obtenerFixtureDesdeCustomDirecto(
+    List<PartidoModel> fixtures,
+  ) {
+    final torneoActual = _normalizeContextText(widget.torneo);
+    final categoriaActual = _normalizeContextText(widget.categoria);
+    final temporadaActual = _normalizeContextText(widget.temporada);
+    final competenciaActual = _normalizeContextText(widget.competencia);
+
+    final result = fixtures
+        .where((partido) {
+          final sameSeason =
+              _normalizeContextText(partido.temporada) == temporadaActual;
+
+          final sameCompetition =
+              _normalizeContextText(partido.competencia) == competenciaActual;
+
+          final sameCategory =
+              _normalizeContextText(partido.categoria) == categoriaActual;
+
+          if (!sameSeason || !sameCompetition || !sameCategory) {
+            return false;
+          }
+
+          final torneo = _normalizeContextText(partido.torneo);
+
+          return torneo == torneoActual ||
+              _sameLooseStage(torneo, torneoActual);
+        })
+        .map((p) {
+          return p.toMap();
+        })
+        .toList();
+
+    result.sort((a, b) {
+      final fa = (a['fechaNumero'] as int?) ?? 999999;
+      final fb = (b['fechaNumero'] as int?) ?? 999999;
+
+      final byFecha = fa.compareTo(fb);
+      if (byFecha != 0) return byFecha;
+
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
+    });
+
+    return result;
+  }
+
   String get _contextStorageSuffix {
     return AppContextKey.fromActiveContext(_activeContext);
   }
@@ -10560,13 +10605,96 @@ class _FixtureScreenState extends State<FixtureScreen> {
     });
   }
 
+  String _normalizeContextText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool _sameLooseStage(String a, String b) {
+    final left = _normalizeContextText(a);
+    final right = _normalizeContextText(b);
+
+    if (left == right) return true;
+
+    const aliases = {
+      'partido suelto',
+      'partidos sueltos',
+      'amistoso',
+      'amistosos',
+    };
+
+    return aliases.contains(left) && aliases.contains(right);
+  }
+
+  bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
+    final sameBase =
+        _normalizeContextText(partido.temporada) ==
+            _normalizeContextText(widget.temporada) &&
+        _normalizeContextText(partido.competencia) ==
+            _normalizeContextText(widget.competencia) &&
+        _normalizeContextText(partido.categoria) ==
+            _normalizeContextText(widget.categoria);
+
+    if (!sameBase) return false;
+
+    final torneo = _normalizeContextText(partido.torneo);
+    final currentTorneo = _normalizeContextText(widget.torneo);
+
+    return torneo == currentTorneo || _sameLooseStage(torneo, currentTorneo);
+  }
+
   Future<void> _loadCustomFixturesV2() async {
-    final data = await _fixtureRepository.readFixturesByContext(_activeContext);
+    final allFixtures = await _fixtureRepository.readFixtures();
+
+    final filtered = allFixtures.where((partido) {
+      final sameSeason =
+          _normalizeContextText(partido.temporada) ==
+          _normalizeContextText(widget.temporada);
+
+      final sameCompetition =
+          _normalizeContextText(partido.competencia) ==
+          _normalizeContextText(widget.competencia);
+
+      final sameCategory =
+          _normalizeContextText(partido.categoria) ==
+          _normalizeContextText(widget.categoria);
+
+      if (!sameSeason || !sameCompetition || !sameCategory) {
+        return false;
+      }
+
+      final partidoTorneo = _normalizeContextText(partido.torneo);
+      final widgetTorneo = _normalizeContextText(widget.torneo);
+
+      if (partidoTorneo == widgetTorneo) return true;
+
+      return _sameLooseStage(partidoTorneo, widgetTorneo);
+    }).toList();
+
+    filtered.sort((a, b) {
+      final byFecha = (a.fechaNumero ?? 999999).compareTo(
+        b.fechaNumero ?? 999999,
+      );
+
+      if (byFecha != 0) return byFecha;
+
+      return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
+    });
 
     if (!mounted) return;
 
     setState(() {
-      _customFixturesV2 = data;
+      _customFixturesV2 = filtered;
     });
   }
 
@@ -10604,10 +10732,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return result;
@@ -10618,7 +10745,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }) {
     final base = <Map<String, dynamic>>[];
 
-    if (widget.competencia.trim().toLowerCase() == 'local') {
+    if (_normalizeContextText(widget.competencia) == 'local') {
       final apertura = _buildAperturaBase(
         categoria: categoria,
       ).map(_convertirAFixturePartido).toList();
@@ -10988,20 +11115,21 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-    List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    final torneoActual = widget.torneo.trim().toLowerCase();
-    final categoriaActual = widget.categoria.trim().toLowerCase();
+  List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
+    final torneoActual = _normalizeContextText(widget.torneo);
+    final categoriaActual = _normalizeContextText(widget.categoria);
 
-    final partidos = _buildFixtureCompleto(
-      categoria: widget.categoria,
-    ).where((partido) {
-      final torneo = (partido['torneo'] ?? '').toString().trim().toLowerCase();
-      final categoria = (partido['categoria'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
+    final partidos = _buildFixtureCompleto(categoria: widget.categoria).where((
+      partido,
+    ) {
+      final torneo = _normalizeContextText(partido['torneo']);
+      final categoria = _normalizeContextText(partido['categoria']);
 
-      return torneo == torneoActual && categoria == categoriaActual;
+      final sameCategory = categoria == categoriaActual;
+      final sameTournament =
+          torneo == torneoActual || _sameLooseStage(torneo, torneoActual);
+
+      return sameCategory && sameTournament;
     }).toList();
 
     partidos.sort((a, b) {
@@ -11011,10 +11139,9 @@ class _FixtureScreenState extends State<FixtureScreen> {
       final byFecha = fa.compareTo(fb);
       if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '')
-          .toString()
-          .toLowerCase()
-          .compareTo((b['rival'] ?? '').toString().toLowerCase());
+      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+        (b['rival'] ?? '').toString().toLowerCase(),
+      );
     });
 
     return partidos;
@@ -11028,6 +11155,10 @@ class _FixtureScreenState extends State<FixtureScreen> {
       Map<String, dynamic>.from(partido),
     );
 
+    partidoReal['institutionId'] = widget.institutionId;
+    partidoReal['equipoPropio'] = _institutionName;
+    partidoReal['escudoPropio'] = _institutionShieldPath;
+
     if (!context.mounted) return;
 
     Navigator.push(
@@ -11038,53 +11169,62 @@ class _FixtureScreenState extends State<FixtureScreen> {
     );
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
-    final partidos = _obtenerFixturePorCategoriaYTorneo();
+    return FutureBuilder<List<PartidoModel>>(
+      future: _fixturesFuture,
+      builder: (context, snapshot) {
+        final partidos = _obtenerFixturePorCategoriaYTorneo();
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Fixture'),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/fondohd.jpeg',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const Text('Fixture'),
           ),
-          Positioned.fill(
-            child: Container(color: const Color(0xFF05080D).withOpacity(0.88)),
-          ),
-          SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              children: [
-                Text(
-                  '${widget.categoria} · ${widget.torneo}',
-                  style: const TextStyle(
-                    color: Color(0xFFD4DCE7),
-                    fontSize: 14,
-                  ),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/fondohd.jpeg',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
                 ),
-                const SizedBox(height: 18),
-                if (partidos.isEmpty)
-                  _buildEmptyFixtureState()
-                else
-                  ...partidos.map((p) => _buildFixtureCard(context, p)),
-              ],
-            ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  color: const Color(0xFF05080D).withOpacity(0.88),
+                ),
+              ),
+              SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  children: [
+                    Text(
+                      '${widget.categoria} · ${widget.torneo}',
+                      style: const TextStyle(
+                        color: Color(0xFFD4DCE7),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const Center(child: CircularProgressIndicator())
+                    else if (partidos.isEmpty)
+                      _buildEmptyFixtureState()
+                    else
+                      ...partidos.map((p) => _buildFixtureCard(context, p)),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
-  
+
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
     final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
 
@@ -11295,27 +11435,71 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// Estos getters siguen manejando la UI actual,
   /// pero algunos datos ya se leen desde PartidoModel.
   /// ===============================
+
   bool get _partidoFinalizado => estadoPartido == 'finalizado';
-  bool get _somosLocales => partidoV2.condicion == 'Local';
 
-  String get _nombreLocal => _somosLocales ? 'San Fernando' : partidoV2.rival;
+  bool get _somosLocales => partidoV2.condicion.trim().toLowerCase() == 'local';
 
-  String get _nombreVisitante =>
-      _somosLocales ? partidoV2.rival : 'San Fernando';
+  String get _equipoPropioNombre {
+    final raw = (widget.partido['equipoPropio'] ?? '').toString().trim();
 
-  int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
-  int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return fixTextoRoto(raw);
+    }
 
-  String get _escudoLocalPath {
-    if (_somosLocales) return 'assets/images/san_fernando.png';
-    return partidoV2.escudoRival ?? 'assets/images/san_fernando.png';
+    return 'Institución';
   }
 
-  String get _escudoVisitantePath {
-    if (_somosLocales) {
-      return partidoV2.escudoRival ?? 'assets/images/san_fernando.png';
+  String? get _equipoPropioEscudo {
+    final raw = (widget.partido['escudoPropio'] ?? '').toString().trim();
+
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return raw;
     }
-    return 'assets/images/san_fernando.png';
+
+    final normalized = _equipoPropioNombre.trim().toLowerCase();
+
+    if (normalized == 'san fernando handball' || normalized == 'san fernando') {
+      return 'assets/images/san_fernando.png';
+    }
+
+    return null;
+  }
+
+  String? get _rivalEscudoResuelto {
+    final directo = (partidoV2.escudoRival ?? '').trim();
+
+    if (directo.isNotEmpty && directo.toLowerCase() != 'null') {
+      return directo;
+    }
+
+    final fallback = rivalShieldAssetGlobal(partidoV2.rival);
+
+    if (fallback != null && fallback.trim().isNotEmpty) {
+      return fallback;
+    }
+
+    return null;
+  }
+
+  String get _nombreLocal {
+    return _somosLocales ? _equipoPropioNombre : partidoV2.rival;
+  }
+
+  String get _nombreVisitante {
+    return _somosLocales ? partidoV2.rival : _equipoPropioNombre;
+  }
+
+  int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
+
+  int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
+
+  String? get _escudoLocalPath {
+    return _somosLocales ? _equipoPropioEscudo : _rivalEscudoResuelto;
+  }
+
+  String? get _escudoVisitantePath {
+    return _somosLocales ? _rivalEscudoResuelto : _equipoPropioEscudo;
   }
 
   Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
@@ -11544,6 +11728,15 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
     final Map<String, dynamic> actualizadoMap = partidoActualizado.toMap();
 
     final bool esPartidoRealActual = widget.partido['esPartidoReal'] == true;
+
+    final dynamic equipoPropioActual = widget.partido['equipoPropio'];
+    final dynamic escudoPropioActual = widget.partido['escudoPropio'];
+    final dynamic escudoRivalActual = widget.partido['escudoRival'];
+    final dynamic equipoLocalActual = widget.partido['equipoLocal'];
+    final dynamic equipoVisitanteActual = widget.partido['equipoVisitante'];
+    final dynamic escudoLocalActual = widget.partido['escudoLocal'];
+    final dynamic escudoVisitanteActual = widget.partido['escudoVisitante'];
+
     final dynamic matchSquadActual = widget.partido['matchSquad'];
     final dynamic matchRosterSnapshotActual =
         widget.partido['matchRosterSnapshot'];
@@ -11553,9 +11746,38 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
       ..addAll(actualizadoMap)
       ..['esPartidoReal'] = esPartidoRealActual;
 
+    if (equipoPropioActual != null) {
+      widget.partido['equipoPropio'] = equipoPropioActual;
+    }
+
+    if (escudoPropioActual != null) {
+      widget.partido['escudoPropio'] = escudoPropioActual;
+    }
+
+    if (escudoRivalActual != null) {
+      widget.partido['escudoRival'] = escudoRivalActual;
+    }
+
+    if (equipoLocalActual != null) {
+      widget.partido['equipoLocal'] = equipoLocalActual;
+    }
+
+    if (equipoVisitanteActual != null) {
+      widget.partido['equipoVisitante'] = equipoVisitanteActual;
+    }
+
+    if (escudoLocalActual != null) {
+      widget.partido['escudoLocal'] = escudoLocalActual;
+    }
+
+    if (escudoVisitanteActual != null) {
+      widget.partido['escudoVisitante'] = escudoVisitanteActual;
+    }
+
     if (matchSquadActual != null) {
       widget.partido['matchSquad'] = matchSquadActual;
     }
+
     if (matchRosterSnapshotActual != null) {
       widget.partido['matchRosterSnapshot'] = matchRosterSnapshotActual;
     }
@@ -11859,7 +12081,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   Widget _buildTeamSide({
     required String nombre,
     required String condicion,
-    required String assetPath,
+    required String? assetPath,
   }) {
     return Column(
       children: [
@@ -11873,16 +12095,7 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: 62,
-          height: 62,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-          padding: const EdgeInsets.all(10),
-          child: Center(child: Image.asset(assetPath, fit: BoxFit.contain)),
-        ),
+        buildShieldAvatar(assetPath, size: 62, padding: 10),
         const SizedBox(height: 8),
         Text(
           nombre,
@@ -12269,13 +12482,9 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   String get _matchIdentity {
-    return [
-      _normalizeValue(widget.partido['torneo']),
-      _normalizeValue(widget.partido['categoria']),
-      _normalizeValue(widget.partido['fecha']),
-      _normalizeValue(widget.partido['rival']),
-      _normalizeValue(widget.partido['condicion']),
-    ].join('|');
+    return PartidoRepositoryV2.buildMatchIdentityFromMap(
+      Map<String, dynamic>.from(widget.partido),
+    );
   }
 
   bool get _isArgentinosJuniorsOfficialMatch {
@@ -12287,28 +12496,32 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   List<PlayerProfile> get _jugadoresConvocados {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+    final squadMapRaw = widget.partido['matchSquad'];
+    final snapshotRaw = widget.partido['matchRosterSnapshot'];
 
-    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
-
-    final rosterBase = snapshotRaw == null
-        ? RosterRepository.rosterForCategory(
-            categoria: widget.partido['categoria'],
-            temporada: '2026',
+    final rosterBase = snapshotRaw is List
+        ? snapshotRaw
+              .whereType<Map>()
+              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+              .where((p) => !p.esCuerpoTecnico)
+              .toList()
+        : RosterRepository.rosterForCategory(
+            categoria: (widget.partido['categoria'] ?? '').toString(),
+            temporada: (widget.partido['temporada'] ?? '2026').toString(),
             includeStaff: false,
-          )
-        : snapshotRaw
-              .map(
-                (e) =>
-                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
+          );
 
-    if (squadMap == null) {
-      return rosterBase.where((p) => p.esArquero).toList();
+    if (squadMapRaw is! Map) {
+      return rosterBase.where((p) => !p.esCuerpoTecnico).toList();
     }
 
-    final squad = MatchSquadConfig.fromMap(squadMap);
+    final squad = MatchSquadConfig.fromMap(
+      Map<String, dynamic>.from(squadMapRaw),
+    );
+
+    if (squad.convocadosIds.isEmpty && squad.arquerosIds.isEmpty) {
+      return rosterBase.where((p) => !p.esCuerpoTecnico).toList();
+    }
 
     return rosterBase
         .where((p) => squad.convocadosIds.contains(p.playerId))
@@ -12334,25 +12547,21 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   /// Esto permite usar arqueros creados/editados en Plantel 2.1.
   /// ===============================
   List<PlayerProfile> _availableGoalkeepersForMatch() {
-    final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
+    final matchSquadRaw = widget.partido['matchSquad'];
+    final snapshotRaw = widget.partido['matchRosterSnapshot'];
 
-    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
+    final rosterBase = snapshotRaw is List
+        ? snapshotRaw
+              .whereType<Map>()
+              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+              .where((p) => !p.esCuerpoTecnico)
+              .toList()
+        : <PlayerProfile>[];
 
-    final rosterBase = snapshotRaw == null
-        ? RosterRepository.rosterForCategory(
-            categoria: widget.partido['categoria'],
-            temporada: '2026',
-            includeStaff: false,
-          )
-        : snapshotRaw
-              .map(
-                (e) =>
-                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
-
-    if (matchSquad != null) {
-      final config = MatchSquadConfig.fromMap(matchSquad);
+    if (matchSquadRaw is Map) {
+      final config = MatchSquadConfig.fromMap(
+        Map<String, dynamic>.from(matchSquadRaw),
+      );
 
       final arquerosConvocados = rosterBase.where((p) {
         return p.esArquero && config.arquerosIds.contains(p.playerId);
@@ -12395,11 +12604,45 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Map<String, dynamic> _toPersistedMatchMap() {
+    final partidoPersistido = Map<String, dynamic>.from(widget.partido);
+
+    partidoPersistido['estado'] = estadoPartido == 'finalizado'
+        ? 'Finalizado'
+        : 'En vivo';
+    partidoPersistido['estadoPartido'] = estadoPartido;
+    partidoPersistido['finalizado'] = estadoPartido == 'finalizado';
+
+    partidoPersistido['golesSanFernando'] = golesSanFernando;
+    partidoPersistido['golesRival'] = golesRival;
+    partidoPersistido['golesRecibidos'] = golesRecibidos;
+    partidoPersistido['atajadas'] = atajadas;
+    partidoPersistido['penales'] = penales;
+    partidoPersistido['exclusiones2Min'] = exclusiones2Min;
+    partidoPersistido['amarillas'] = amarillas;
+    partidoPersistido['rojas'] = rojas;
+    partidoPersistido['perdidas'] = perdidas;
+    partidoPersistido['recuperaciones'] = recuperaciones;
+    partidoPersistido['penalesConvertidosSanFernando'] =
+        penalesConvertidosSanFernando;
+    partidoPersistido['penalesConvertidosRival'] = penalesConvertidosRival;
+    partidoPersistido['modoActual'] = modo;
+    partidoPersistido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
+    partidoPersistido['modoInicioPrimerTiempoAlargue'] =
+        modoInicioPrimerTiempoAlargue;
+    partidoPersistido['currentGoalkeeperNumber'] = currentGoalkeeperNumber;
+    partidoPersistido['eventos'] = eventos;
+
     return {
-      'version': 1,
+      'version': 2,
       'matchIdentity': _matchIdentity,
-      'partido': Map<String, dynamic>.from(widget.partido),
+      'partido': partidoPersistido,
+      'institutionId': partidoPersistido['institutionId'],
+      'temporada': partidoPersistido['temporada'],
+      'competencia': partidoPersistido['competencia'],
+      'torneo': partidoPersistido['torneo'],
+      'categoria': partidoPersistido['categoria'],
       'estadoPartido': estadoPartido,
+      'finalizado': estadoPartido == 'finalizado',
       'golesSanFernando': golesSanFernando,
       'golesRival': golesRival,
       'golesRecibidos': golesRecibidos,
@@ -12629,21 +12872,63 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   bool _isDraw() => golesSanFernando == golesRival;
   bool _isPenaltyShootout() => estadoPartido == 'penales';
 
-  bool get _somosLocales => widget.partido['condicion'] == 'Local';
+  bool get _somosLocales {
+    return (widget.partido['condicion'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase() ==
+        'local';
+  }
 
-  String get _nombreLocalEnVivo => _somosLocales
-      ? 'San Fernando'
-      : (widget.partido['rival'] ?? 'Rival').toString();
+  String get _equipoPropioNombreEnVivo {
+    final raw = (widget.partido['equipoPropio'] ?? '').toString().trim();
 
-  String get _nombreVisitanteEnVivo => _somosLocales
-      ? (widget.partido['rival'] ?? 'Rival').toString()
-      : 'San Fernando';
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return fixTextoRoto(raw);
+    }
 
-  String? get _escudoLocalEnVivo =>
-      _somosLocales ? 'assets/images/san_fernando.png' : _rivalShieldAsset();
+    return 'Institución';
+  }
 
-  String? get _escudoVisitanteEnVivo =>
-      _somosLocales ? _rivalShieldAsset() : 'assets/images/san_fernando.png';
+  String? get _equipoPropioEscudoEnVivo {
+    final raw = (widget.partido['escudoPropio'] ?? '').toString().trim();
+
+    if (raw.isNotEmpty && raw.toLowerCase() != 'null') {
+      return raw;
+    }
+
+    return null;
+  }
+
+  String? get _rivalEscudoEnVivo {
+    final directo = (widget.partido['escudoRival'] ?? '').toString().trim();
+
+    if (directo.isNotEmpty && directo.toLowerCase() != 'null') {
+      return directo;
+    }
+
+    return _rivalShieldAsset();
+  }
+
+  String get _nombreLocalEnVivo {
+    return _somosLocales
+        ? _equipoPropioNombreEnVivo
+        : (widget.partido['rival'] ?? 'Rival').toString();
+  }
+
+  String get _nombreVisitanteEnVivo {
+    return _somosLocales
+        ? (widget.partido['rival'] ?? 'Rival').toString()
+        : _equipoPropioNombreEnVivo;
+  }
+
+  String? get _escudoLocalEnVivo {
+    return _somosLocales ? _equipoPropioEscudoEnVivo : _rivalEscudoEnVivo;
+  }
+
+  String? get _escudoVisitanteEnVivo {
+    return _somosLocales ? _rivalEscudoEnVivo : _equipoPropioEscudoEnVivo;
+  }
 
   int _golesLocal() => _somosLocales ? golesSanFernando : golesRival;
   int _golesVisitante() => _somosLocales ? golesRival : golesSanFernando;
@@ -12881,24 +13166,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Widget _buildMiniShield({String? assetPath}) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      padding: const EdgeInsets.all(6),
-      child: Center(
-        child: assetPath == null
-            ? const Icon(
-                Icons.sports_handball,
-                size: 18,
-                color: Color(0xFF1C2B44),
-              )
-            : Image.asset(assetPath, fit: BoxFit.contain),
-      ),
-    );
+    return buildShieldAvatar(assetPath, size: 34, padding: 6);
   }
 
   Widget _buildMiniTeamTag(String text) {
@@ -15738,6 +16006,9 @@ class HistorialScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const HistorialScreen({
     super.key,
@@ -15745,6 +16016,9 @@ class HistorialScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -15869,7 +16143,8 @@ class _HistorialScreenState extends State<HistorialScreen> {
   ActiveContext get _activeContext {
     return ActiveContext(
       hasInstitution: true,
-      institutionName: '',
+      institutionName: widget.institutionName,
+      institutionId: widget.institutionId,
       season: widget.temporada,
       competition: widget.competencia,
       tournament: widget.torneo,
@@ -16028,12 +16303,47 @@ class _HistorialScreenState extends State<HistorialScreen> {
                             );
                             final escudo = _rivalShieldAsset(rival);
 
+                            final condicion = (partido['condicion'] ?? '')
+                                .toString()
+                                .trim();
+                            final somosLocales =
+                                condicion.toLowerCase() == 'local';
+
+                            final equipoPropio =
+                                widget.institutionName.trim().isEmpty
+                                ? (partido['equipoPropio'] ?? 'Institución')
+                                      .toString()
+                                : widget.institutionName.trim();
+
+                            final escudoPropio =
+                                widget.institutionShieldPath ??
+                                partido['escudoPropio']?.toString();
+
                             final match = MatchModel.fromMap(
                               {
                                 ...partido,
+                                'institutionId':
+                                    partido['institutionId'] ??
+                                    widget.institutionId,
+                                'equipoPropio': equipoPropio,
+                                'escudoPropio': escudoPropio,
+                                'equipoLocal': somosLocales
+                                    ? equipoPropio
+                                    : rival,
+                                'equipoVisitante': somosLocales
+                                    ? rival
+                                    : equipoPropio,
+                                'escudoLocal': somosLocales
+                                    ? escudoPropio
+                                    : escudo,
+                                'escudoVisitante': somosLocales
+                                    ? escudo
+                                    : escudoPropio,
                                 'rival': rival,
                                 'escudoRival': escudo,
+                                'estado': 'Finalizado',
                                 'estadoPartido': 'finalizado',
+                                'finalizado': true,
                               },
                               finalizadoOverride: true,
                               escudoRivalOverride: escudo,
@@ -16466,6 +16776,9 @@ class EstadisticasScreen extends StatefulWidget {
   final String competencia;
   final String torneo;
   final String categoria;
+  final String institutionName;
+  final String? institutionId;
+  final String? institutionShieldPath;
 
   const EstadisticasScreen({
     super.key,
@@ -16473,6 +16786,9 @@ class EstadisticasScreen extends StatefulWidget {
     required this.competencia,
     required this.torneo,
     required this.categoria,
+    required this.institutionName,
+    this.institutionId,
+    this.institutionShieldPath,
   });
 
   @override
@@ -16491,7 +16807,8 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
   ActiveContext get _activeContext {
     return ActiveContext(
       hasInstitution: true,
-      institutionName: '',
+      institutionName: widget.institutionName,
+      institutionId: widget.institutionId,
       season: widget.temporada,
       competition: widget.competencia,
       tournament: widget.torneo,
@@ -16499,7 +16816,45 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
     );
   }
 
+  String _normalizeStatsText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  bool get _isSanFernandoContext {
+    final id = _normalizeStatsText(widget.institutionId);
+    final name = _normalizeStatsText(widget.institutionName);
+
+    return id == 'san_fernando_handball' ||
+        name == 'san fernando handball' ||
+        name == 'san fernando';
+  }
+
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
+    final currentInstitutionId = _normalizeStatsText(widget.institutionId);
+    final partidoInstitutionId = _normalizeStatsText(partido['institutionId']);
+
+    if (currentInstitutionId.isNotEmpty) {
+      if (partidoInstitutionId.isEmpty && !_isSanFernandoContext) {
+        return false;
+      }
+
+      if (partidoInstitutionId.isNotEmpty &&
+          partidoInstitutionId != currentInstitutionId) {
+        return false;
+      }
+    }
+
     return AppContextKey.matchesMap(data: partido, context: _activeContext);
   }
 
@@ -16517,17 +16872,44 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
       if (item is! Map) continue;
       final map = Map<String, dynamic>.from(item);
 
-      if (map['isReal'] != true) continue;
-
-      final base = Map<String, dynamic>.from(
+      final partidoInterno = Map<String, dynamic>.from(
         (map['partido'] as Map?)?.cast<String, dynamic>() ??
             <String, dynamic>{},
       );
 
+      final esFinalizado =
+          map['finalizado'] == true ||
+          map['estadoPartido'] == 'finalizado' ||
+          partidoInterno['finalizado'] == true ||
+          partidoInterno['estadoPartido'] == 'finalizado';
+
+      final esReal =
+          map['isReal'] == true ||
+          map['esPartidoReal'] == true ||
+          partidoInterno['isReal'] == true ||
+          partidoInterno['esPartidoReal'] == true;
+
+      if (!esFinalizado && !esReal) continue;
+
+      final base = partidoInterno;
+
       final merged = {
         ...base,
-        'matchIdentity': map['matchIdentity'],
-        'archivedAt': map['archivedAt'] ?? map['timestamp'],
+
+        'institutionId': map['institutionId'] ?? base['institutionId'],
+        'temporada': map['temporada'] ?? base['temporada'] ?? '2026',
+        'competencia': map['competencia'] ?? base['competencia'] ?? 'Local',
+        'torneo': map['torneo'] ?? base['torneo'],
+        'categoria': map['categoria'] ?? base['categoria'],
+
+        'matchIdentity': map['matchIdentity'] ?? base['matchIdentity'],
+        'archivedAt':
+            map['archivedAt'] ?? map['timestamp'] ?? base['archivedAt'],
+
+        'estado': 'Finalizado',
+        'estadoPartido': 'finalizado',
+        'finalizado': true,
+
         'golesSanFernando':
             map['golesSanFernando'] ?? base['golesSanFernando'] ?? 0,
         'golesRival': map['golesRival'] ?? base['golesRival'] ?? 0,
@@ -16874,6 +17256,7 @@ class EquiposScreen extends StatelessWidget {
   final String temporada;
   final String competencia;
   final String torneo;
+  final String? institutionId;
 
   const EquiposScreen({
     super.key,
@@ -16881,6 +17264,7 @@ class EquiposScreen extends StatelessWidget {
     required this.temporada,
     required this.competencia,
     required this.torneo,
+    this.institutionId,
   });
 
   @override
@@ -16945,6 +17329,7 @@ class EquiposScreen extends StatelessWidget {
                             temporada: temporada,
                             competencia: competencia,
                             torneo: torneo,
+                            institutionId: institutionId,
                           ),
                         ),
                       );
@@ -17040,6 +17425,7 @@ class PlantelScreen extends StatefulWidget {
   final String temporada;
   final String competencia;
   final String torneo;
+  final String? institutionId;
 
   const PlantelScreen({
     super.key,
@@ -17047,6 +17433,7 @@ class PlantelScreen extends StatefulWidget {
     required this.temporada,
     required this.competencia,
     required this.torneo,
+    this.institutionId,
   });
 
   @override
@@ -17055,13 +17442,6 @@ class PlantelScreen extends StatefulWidget {
 
 class _PlantelScreenState extends State<PlantelScreen> {
   late String categoriaSeleccionada;
-
-  bool get _usaPlantelLegacy {
-    final temporada = widget.temporada.trim();
-    final competencia = widget.competencia.trim().toLowerCase();
-
-    return temporada == '2026' && competencia == 'local';
-  }
 
   @override
   void initState() {
@@ -17119,9 +17499,7 @@ class _PlantelScreenState extends State<PlantelScreen> {
                   const SizedBox(height: 18),
                   _buildCategoriaSelector(),
                   const SizedBox(height: 18),
-                  if (!_usaPlantelLegacy)
-                    _buildEmptyContextState()
-                  else ...[
+                  ...[
                     _buildPlantelCard(
                       icon: Icons.sports_handball_rounded,
                       title: 'Jugadores',
@@ -17131,7 +17509,9 @@ class _PlantelScreenState extends State<PlantelScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => JugadoresCampoScreen(
-                              categoria: categoriaSeleccionada,
+                              categoria: widget.categoriaInicial,
+                              temporada: widget.temporada,
+                              institutionId: widget.institutionId,
                             ),
                           ),
                         );
@@ -17147,7 +17527,9 @@ class _PlantelScreenState extends State<PlantelScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => ArquerosScreen(
-                              categoria: categoriaSeleccionada,
+                              categoria: widget.categoriaInicial,
+                              temporada: widget.temporada,
+                              institutionId: widget.institutionId,
                             ),
                           ),
                         );
@@ -17366,9 +17748,15 @@ class _PlantelScreenState extends State<PlantelScreen> {
 
 class ArquerosScreen extends StatefulWidget {
   final String categoria;
+  final String temporada;
+  final String? institutionId;
 
-  const ArquerosScreen({super.key, required this.categoria});
-
+  const ArquerosScreen({
+    super.key,
+    required this.categoria,
+    required this.temporada,
+    this.institutionId,
+  });
   @override
   State<ArquerosScreen> createState() => _ArquerosScreenState();
 }
@@ -17386,12 +17774,14 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   Future<List<PlayerProfile>> _loadArqueros() async {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
     );
 
     final roster = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: false,
     );
 
@@ -17559,13 +17949,14 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: true,
     );
 
     final nuevoArquero = PlayerProfile(
       playerId: 'local_gk_${DateTime.now().millisecondsSinceEpoch}',
-      clubId: RosterRepository.currentClub.clubId,
+      clubId: widget.institutionId ?? 'local',
       nombre: nombre,
       apellido: apellido,
       posicion: 'Arquero',
@@ -17576,7 +17967,8 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       players: [...rosterActual, nuevoArquero],
     );
 
@@ -19702,9 +20094,15 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
 /// ===============================
 class JugadoresCampoScreen extends StatefulWidget {
   final String categoria;
+  final String temporada;
+  final String? institutionId;
 
-  const JugadoresCampoScreen({super.key, required this.categoria});
-
+  const JugadoresCampoScreen({
+    super.key,
+    required this.categoria,
+    required this.temporada,
+    this.institutionId,
+  });
   @override
   State<JugadoresCampoScreen> createState() => _JugadoresCampoScreenState();
 }
@@ -19722,12 +20120,14 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
   Future<List<PlayerProfile>> _loadJugadores() async {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
     );
 
     final roster = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: false,
     );
 
@@ -19798,13 +20198,14 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: true,
     );
 
     final nuevoJugador = PlayerProfile(
       playerId: 'local_${DateTime.now().millisecondsSinceEpoch}',
-      clubId: RosterRepository.currentClub.clubId,
+      clubId: widget.institutionId ?? 'local',
       nombre: nombre,
       apellido: apellido,
       posicion: posicion.isEmpty ? null : posicion,
@@ -19817,7 +20218,8 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       players: actualizado,
     );
 

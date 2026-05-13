@@ -1900,6 +1900,56 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _institutionController = TextEditingController();
 
+String _safeContextInstitutionId(String? value) {
+  return (value ?? '')
+      .trim()
+      .toLowerCase()
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u')
+      .replaceAll('ü', 'u')
+      .replaceAll('ñ', 'n')
+      .replaceAll(RegExp(r'\s+'), '_')
+      .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+}
+
+String _contextKeyForInstitution(String? institutionId) {
+  final safeId = _safeContextInstitutionId(institutionId);
+  return safeId.isEmpty
+      ? 'active_context_legacy_institution_v1'
+      : 'active_context_${safeId}_v1';
+}
+
+Future<ActiveContext?> _readContextForInstitution(String? institutionId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_contextKeyForInstitution(institutionId));
+
+  if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+    return null;
+  }
+
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+
+    return ActiveContext.fromJson(Map<String, dynamic>.from(decoded));
+  } catch (_) {
+    await prefs.remove(_contextKeyForInstitution(institutionId));
+    return null;
+  }
+}
+
+Future<void> _saveContextForInstitution(ActiveContext context) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.setString(
+    _contextKeyForInstitution(context.institutionId),
+    jsonEncode(context.toJson()),
+  );
+}
+
   List<String> get contexto => <String>[
     temporadaSeleccionada,
     competenciaSeleccionada,
@@ -2066,19 +2116,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted || selected == null) return;
 
-    setState(() {
-      tieneInstitucion = true;
-      institucionId = selected.id;
-      institucionNombre = selected.name;
-      institucionEscudo = selected.displayShieldPath;
-      temporadaSeleccionada = '';
-      competenciaSeleccionada = '';
-      torneoSeleccionado = '';
-      categoriaSeleccionada = '';
-      _contextStep = 'temporada';
-    });
+    final savedContext = await _readContextForInstitution(selected.id);
 
-    await _saveActiveContext();
+final restoredSeason = savedContext?.season ?? '';
+final restoredCompetition = savedContext?.competition ?? '';
+final restoredTournament = savedContext?.tournament ?? '';
+final restoredCategory = savedContext?.category ?? '';
+
+await _loadStructureData(institutionId: selected.id);
+
+if (!mounted) return;
+
+setState(() {
+  tieneInstitucion = true;
+  institucionId = selected.id;
+  institucionNombre = selected.name;
+  institucionEscudo = selected.displayShieldPath;
+  temporadaSeleccionada = restoredSeason;
+  competenciaSeleccionada = restoredCompetition;
+  torneoSeleccionado = restoredTournament;
+  categoriaSeleccionada = restoredCategory;
+  _contextStep = restoredSeason.isEmpty ? 'temporada' : '';
+});
+
+await _saveActiveContext();
 
     if (!mounted) return;
 
@@ -2511,18 +2572,22 @@ await _loadStructureData(institutionId: activeContext.institutionId);
 }
 
   Future<void> _saveActiveContext() async {
-    await _settingsRepository.saveActiveContext(
-      ActiveContext(
-        hasInstitution: tieneInstitucion,
-        institutionName: institucionNombre,
-        institutionId: institucionId,
-        season: temporadaSeleccionada,
-        competition: competenciaSeleccionada,
-        tournament: torneoSeleccionado,
-        category: categoriaSeleccionada,
-      ),
-    );
+  final context = ActiveContext(
+    hasInstitution: tieneInstitucion,
+    institutionName: institucionNombre,
+    institutionId: institucionId,
+    season: temporadaSeleccionada,
+    competition: competenciaSeleccionada,
+    tournament: torneoSeleccionado,
+    category: categoriaSeleccionada,
+  );
+
+  await _settingsRepository.saveActiveContext(context);
+
+  if ((context.institutionId ?? '').trim().isNotEmpty) {
+    await _saveContextForInstitution(context);
   }
+}
 
   Future<String?> _showTextInputDialog({
     required String title,
