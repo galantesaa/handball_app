@@ -3016,6 +3016,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 competencia: competenciaSeleccionada,
                 torneo: torneoSeleccionado,
                 categoriaInicial: categoriaSeleccionada,
+                institutionId: institucionId,
               );
 
             default:
@@ -17246,6 +17247,7 @@ class EquiposScreen extends StatelessWidget {
   final String temporada;
   final String competencia;
   final String torneo;
+  final String? institutionId;
 
   const EquiposScreen({
     super.key,
@@ -17253,6 +17255,7 @@ class EquiposScreen extends StatelessWidget {
     required this.temporada,
     required this.competencia,
     required this.torneo,
+    this.institutionId,
   });
 
   @override
@@ -17317,6 +17320,7 @@ class EquiposScreen extends StatelessWidget {
                             temporada: temporada,
                             competencia: competencia,
                             torneo: torneo,
+                            institutionId: institutionId,
                           ),
                         ),
                       );
@@ -17412,6 +17416,7 @@ class PlantelScreen extends StatefulWidget {
   final String temporada;
   final String competencia;
   final String torneo;
+  final String? institutionId;
 
   const PlantelScreen({
     super.key,
@@ -17419,6 +17424,7 @@ class PlantelScreen extends StatefulWidget {
     required this.temporada,
     required this.competencia,
     required this.torneo,
+    this.institutionId,
   });
 
   @override
@@ -17427,13 +17433,6 @@ class PlantelScreen extends StatefulWidget {
 
 class _PlantelScreenState extends State<PlantelScreen> {
   late String categoriaSeleccionada;
-
-  bool get _usaPlantelLegacy {
-    final temporada = widget.temporada.trim();
-    final competencia = widget.competencia.trim().toLowerCase();
-
-    return temporada == '2026' && competencia == 'local';
-  }
 
   @override
   void initState() {
@@ -17491,9 +17490,7 @@ class _PlantelScreenState extends State<PlantelScreen> {
                   const SizedBox(height: 18),
                   _buildCategoriaSelector(),
                   const SizedBox(height: 18),
-                  if (!_usaPlantelLegacy)
-                    _buildEmptyContextState()
-                  else ...[
+                  ...[
                     _buildPlantelCard(
                       icon: Icons.sports_handball_rounded,
                       title: 'Jugadores',
