@@ -747,21 +747,78 @@ class RosterRepository {
 /// Si no hay datos guardados, usa RosterRepository hardcodeado.
 /// ===============================
 class RosterStorage {
-  static String _key({required String categoria, required String temporada}) {
+  static String _normalize(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+  }
+
+  static bool _isSanFernandoInstitution(String? institutionId) {
+    final id = _normalize(institutionId);
+    return id == 'san_fernando_handball' || id == 'san_fernando';
+  }
+
+  static String _legacyKey({
+    required String categoria,
+    required String temporada,
+  }) {
     return 'roster_${temporada}_$categoria';
+  }
+
+  static String _key({
+    required String? institutionId,
+    required String categoria,
+    required String temporada,
+  }) {
+    final safeInstitutionId = _normalize(institutionId);
+
+    if (safeInstitutionId.isEmpty) {
+      return _legacyKey(categoria: categoria, temporada: temporada);
+    }
+
+    return 'roster_${safeInstitutionId}_${temporada}_$categoria';
   }
 
   static Future<List<PlayerProfile>> readRosterForCategory({
     required String categoria,
     required String temporada,
+    String? institutionId,
     bool includeStaff = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(
-      _key(categoria: categoria, temporada: temporada),
+
+    final scopedKey = _key(
+      institutionId: institutionId,
+      categoria: categoria,
+      temporada: temporada,
     );
 
-    if (raw == null || raw.isEmpty) {
+    final rawScoped = prefs.getString(scopedKey);
+
+    if (rawScoped != null && rawScoped.trim().isNotEmpty) {
+      return _decodeRoster(rawScoped, includeStaff: includeStaff);
+    }
+
+    final legacyKey = _legacyKey(categoria: categoria, temporada: temporada);
+    final rawLegacy = prefs.getString(legacyKey);
+
+    if (_isSanFernandoInstitution(institutionId) &&
+        rawLegacy != null &&
+        rawLegacy.trim().isNotEmpty) {
+      return _decodeRoster(rawLegacy, includeStaff: includeStaff);
+    }
+
+    if (_isSanFernandoInstitution(institutionId)) {
       return RosterRepository.rosterForCategory(
         categoria: categoria,
         temporada: temporada,
@@ -769,61 +826,94 @@ class RosterStorage {
       );
     }
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
+    return const [];
+  }
 
-    final players = decoded
-        .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)))
-        .where((p) => includeStaff || !p.esCuerpoTecnico)
-        .toList();
+  static List<PlayerProfile> _decodeRoster(
+    String raw, {
+    required bool includeStaff,
+  }) {
+    try {
+      final decoded = jsonDecode(raw);
 
-    players.sort((a, b) {
-      final aNum = int.tryParse(a.numeroPreferido ?? '');
-      final bNum = int.tryParse(b.numeroPreferido ?? '');
-
-      if (aNum == null && bNum == null) {
-        return a.apellido.compareTo(b.apellido);
+      if (decoded is! List) {
+        return const [];
       }
-      if (aNum == null) return 1;
-      if (bNum == null) return -1;
 
-      return aNum.compareTo(bNum);
-    });
+      final players = decoded
+          .whereType<Map>()
+          .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+          .where((p) => includeStaff || !p.esCuerpoTecnico)
+          .toList();
 
-    return players;
+      players.sort((a, b) {
+        final aNum = int.tryParse(a.numeroPreferido ?? '');
+        final bNum = int.tryParse(b.numeroPreferido ?? '');
+
+        if (aNum == null && bNum == null) {
+          return a.apellido.compareTo(b.apellido);
+        }
+
+        if (aNum == null) return 1;
+        if (bNum == null) return -1;
+
+        return aNum.compareTo(bNum);
+      });
+
+      return players;
+    } catch (_) {
+      return const [];
+    }
   }
 
   static Future<void> saveRosterForCategory({
     required String categoria,
     required String temporada,
+    String? institutionId,
     required List<PlayerProfile> players,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
+    final key = _key(
+      institutionId: institutionId,
+      categoria: categoria,
+      temporada: temporada,
+    );
+
     final data = players.map((p) => p.toMap()).toList();
 
-    await prefs.setString(
-      _key(categoria: categoria, temporada: temporada),
-      jsonEncode(data),
-    );
+    await prefs.setString(key, jsonEncode(data));
   }
 
   static Future<void> seedCategoryIfEmpty({
     required String categoria,
     required String temporada,
+    String? institutionId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = _key(categoria: categoria, temporada: temporada);
+
+    final key = _key(
+      institutionId: institutionId,
+      categoria: categoria,
+      temporada: temporada,
+    );
 
     if (prefs.containsKey(key)) return;
+
+    if (!_isSanFernandoInstitution(institutionId)) {
+      return;
+    }
 
     final base = RosterRepository.rosterForCategory(
       categoria: categoria,
       temporada: temporada,
       includeStaff: true,
     );
+
     await saveRosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
       players: base,
     );
   }
@@ -878,6 +968,15 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
 
   String get categoria => (widget.partido['categoria'] ?? 'Cadetes').toString();
   String get temporada => '2026';
+  String? get institutionId {
+    final value = widget.partido['institutionId']?.toString().trim();
+
+    if (value == null || value.isEmpty || value.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return value;
+  }
 
   late Future<List<PlayerProfile>> _rosterFuture;
 
@@ -917,11 +1016,13 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
     );
 
     final principal = await RosterStorage.readRosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
       includeStaff: false,
     );
 
@@ -931,11 +1032,13 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
       await RosterStorage.seedCategoryIfEmpty(
         categoria: cat,
         temporada: temporada,
+        institutionId: institutionId,
       );
 
       final rosterCat = await RosterStorage.readRosterForCategory(
         categoria: cat,
         temporada: temporada,
+        institutionId: institutionId,
         includeStaff: false,
       );
 
@@ -952,15 +1055,6 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
     _rosterPrincipal = principal;
     _rosterExtras = extras;
 
-    /// =====================================================
-    /// CONVOCATORIA DEFAULT PROFESIONAL
-    /// =====================================================
-    /// Por ahora la app trabaja principalmente con arqueros.
-    /// Entonces:
-    /// - Los arqueros quedan convocados por defecto.
-    /// - Los jugadores de campo aparecen disponibles, pero NO seleccionados.
-    /// - Si el usuario quiere usar un jugador de campo, lo selecciona manualmente.
-    /// =====================================================
     if (convocadosIds.isEmpty && arquerosIds.isEmpty) {
       final arquerosDefault = principal
           .where((p) => p.esArquero && !p.esCuerpoTecnico)
@@ -971,7 +1065,7 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
       arquerosIds = {...arquerosDefault};
     }
 
-    return [...principal, ...extras];
+    return <PlayerProfile>[...principal, ...extras];
   }
 
   @override
