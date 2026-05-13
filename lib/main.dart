@@ -16768,12 +16768,26 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
       if (item is! Map) continue;
       final map = Map<String, dynamic>.from(item);
 
-      if (map['isReal'] != true) continue;
-
-      final base = Map<String, dynamic>.from(
+      final partidoInterno = Map<String, dynamic>.from(
         (map['partido'] as Map?)?.cast<String, dynamic>() ??
             <String, dynamic>{},
       );
+
+      final esFinalizado =
+          map['finalizado'] == true ||
+          map['estadoPartido'] == 'finalizado' ||
+          partidoInterno['finalizado'] == true ||
+          partidoInterno['estadoPartido'] == 'finalizado';
+
+      final esReal =
+          map['isReal'] == true ||
+          map['esPartidoReal'] == true ||
+          partidoInterno['isReal'] == true ||
+          partidoInterno['esPartidoReal'] == true;
+
+      if (!esFinalizado && !esReal) continue;
+
+      final base = partidoInterno;
 
       final merged = {
         ...base,
