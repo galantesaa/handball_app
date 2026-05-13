@@ -4911,43 +4911,51 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   Map<String, dynamic> _convertirAFixturePartido(Map<String, dynamic> raw) {
     final bool somosLocales =
-        (raw['local'] ?? '').toString() == 'San Fernando Handball';
+    FixtureRepositoryV2.normalize(raw['local']) ==
+    FixtureRepositoryV2.normalize(_institutionName);
 
     final rival = somosLocales
         ? (raw['visitante'] ?? 'Rival').toString()
         : (raw['local'] ?? 'Rival').toString();
 
     return {
-      'temporada': widget.temporada,
-      'competencia': widget.competencia,
-      'rival': rival,
-      'fechaNumero': raw['fechaNumero'],
-      'fecha': raw['fecha'],
-      'hora': raw['hora'],
-      'condicion': somosLocales ? 'Local' : 'Visitante',
-      'torneo': raw['torneo'],
-      'categoria': raw['categoria'],
-      'estado': 'Pendiente',
-      'estadoPartido': 'no_iniciado',
-      'golesSanFernando': 0,
-      'golesRival': 0,
-      'golesRecibidos': 0,
-      'atajadas': 0,
-      'penales': 0,
-      'exclusiones2Min': 0,
-      'amarillas': 0,
-      'rojas': 0,
-      'perdidas': 0,
-      'recuperaciones': 0,
-      'penalesConvertidosSanFernando': 0,
-      'penalesConvertidosRival': 0,
-      'eventos': <Map<String, dynamic>>[],
-      'modoActual': null,
-      'modoInicioPrimerTiempo': null,
-      'modoInicioPrimerTiempoAlargue': null,
-      'currentGoalkeeperNumber': null,
-      'escudoRival': _rivalShieldAssetByName(rival),
-    };
+  'temporada': widget.temporada,
+  'competencia': widget.competencia,
+  'institutionId': widget.institutionId,
+  'equipoPropio': _institutionName,
+  'escudoPropio': _institutionShieldPath,
+  'rival': rival,
+  'fechaNumero': raw['fechaNumero'],
+  'fecha': raw['fecha'],
+  'hora': raw['hora'],
+  'condicion': somosLocales ? 'Local' : 'Visitante',
+  'torneo': raw['torneo'],
+  'categoria': raw['categoria'],
+  'equipoLocal': raw['local'],
+  'equipoVisitante': raw['visitante'],
+  'escudoLocal': somosLocales ? _institutionShieldPath : _rivalShieldAssetByName(rival),
+  'escudoVisitante': somosLocales ? _rivalShieldAssetByName(rival) : _institutionShieldPath,
+  'estado': 'Pendiente',
+  'estadoPartido': 'no_iniciado',
+  'golesSanFernando': 0,
+  'golesRival': 0,
+  'golesRecibidos': 0,
+  'atajadas': 0,
+  'penales': 0,
+  'exclusiones2Min': 0,
+  'amarillas': 0,
+  'rojas': 0,
+  'perdidas': 0,
+  'recuperaciones': 0,
+  'penalesConvertidosSanFernando': 0,
+  'penalesConvertidosRival': 0,
+  'eventos': <Map<String, dynamic>>[],
+  'modoActual': null,
+  'modoInicioPrimerTiempo': null,
+  'modoInicioPrimerTiempoAlargue': null,
+  'currentGoalkeeperNumber': null,
+  'escudoRival': _rivalShieldAssetByName(rival),
+};
   }
 
   String? _rivalShieldAssetByName(String rival) {
@@ -11024,41 +11032,51 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
   Map<String, dynamic> _convertirAFixturePartido(Map<String, dynamic> raw) {
     final bool somosLocales =
-        (raw['local'] ?? '').toString() == 'San Fernando Handball';
+        FixtureRepositoryV2.normalize(raw['local']) ==
+        FixtureRepositoryV2.normalize(_institutionName);
 
     final rival = somosLocales
         ? (raw['visitante'] ?? 'Rival').toString()
         : (raw['local'] ?? 'Rival').toString();
 
     return {
-      'rival': rival,
-      'fechaNumero': raw['fechaNumero'],
-      'fecha': raw['fecha'],
-      'hora': raw['hora'],
-      'condicion': somosLocales ? 'Local' : 'Visitante',
-      'torneo': raw['torneo'],
-      'categoria': raw['categoria'],
-      'estado': 'Pendiente',
-      'estadoPartido': 'no_iniciado',
-      'golesSanFernando': 0,
-      'golesRival': 0,
-      'golesRecibidos': 0,
-      'atajadas': 0,
-      'penales': 0,
-      'exclusiones2Min': 0,
-      'amarillas': 0,
-      'rojas': 0,
-      'perdidas': 0,
-      'recuperaciones': 0,
-      'penalesConvertidosSanFernando': 0,
-      'penalesConvertidosRival': 0,
-      'eventos': <Map<String, dynamic>>[],
-      'modoActual': null,
-      'modoInicioPrimerTiempo': null,
-      'modoInicioPrimerTiempoAlargue': null,
-      'currentGoalkeeperNumber': null,
-      'escudoRival': _rivalShieldAssetByName(rival),
-    };
+  'temporada': widget.temporada,
+  'competencia': widget.competencia,
+  'institutionId': widget.institutionId,
+  'equipoPropio': _institutionName,
+  'escudoPropio': _institutionShieldPath,
+  'rival': rival,
+  'fechaNumero': raw['fechaNumero'],
+  'fecha': raw['fecha'],
+  'hora': raw['hora'],
+  'condicion': somosLocales ? 'Local' : 'Visitante',
+  'torneo': raw['torneo'],
+  'categoria': raw['categoria'],
+  'equipoLocal': raw['local'],
+  'equipoVisitante': raw['visitante'],
+  'escudoLocal': somosLocales ? _institutionShieldPath : _rivalShieldAssetByName(rival),
+  'escudoVisitante': somosLocales ? _rivalShieldAssetByName(rival) : _institutionShieldPath,
+  'estado': 'Pendiente',
+  'estadoPartido': 'no_iniciado',
+  'golesSanFernando': 0,
+  'golesRival': 0,
+  'golesRecibidos': 0,
+  'atajadas': 0,
+  'penales': 0,
+  'exclusiones2Min': 0,
+  'amarillas': 0,
+  'rojas': 0,
+  'perdidas': 0,
+  'recuperaciones': 0,
+  'penalesConvertidosSanFernando': 0,
+  'penalesConvertidosRival': 0,
+  'eventos': <Map<String, dynamic>>[],
+  'modoActual': null,
+  'modoInicioPrimerTiempo': null,
+  'modoInicioPrimerTiempoAlargue': null,
+  'currentGoalkeeperNumber': null,
+  'escudoRival': _rivalShieldAssetByName(rival),
+};
   }
 
   Widget _buildEmptyFixtureState() {
