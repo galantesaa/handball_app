@@ -685,10 +685,15 @@ class RosterRepository {
     required String temporada,
     bool includeStaff = false,
   }) {
+    final categoriaNormalizada = normalizeHandballText(categoria);
+    final temporadaNormalizada = normalizeHandballText(temporada);
+
     final ids = assignments
         .where(
           (a) =>
-              a.categoria == categoria && a.temporada == temporada && a.activo,
+              normalizeHandballText(a.categoria) == categoriaNormalizada &&
+              normalizeHandballText(a.temporada) == temporadaNormalizada &&
+              a.activo,
         )
         .map((a) => a.playerId)
         .toSet();
@@ -702,9 +707,14 @@ class RosterRepository {
     result.sort((a, b) {
       final aNum = int.tryParse(a.numeroPreferido ?? '');
       final bNum = int.tryParse(b.numeroPreferido ?? '');
-      if (aNum == null && bNum == null) return a.apellido.compareTo(b.apellido);
+
+      if (aNum == null && bNum == null) {
+        return a.apellido.compareTo(b.apellido);
+      }
+
       if (aNum == null) return 1;
       if (bNum == null) return -1;
+
       return aNum.compareTo(bNum);
     });
 
@@ -718,6 +728,7 @@ class RosterRepository {
     return rosterForCategory(
       categoria: categoria,
       temporada: temporada,
+      includeStaff: false,
     ).where((p) => p.esArquero).toList();
   }
 
@@ -12374,28 +12385,32 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   List<PlayerProfile> get _jugadoresConvocados {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+    final squadMapRaw = widget.partido['matchSquad'];
+    final snapshotRaw = widget.partido['matchRosterSnapshot'];
 
-    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
-
-    final rosterBase = snapshotRaw == null
-        ? RosterRepository.rosterForCategory(
-            categoria: widget.partido['categoria'],
-            temporada: '2026',
+    final rosterBase = snapshotRaw is List
+        ? snapshotRaw
+              .whereType<Map>()
+              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+              .where((p) => !p.esCuerpoTecnico)
+              .toList()
+        : RosterRepository.rosterForCategory(
+            categoria: (widget.partido['categoria'] ?? '').toString(),
+            temporada: (widget.partido['temporada'] ?? '2026').toString(),
             includeStaff: false,
-          )
-        : snapshotRaw
-              .map(
-                (e) =>
-                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
+          );
 
-    if (squadMap == null) {
-      return rosterBase.where((p) => p.esArquero).toList();
+    if (squadMapRaw is! Map) {
+      return rosterBase.where((p) => !p.esCuerpoTecnico).toList();
     }
 
-    final squad = MatchSquadConfig.fromMap(squadMap);
+    final squad = MatchSquadConfig.fromMap(
+      Map<String, dynamic>.from(squadMapRaw),
+    );
+
+    if (squad.convocadosIds.isEmpty && squad.arquerosIds.isEmpty) {
+      return rosterBase.where((p) => !p.esCuerpoTecnico).toList();
+    }
 
     return rosterBase
         .where((p) => squad.convocadosIds.contains(p.playerId))
@@ -12421,25 +12436,25 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   /// Esto permite usar arqueros creados/editados en Plantel 2.1.
   /// ===============================
   List<PlayerProfile> _availableGoalkeepersForMatch() {
-    final matchSquad = widget.partido['matchSquad'] as Map<String, dynamic>?;
+    final matchSquadRaw = widget.partido['matchSquad'];
+    final snapshotRaw = widget.partido['matchRosterSnapshot'];
 
-    final snapshotRaw = widget.partido['matchRosterSnapshot'] as List<dynamic>?;
-
-    final rosterBase = snapshotRaw == null
-        ? RosterRepository.rosterForCategory(
-            categoria: widget.partido['categoria'],
-            temporada: '2026',
+    final rosterBase = snapshotRaw is List
+        ? snapshotRaw
+              .whereType<Map>()
+              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+              .where((p) => !p.esCuerpoTecnico)
+              .toList()
+        : RosterRepository.rosterForCategory(
+            categoria: (widget.partido['categoria'] ?? '').toString(),
+            temporada: (widget.partido['temporada'] ?? '2026').toString(),
             includeStaff: false,
-          )
-        : snapshotRaw
-              .map(
-                (e) =>
-                    PlayerProfile.fromMap(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
+          );
 
-    if (matchSquad != null) {
-      final config = MatchSquadConfig.fromMap(matchSquad);
+    if (matchSquadRaw is Map) {
+      final config = MatchSquadConfig.fromMap(
+        Map<String, dynamic>.from(matchSquadRaw),
+      );
 
       final arquerosConvocados = rosterBase.where((p) {
         return p.esArquero && config.arquerosIds.contains(p.playerId);
