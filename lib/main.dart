@@ -2331,9 +2331,10 @@ await _saveActiveContext();
 
     if (!exists) {
       final created = await _structureRepository.addTournamentToCompetition(
-        competitionName: competenciaSeleccionada,
-        tournament: value,
-      );
+  competitionName: competenciaSeleccionada,
+  tournament: value,
+  institutionId: institucionId,
+);
 
       if (!mounted) return;
 
