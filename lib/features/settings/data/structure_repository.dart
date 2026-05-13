@@ -132,10 +132,10 @@ class CompetitionConfig {
 
     final tournaments = rawTournaments is List
         ? rawTournaments
-            .map((e) => e.toString().trim())
-            .where((e) => e.isNotEmpty)
-            .toSet()
-            .toList()
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toSet()
+              .toList()
         : const <String>['Único'];
 
     final cleanType = (json['type'] ?? 'single').toString().trim();
@@ -160,24 +160,24 @@ class CompetitionConfig {
 
     final resolvedTournaments = tournaments.isEmpty
         ? cleanType == 'local'
-            ? const ['Apertura', 'Clausura']
-            : mode == 'loose_matches'
-                ? const ['Partidos sueltos']
-                : const ['Único']
+              ? const ['Apertura', 'Clausura']
+              : mode == 'loose_matches'
+              ? const ['Partidos sueltos']
+              : const ['Único']
         : tournaments;
 
     final rawStages = json['stages'];
 
     final stages = rawStages is List
         ? rawStages
-            .whereType<Map>()
-            .map(
-              (e) => CompetitionStageConfig.fromJson(
-                Map<String, dynamic>.from(e),
-              ),
-            )
-            .where((e) => e.name.trim().isNotEmpty)
-            .toList()
+              .whereType<Map>()
+              .map(
+                (e) => CompetitionStageConfig.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
+              .where((e) => e.name.trim().isNotEmpty)
+              .toList()
         : <CompetitionStageConfig>[];
 
     final resolvedStages = stages.isNotEmpty
@@ -195,8 +195,8 @@ class CompetitionConfig {
               stageType: mode == 'loose_matches'
                   ? 'friendly'
                   : mode == 'phased_fixture'
-                      ? 'phase'
-                      : 'league',
+                  ? 'phase'
+                  : 'league',
             );
           });
 
@@ -229,8 +229,7 @@ class CompetitionConfig {
       mode: mode ?? this.mode,
       hasFixture: hasFixture ?? this.hasFixture,
       allowManualMatches: allowManualMatches ?? this.allowManualMatches,
-      allowKnockoutRounds:
-          allowKnockoutRounds ?? this.allowKnockoutRounds,
+      allowKnockoutRounds: allowKnockoutRounds ?? this.allowKnockoutRounds,
       stages: stages ?? this.stages,
     );
   }
@@ -243,6 +242,29 @@ class StructureRepository {
 
   String _normalize(String value) {
     return _cleanText(value).toLowerCase();
+  }
+
+  String _safeInstitutionId(String? institutionId) {
+    return (institutionId ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+  }
+
+  String _keyFor({required String baseKey, String? institutionId}) {
+    final safeId = _safeInstitutionId(institutionId);
+
+    if (safeId.isEmpty) return baseKey;
+
+    return '${baseKey}_$safeId';
   }
 
   static String stageIdFromName(String value) {
@@ -274,9 +296,11 @@ class StructureRepository {
     return result;
   }
 
-  Future<List<String>> getSeasons() async {
+  Future<List<String>> getSeasons({String? institutionId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(AppStorageKeys.seasons);
+    final raw = prefs.getString(
+      _keyFor(baseKey: AppStorageKeys.seasons, institutionId: institutionId),
+    );
 
     if (raw == null || raw.trim().isEmpty) return const [];
 
@@ -290,31 +314,36 @@ class StructureRepository {
     }
   }
 
-  Future<void> saveSeasons(List<String> seasons) async {
+  Future<void> saveSeasons(
+    List<String> seasons, {
+    String? institutionId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(
-      AppStorageKeys.seasons,
+      _keyFor(baseKey: AppStorageKeys.seasons, institutionId: institutionId),
       jsonEncode(_cleanStringList(seasons)),
     );
   }
 
-  Future<bool> addSeason(String season) async {
+  Future<bool> addSeason(String season, {String? institutionId}) async {
     final clean = _cleanText(season);
     if (clean.isEmpty) return false;
 
-    final seasons = await getSeasons();
+    final seasons = await getSeasons(institutionId: institutionId);
     final exists = seasons.any((e) => _normalize(e) == _normalize(clean));
 
     if (exists) return false;
 
-    await saveSeasons([...seasons, clean]);
+    await saveSeasons([...seasons, clean], institutionId: institutionId);
     return true;
   }
 
-  Future<List<String>> getCategories() async {
+  Future<List<String>> getCategories({String? institutionId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(AppStorageKeys.categories);
+    final raw = prefs.getString(
+      _keyFor(baseKey: AppStorageKeys.categories, institutionId: institutionId),
+    );
 
     if (raw == null || raw.trim().isEmpty) return const [];
 
@@ -328,31 +357,41 @@ class StructureRepository {
     }
   }
 
-  Future<void> saveCategories(List<String> categories) async {
+  Future<void> saveCategories(
+    List<String> categories, {
+    String? institutionId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(
-      AppStorageKeys.categories,
+      _keyFor(baseKey: AppStorageKeys.categories, institutionId: institutionId),
       jsonEncode(_cleanStringList(categories)),
     );
   }
 
-  Future<bool> addCategory(String category) async {
+  Future<bool> addCategory(String category, {String? institutionId}) async {
     final clean = _cleanText(category);
     if (clean.isEmpty) return false;
 
-    final categories = await getCategories();
+    final categories = await getCategories(institutionId: institutionId);
     final exists = categories.any((e) => _normalize(e) == _normalize(clean));
 
     if (exists) return false;
 
-    await saveCategories([...categories, clean]);
+    await saveCategories([...categories, clean], institutionId: institutionId);
     return true;
   }
 
-  Future<List<CompetitionConfig>> getCompetitions() async {
+  Future<List<CompetitionConfig>> getCompetitions({
+    String? institutionId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(AppStorageKeys.competitions);
+    final raw = prefs.getString(
+      _keyFor(
+        baseKey: AppStorageKeys.competitions,
+        institutionId: institutionId,
+      ),
+    );
 
     if (raw == null || raw.trim().isEmpty) return const [];
 
@@ -360,63 +399,41 @@ class StructureRepository {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return const [];
 
-      final result = <CompetitionConfig>[];
-
-      for (final item in decoded) {
-        if (item is! Map) continue;
-
-        final competition = CompetitionConfig.fromJson(
-          Map<String, dynamic>.from(item),
-        );
-
-        if (competition.name.isEmpty) continue;
-
-        final exists = result.any(
-          (e) => _normalize(e.name) == _normalize(competition.name),
-        );
-
-        if (!exists) result.add(competition);
-      }
-
-      result.sort((a, b) => a.name.compareTo(b.name));
-      return result;
+      return decoded
+          .whereType<Map>()
+          .map((e) => CompetitionConfig.fromJson(Map<String, dynamic>.from(e)))
+          .where((e) => e.name.trim().isNotEmpty)
+          .toList();
     } catch (_) {
       return const [];
     }
   }
 
-  Future<void> saveCompetitions(List<CompetitionConfig> competitions) async {
+  Future<void> saveCompetitions(
+    List<CompetitionConfig> competitions, {
+    String? institutionId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
 
     final result = <CompetitionConfig>[];
 
     for (final competition in competitions) {
-      final cleanName = _cleanText(competition.name);
-      if (cleanName.isEmpty) continue;
+      if (competition.name.trim().isEmpty) continue;
 
       final exists = result.any(
-        (e) => _normalize(e.name) == _normalize(cleanName),
+        (e) => _normalize(e.name) == _normalize(competition.name),
       );
 
-      if (exists) continue;
-
-      final cleanTournaments = _cleanStringList(competition.tournaments);
-
-      result.add(
-        competition.copyWith(
-          name: cleanName,
-          type: competition.type.trim().isEmpty ? 'single' : competition.type,
-          tournaments: cleanTournaments.isEmpty
-              ? const ['Único']
-              : cleanTournaments,
-        ),
-      );
+      if (!exists) result.add(competition);
     }
 
     result.sort((a, b) => a.name.compareTo(b.name));
 
     await prefs.setString(
-      AppStorageKeys.competitions,
+      _keyFor(
+        baseKey: AppStorageKeys.competitions,
+        institutionId: institutionId,
+      ),
       jsonEncode(result.map((e) => e.toJson()).toList()),
     );
   }
@@ -426,6 +443,7 @@ class StructureRepository {
     required String type,
     List<String>? tournaments,
     String? mode,
+    String? institutionId,
     bool? hasFixture,
     bool? allowManualMatches,
     bool? allowKnockoutRounds,
@@ -444,14 +462,14 @@ class StructureRepository {
 
     final cleanMode = _cleanText(mode ?? '').isEmpty
         ? type == 'local'
-            ? 'split_fixture'
-            : 'single_fixture'
+              ? 'split_fixture'
+              : 'single_fixture'
         : _cleanText(mode!);
 
     final cleanType = _cleanText(type).isEmpty
         ? cleanMode == 'split_fixture'
-            ? 'local'
-            : 'single'
+              ? 'local'
+              : 'single'
         : _cleanText(type);
 
     final resolvedHasFixture = hasFixture ?? cleanMode != 'loose_matches';
@@ -461,10 +479,10 @@ class StructureRepository {
 
     final resolvedTournaments = tournaments == null || tournaments.isEmpty
         ? cleanMode == 'split_fixture'
-            ? const ['Apertura', 'Clausura']
-            : cleanMode == 'loose_matches'
-                ? const ['Partidos sueltos']
-                : const ['Único']
+              ? const ['Apertura', 'Clausura']
+              : cleanMode == 'loose_matches'
+              ? const ['Partidos sueltos']
+              : const ['Único']
         : _cleanStringList(tournaments);
 
     final resolvedStages = stages == null || stages.isEmpty
@@ -481,8 +499,8 @@ class StructureRepository {
               stageType: cleanMode == 'loose_matches'
                   ? 'friendly'
                   : cleanMode == 'phased_fixture'
-                      ? 'phase'
-                      : 'league',
+                  ? 'phase'
+                  : 'league',
             );
           })
         : stages;
@@ -507,6 +525,7 @@ class StructureRepository {
   Future<bool> addTournamentToCompetition({
     required String competitionName,
     required String tournament,
+    String? institutionId,
   }) async {
     final cleanCompetitionName = _cleanText(competitionName);
     final cleanTournament = _cleanText(tournament);
@@ -563,6 +582,7 @@ class StructureRepository {
     required String season,
     required String competition,
     required String tournament,
+    String? institutionId,
     required String category,
   }) async {
     final cleanSeason = _cleanText(season);
@@ -572,7 +592,9 @@ class StructureRepository {
 
     if (cleanSeason.isNotEmpty) {
       final seasons = await getSeasons();
-      final exists = seasons.any((e) => _normalize(e) == _normalize(cleanSeason));
+      final exists = seasons.any(
+        (e) => _normalize(e) == _normalize(cleanSeason),
+      );
       if (!exists) {
         await saveSeasons([...seasons, cleanSeason]);
       }
@@ -580,7 +602,9 @@ class StructureRepository {
 
     if (cleanCategory.isNotEmpty) {
       final categories = await getCategories();
-      final exists = categories.any((e) => _normalize(e) == _normalize(cleanCategory));
+      final exists = categories.any(
+        (e) => _normalize(e) == _normalize(cleanCategory),
+      );
       if (!exists) {
         await saveCategories([...categories, cleanCategory]);
       }
@@ -599,9 +623,7 @@ class StructureRepository {
 
     final tournaments = isLocal
         ? const ['Apertura', 'Clausura']
-        : [
-            cleanTournament.isEmpty ? 'Único' : cleanTournament,
-          ];
+        : [cleanTournament.isEmpty ? 'Único' : cleanTournament];
 
     await addCompetition(
       name: cleanCompetition,
