@@ -12543,11 +12543,7 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
               .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
               .where((p) => !p.esCuerpoTecnico)
               .toList()
-        : RosterRepository.rosterForCategory(
-            categoria: (widget.partido['categoria'] ?? '').toString(),
-            temporada: (widget.partido['temporada'] ?? '2026').toString(),
-            includeStaff: false,
-          );
+        : <PlayerProfile>[];
 
     if (matchSquadRaw is Map) {
       final config = MatchSquadConfig.fromMap(
@@ -17500,7 +17496,9 @@ class _PlantelScreenState extends State<PlantelScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => JugadoresCampoScreen(
-                              categoria: categoriaSeleccionada,
+                              categoria: widget.categoriaInicial,
+                              temporada: widget.temporada,
+                              institutionId: widget.institutionId,
                             ),
                           ),
                         );
@@ -17516,7 +17514,9 @@ class _PlantelScreenState extends State<PlantelScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) => ArquerosScreen(
-                              categoria: categoriaSeleccionada,
+                              categoria: widget.categoriaInicial,
+                              temporada: widget.temporada,
+                              institutionId: widget.institutionId,
                             ),
                           ),
                         );
@@ -17735,9 +17735,15 @@ class _PlantelScreenState extends State<PlantelScreen> {
 
 class ArquerosScreen extends StatefulWidget {
   final String categoria;
+  final String temporada;
+  final String? institutionId;
 
-  const ArquerosScreen({super.key, required this.categoria});
-
+  const ArquerosScreen({
+    super.key,
+    required this.categoria,
+    required this.temporada,
+    this.institutionId,
+  });
   @override
   State<ArquerosScreen> createState() => _ArquerosScreenState();
 }
@@ -17755,12 +17761,14 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   Future<List<PlayerProfile>> _loadArqueros() async {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
     );
 
     final roster = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: false,
     );
 
@@ -17928,13 +17936,14 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: true,
     );
 
     final nuevoArquero = PlayerProfile(
       playerId: 'local_gk_${DateTime.now().millisecondsSinceEpoch}',
-      clubId: RosterRepository.currentClub.clubId,
+      clubId: widget.institutionId ?? 'local',
       nombre: nombre,
       apellido: apellido,
       posicion: 'Arquero',
@@ -17945,7 +17954,8 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       players: [...rosterActual, nuevoArquero],
     );
 
@@ -20071,9 +20081,15 @@ class _HistoricoArquerosScreenState extends State<HistoricoArquerosScreen> {
 /// ===============================
 class JugadoresCampoScreen extends StatefulWidget {
   final String categoria;
+  final String temporada;
+  final String? institutionId;
 
-  const JugadoresCampoScreen({super.key, required this.categoria});
-
+  const JugadoresCampoScreen({
+    super.key,
+    required this.categoria,
+    required this.temporada,
+    this.institutionId,
+  });
   @override
   State<JugadoresCampoScreen> createState() => _JugadoresCampoScreenState();
 }
@@ -20091,12 +20107,14 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
   Future<List<PlayerProfile>> _loadJugadores() async {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
     );
 
     final roster = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: false,
     );
 
@@ -20167,13 +20185,14 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: true,
     );
 
     final nuevoJugador = PlayerProfile(
       playerId: 'local_${DateTime.now().millisecondsSinceEpoch}',
-      clubId: RosterRepository.currentClub.clubId,
+      clubId: widget.institutionId ?? 'local',
       nombre: nombre,
       apellido: apellido,
       posicion: posicion.isEmpty ? null : posicion,
@@ -20186,7 +20205,8 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       players: actualizado,
     );
 
