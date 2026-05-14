@@ -8233,7 +8233,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
         'totalEventos': 0,
         'penales': 0,
         'penalesAtajados': 0,
-        'contraDirecta': 0,
+        'contraDirecta': 0, // legacy: total de arco a arco
+        'arcoAArcoIntentos': 0,
+        'arcoAArcoGoles': 0,
         'periodos': <String, Map<String, dynamic>>{},
         'zonasArco': <String, Map<String, int>>{},
         'zonasTiro': <String, Map<String, int>>{},
@@ -8288,7 +8290,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           'fuera': 0,
           'penales': 0,
           'penalesAtajados': 0,
-          'contraDirecta': 0,
+          'contraDirecta': 0, // legacy: total de arco a arco
+          'arcoAArcoIntentos': 0,
+          'arcoAArcoGoles': 0,
           'zonasArco': <String, Map<String, int>>{},
           'zonasTiro': <String, Map<String, int>>{},
         };
@@ -8298,6 +8302,12 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
       if (esContraDirectaArquero) {
         data['contraDirecta'] = (data['contraDirecta'] as int) + 1;
+        data['arcoAArcoIntentos'] = (data['arcoAArcoIntentos'] as int) + 1;
+
+        if (resultado == 'gol') {
+          data['arcoAArcoGoles'] = (data['arcoAArcoGoles'] as int) + 1;
+        }
+
         return;
       }
 
@@ -8385,20 +8395,25 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       final periodo = periodoDesdeEvento(map);
 
       if (esContraDirectaArquero) {
-        item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+  item['contraDirecta'] = (item['contraDirecta'] as int) + 1;
+  item['arcoAArcoIntentos'] = (item['arcoAArcoIntentos'] as int) + 1;
 
-        sumarPeriodo(
-          periodos: periodos,
-          periodo: periodo,
-          resultado: resultado,
-          zonaArco: zonaArco,
-          zonaTiro: zonaTiro,
-          esPenal: false,
-          esContraDirectaArquero: true,
-        );
+  if (resultado == 'gol') {
+    item['arcoAArcoGoles'] = (item['arcoAArcoGoles'] as int) + 1;
+  }
 
-        continue;
-      }
+  sumarPeriodo(
+    periodos: periodos,
+    periodo: periodo,
+    resultado: resultado,
+    zonaArco: zonaArco,
+    zonaTiro: zonaTiro,
+    esPenal: false,
+    esContraDirectaArquero: true,
+  );
+
+  continue;
+}
 
       if (resultado == 'atajado') {
         item['atajadas'] = (item['atajadas'] as int) + 1;
@@ -8659,10 +8674,19 @@ int get _penalesRivalDesdeEventos {
   }
 
   String _tituloEvento(Map<String, dynamic> e) {
-    final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
-    final resultado = (e['resultado'] ?? '').toString();
+  final tipo = (e['tipo'] ?? e['kind'] ?? '').toString();
+  final resultado = (e['resultado'] ?? '').toString();
+  final zonaTiro = (e['zonaTiro'] ?? '').toString();
 
-    if (tipo == 'tiro' && resultado == 'gol') return 'Gol';
+  final bool esArcoAArco =
+      tipo == 'tiro' && zonaTiro == 'Contra directa arquero';
+
+  if (esArcoAArco && resultado == 'gol') return 'Gol arco a arco';
+  if (esArcoAArco && resultado == 'atajado') return 'Arco a arco atajado';
+  if (esArcoAArco && resultado == 'palo') return 'Arco a arco al palo';
+  if (esArcoAArco && resultado == 'fuera') return 'Arco a arco fuera';
+
+  if (tipo == 'tiro' && resultado == 'gol') return 'Gol';
     if (tipo == 'tiro' && resultado == 'atajado') return 'Atajada';
     if (tipo == 'tiro' && (resultado == 'fuera' || resultado == 'desvio')) {
       return 'Tiro fuera';
@@ -8697,8 +8721,11 @@ int get _penalesRivalDesdeEventos {
     final actorRaw = (e['actorPrincipal'] ?? '-').toString();
 
     final actor = _normalizarActorEvento(actorRaw);
-    final zonaTiro = (e['zonaTiro'] ?? '').toString();
-    final zonaArco = (e['zonaArco'] ?? '').toString();
+    final zonaTiroRaw = (e['zonaTiro'] ?? '').toString();
+final zonaTiro = zonaTiroRaw == 'Contra directa arquero'
+    ? 'Arco a arco'
+    : zonaTiroRaw;
+final zonaArco = (e['zonaArco'] ?? '').toString();
 
     final partes = <String>[actor];
 
@@ -8934,6 +8961,27 @@ Widget _buildGoalkeeperInsightRow(String label, String value) {
   );
 }
 
+String _arcoAArcoTexto(Map<String, dynamic> arquero) {
+  final int intentosNuevos = _goalkeeperStatInt(
+    arquero,
+    'arcoAArcoIntentos',
+  );
+
+  final int intentosLegacy = _goalkeeperStatInt(
+    arquero,
+    'contraDirecta',
+  );
+
+  final int intentos = intentosNuevos > 0 ? intentosNuevos : intentosLegacy;
+
+  final int goles = _goalkeeperStatInt(
+    arquero,
+    'arcoAArcoGoles',
+  );
+
+  return '$goles/$intentos';
+}
+
 Widget _buildInAppGoalkeeperFeaturedTile({
   required BuildContext context,
   required Map<String, dynamic> arquero,
@@ -9070,7 +9118,7 @@ Widget _buildInAppGoalkeeperFeaturedTile({
             'Penales',
             '$penalesAtajados/$penales',
           ),
-          _buildGoalkeeperInsightRow('Contra directa', '$contraDirecta'),
+          _buildGoalkeeperInsightRow('Arco a arco', _arcoAArcoTexto(arquero)),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
@@ -20052,7 +20100,10 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
             _row('Eficacia penales', '${eficaciaPenales.toStringAsFixed(1)}%'),
             _row('Penales', '$penales'),
             _row('Penales atajados', '$penalesAtajados'),
-            _row('Contra directa', '${_valor('contraDirecta')}'),
+            _row(
+  'Arco a arco',
+  '${_valor('arcoAArcoGoles')}/${_valor('arcoAArcoIntentos') > 0 ? _valor('arcoAArcoIntentos') : _valor('contraDirecta')}',
+),
             _row('Palos', '${_valor('palos')}'),
             _row('Fuera', '${_valor('fuera')}'),
           ],
@@ -20103,7 +20154,10 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
               ),
               _row('Penales', '$penales'),
               _row('Penales atajados', '$penalesAtajados'),
-              _row('Contra directa', '${_dynamicInt(data['contraDirecta'])}'),
+              _row(
+  'Arco a arco',
+  '${_dynamicInt(data['arcoAArcoGoles'])}/${_dynamicInt(data['arcoAArcoIntentos']) > 0 ? _dynamicInt(data['arcoAArcoIntentos']) : _dynamicInt(data['contraDirecta'])}',
+),
               _row('Palos', '${_dynamicInt(data['palos'])}'),
               _row('Fuera', '${_dynamicInt(data['fuera'])}'),
             ],
