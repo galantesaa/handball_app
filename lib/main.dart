@@ -7998,88 +7998,88 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   }
 
   Widget _buildShareGoalkeeperDetailPanel(Map<String, dynamic> arquero) {
-    final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
-        .toString();
+  final nombre = (arquero['arqueroNombre'] ?? arquero['arquero'] ?? 'Arquero')
+      .toString();
 
-    final eficacia = (arquero['eficacia'] ?? 0.0) as double;
-    final atajadas = (arquero['atajadas'] ?? 0) as int;
-    final goles = (arquero['golesRecibidos'] ?? 0) as int;
-    final penales = (arquero['penales'] ?? 0) as int;
-    final penalesAtajados = (arquero['penalesAtajados'] ?? 0) as int;
-    final contra = (arquero['contraDirecta'] ?? 0) as int;
+  final eficacia = (arquero['eficacia'] ?? 0.0) as double;
+  final atajadas = (arquero['atajadas'] ?? 0) as int;
+  final goles = (arquero['golesRecibidos'] ?? 0) as int;
+  final penales = (arquero['penales'] ?? 0) as int;
+  final penalesAtajados = (arquero['penalesAtajados'] ?? 0) as int;
+  final arcoAArco = _arcoAArcoTexto(arquero);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111A28),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF22C55E).withOpacity(0.65),
-          width: 2,
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF111A28),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: const Color(0xFF22C55E).withOpacity(0.65),
+        width: 2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFF22C55E).withOpacity(0.18),
+          blurRadius: 16,
+          spreadRadius: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF22C55E).withOpacity(0.18),
-            blurRadius: 16,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  nombre,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                nombre,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  'TOP',
-                  style: TextStyle(
-                    color: Color(0xFF22C55E),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E).withOpacity(0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'TOP',
+                style: TextStyle(
+                  color: Color(0xFF22C55E),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _buildStoryKpi('${eficacia.toStringAsFixed(1)}%', 'Eficacia'),
-              const SizedBox(width: 8),
-              _buildStoryKpi('$atajadas', 'Atajadas'),
-              const SizedBox(width: 8),
-              _buildStoryKpi('$goles', 'Goles'),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _buildShareInsightRow('Zona fuerte', _zonaFuerte(arquero)),
-          _buildShareInsightRow('Zona débil', _zonaDebil(arquero)),
-          _buildShareInsightRow('Más atacada', _zonaMasAtacada(arquero)),
-          _buildShareInsightRow('Penales', '$penalesAtajados/$penales'),
-          _buildShareInsightRow('Contra directa', '$contra'),
-        ],
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildStoryKpi('${eficacia.toStringAsFixed(1)}%', 'Eficacia'),
+            const SizedBox(width: 8),
+            _buildStoryKpi('$atajadas', 'Atajadas'),
+            const SizedBox(width: 8),
+            _buildStoryKpi('$goles', 'Goles'),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _buildShareInsightRow('Zona fuerte', _zonaFuerte(arquero)),
+        _buildShareInsightRow('Zona débil', _zonaDebil(arquero)),
+        _buildShareInsightRow('Más atacada', _zonaMasAtacada(arquero)),
+        _buildShareInsightRow('Penales', '$penalesAtajados/$penales'),
+        _buildShareInsightRow('Arco a Arco', arcoAArco),
+      ],
+    ),
+  );
+}
 
   int _tirosPorModo(String modoObjetivo) {
     return _eventos.where((e) {
@@ -10127,9 +10127,9 @@ $arquerosDetalle
         ? 0
         : (mejorArquero['golesRecibidos'] ?? 0) as int;
 
-    final mejorContra = mejorArquero == null
-        ? 0
-        : (mejorArquero['contraDirecta'] ?? 0) as int;
+    final mejorArcoAArco = mejorArquero == null
+    ? '0/0'
+    : _arcoAArcoTexto(mejorArquero);
 
     final stats1T = _shareStatsPorPeriodo('1T');
     final stats2T = _shareStatsPorPeriodo('2T');
@@ -10243,7 +10243,7 @@ $arquerosDetalle
                       const SizedBox(width: 8),
                       _buildStoryKpi('$mejorGoles', 'Goles'),
                       const SizedBox(width: 8),
-                      _buildStoryKpi('$mejorContra', 'C. dir.'),
+                      _buildStoryKpi(mejorArcoAArco, 'Arco a Arco'),
                     ],
                   ),
                 ],
@@ -14954,78 +14954,81 @@ void _aplicarResultadoPenalNormal({
         snapshot['modoInicioPrimerTiempoAlargue'] as String?;
   }
 
-  void _registrarEvento({
-    required String tipo,
-    String? actorPrincipalId,
-    String? resultado,
-    String? actorPrincipal,
-    String? actorSecundario,
-    String? zonaTiroValor,
-    String? zonaArcoValor,
-    String? detalle,
-    String? subtipo,
-    bool? mantieneContexto,
-    Map<String, dynamic>? prevState,
-    String? modoEvento,
-    bool esContraDirectaArquero = false,
-  }) {
-    _contadorEventoId++;
+void _registrarEvento({
+  required String tipo,
+  String? actorPrincipalId,
+  String? resultado,
+  String? actorPrincipal,
+  String? actorSecundario,
+  String? actorSecundarioId,
+  String? zonaTiroValor,
+  String? zonaArcoValor,
+  String? detalle,
+  String? subtipo,
+  bool? mantieneContexto,
+  Map<String, dynamic>? prevState,
+  String? modoEvento,
+  bool esContraDirectaArquero = false,
+}) {
+  _contadorEventoId++;
 
-    final now = DateTime.now();
-    final eventMode = modoEvento ?? modo;
+  final now = DateTime.now();
+  final eventMode = modoEvento ?? modo;
 
-    final goalkeeper = _getCurrentGoalkeeperProfile();
+  final goalkeeper = _getCurrentGoalkeeperProfile();
 
-    final bool debeAsociarArquero =
-        eventMode == 'defensa' || esContraDirectaArquero;
+  final bool debeAsociarArquero =
+      eventMode == 'defensa' || esContraDirectaArquero;
 
-    final String? arqueroId = debeAsociarArquero ? goalkeeper?.playerId : null;
-    final String? arqueroNombre = debeAsociarArquero
-        ? goalkeeper?.displayName
-        : null;
+  final String? arqueroId = debeAsociarArquero ? goalkeeper?.playerId : null;
+  final String? arqueroNombre = debeAsociarArquero
+      ? goalkeeper?.displayName
+      : null;
 
-    final legacyEvent = <String, dynamic>{
-      'id': _contadorEventoId,
-      'timestamp': now.toIso8601String(),
-      'estadoPartido': estadoPartido,
-      'modo': eventMode,
-      'origenJugada': origenJugadaActual,
-      'tipo': tipo,
-      'resultado': resultado,
-      'actorPrincipal': actorPrincipal,
-      'actorPrincipalId': actorPrincipalId,
-      'actorSecundario': actorSecundario,
-      'zonaTiro': zonaTiroValor,
-      'zonaArco': zonaArcoValor,
-      'detalle': detalle,
-      'subtipo': subtipo,
-      'mantieneContexto': mantieneContexto ?? false,
-      'prevState': prevState == null
-          ? null
-          : Map<String, dynamic>.from(prevState),
+  final legacyEvent = <String, dynamic>{
+    'id': _contadorEventoId,
+    'timestamp': now.toIso8601String(),
+    'estadoPartido': estadoPartido,
+    'modo': eventMode,
+    'origenJugada': origenJugadaActual,
+    'tipo': tipo,
+    'resultado': resultado,
+    'actorPrincipal': actorPrincipal,
+    'actorPrincipalId': actorPrincipalId,
+    'actorSecundario': actorSecundario,
+    'actorSecundarioId': actorSecundarioId,
+    'zonaTiro': zonaTiroValor,
+    'zonaArco': zonaArcoValor,
+    'detalle': detalle,
+    'subtipo': subtipo,
+    'mantieneContexto': mantieneContexto ?? false,
+    'prevState': prevState == null
+        ? null
+        : Map<String, dynamic>.from(prevState),
 
-      // Legacy visual
-      'arquero': debeAsociarArquero ? currentGoalkeeperNumber : null,
+    // Legacy visual
+    'arquero': debeAsociarArquero ? currentGoalkeeperNumber : null,
 
-      // Nuevo estable
-      'arqueroId': arqueroId,
-      'arqueroNombre': arqueroNombre,
-      'esContraDirectaArquero': esContraDirectaArquero,
-    };
+    // Nuevo estable
+    'arqueroId': arqueroId,
+    'arqueroNombre': arqueroNombre,
+    'esContraDirectaArquero': esContraDirectaArquero,
+  };
 
-    debugPrint(
-      'EVENTO -> tipo:$tipo resultado:$resultado modo:$eventMode '
-      'actor:$actorPrincipal actorId:$actorPrincipalId '
-      'arquero:$arqueroNombre arqueroId:$arqueroId '
-      'zonaTiro:$zonaTiroValor zonaArco:$zonaArcoValor '
-      'contraDirecta:$esContraDirectaArquero',
-    );
+  debugPrint(
+    'EVENTO -> tipo:$tipo resultado:$resultado modo:$eventMode '
+    'actor:$actorPrincipal actorId:$actorPrincipalId '
+    'actorSecundario:$actorSecundario actorSecundarioId:$actorSecundarioId '
+    'arquero:$arqueroNombre arqueroId:$arqueroId '
+    'zonaTiro:$zonaTiroValor zonaArco:$zonaArcoValor '
+    'contraDirecta:$esContraDirectaArquero',
+  );
 
-    eventos.add(legacyEvent);
-    gameEvents.add(GameEvent.fromLegacyMap(legacyEvent));
+  eventos.add(legacyEvent);
+  gameEvents.add(GameEvent.fromLegacyMap(legacyEvent));
 
-    _persistLiveMatch();
-  }
+  _persistLiveMatch();
+}
 
   void _debugPrintEventSummary() {
     debugPrint('========== EVENT SUMMARY ==========');
@@ -16056,7 +16059,7 @@ Future<void> _showFieldPlayerSelector() async {
             children: [
               Text(
                 esContraDirecta
-                    ? 'Arco a arco → $zonaArco'
+                    ? 'Arco a Arco → $zonaArco'
                     : 'Resultado → $zonaArco',
                 style: const TextStyle(
                   color: Colors.white,
@@ -16180,84 +16183,106 @@ Future<void> _showFieldPlayerSelector() async {
   /// - contra directa arquero
   /// ===============================
   void _registrarTiroNormalResuelto({
-    required String resultado,
-    required String modoAntesDelEvento,
-    required String actor,
-    required String? zonaTiroEvento,
-    required String? zonaArcoEvento,
-    required bool mantieneContexto,
-    required Map<String, dynamic> prevState,
-  }) {
-    final bool esContraDirectaArquero =
-        origenJugadaActual == 'contra' &&
-        (zonaTiroEvento == 'Contra directa arquero');
+  required String resultado,
+  required String modoAntesDelEvento,
+  required String actor,
+  required String? zonaTiroEvento,
+  required String? zonaArcoEvento,
+  required bool mantieneContexto,
+  required Map<String, dynamic> prevState,
+}) {
+  final PlayerProfile? arqueroActual = _getCurrentGoalkeeperProfile();
 
-    setState(() {
-      if (resultado == 'gol') {
-        if (modoAntesDelEvento == 'ataque') {
-          golesSanFernando++;
-          modo = 'defensa';
-        } else {
-          golesRival++;
-          golesRecibidos++;
-          modo = 'ataque';
-        }
+  final bool esContraDirectaArquero =
+      origenJugadaActual == 'contra' &&
+      (zonaTiroEvento == 'Contra directa arquero');
 
+  final bool esContraAsistida =
+      modoAntesDelEvento == 'ataque' &&
+      origenJugadaActual == 'contra' &&
+      !esContraDirectaArquero &&
+      (zonaTiroEvento ?? '').trim().isNotEmpty;
+
+  final PlayerProfile? iniciadorContra =
+      esContraAsistida ? arqueroActual : null;
+
+  setState(() {
+    if (resultado == 'gol') {
+      if (modoAntesDelEvento == 'ataque') {
+        golesSanFernando++;
+        modo = 'defensa';
+      } else {
+        golesRival++;
+        golesRecibidos++;
+        modo = 'ataque';
+      }
+
+      mostrarContra = false;
+      contraDebeCambiarModo = true;
+    }
+
+    if (resultado == 'atajado') {
+      if (modoAntesDelEvento == 'defensa') {
+        atajadas++;
+      }
+
+      mostrarContra = true;
+      contraDebeCambiarModo = true;
+    }
+
+    if (resultado == 'palo') {
+      mostrarContra = true;
+      contraDebeCambiarModo = true;
+    }
+
+    if (resultado == 'fuera') {
+      if (modoAntesDelEvento == 'ataque') {
+        modo = 'defensa';
         mostrarContra = false;
-        contraDebeCambiarModo = true;
-      }
-
-      if (resultado == 'atajado') {
-        if (modoAntesDelEvento == 'defensa') {
-          atajadas++;
-        }
-
+      } else {
+        modo = 'ataque';
         mostrarContra = true;
-        contraDebeCambiarModo = true;
+        contraDebeCambiarModo = false;
       }
+    }
 
-      if (resultado == 'palo') {
-        mostrarContra = true;
-        contraDebeCambiarModo = true;
-      }
+    mostrarSelectorLateralJugador = false;
+  });
 
-      if (resultado == 'fuera') {
-        if (modoAntesDelEvento == 'ataque') {
-          modo = 'defensa';
-          mostrarContra = false;
-        } else {
-          modo = 'ataque';
-          mostrarContra = true;
-          contraDebeCambiarModo = false;
-        }
-      }
+  _registrarEvento(
+    tipo: 'tiro',
+    resultado: resultado,
+    actorPrincipal: actor,
+    actorPrincipalId: esContraDirectaArquero
+        ? arqueroActual?.playerId
+        : modoAntesDelEvento == 'ataque'
+            ? jugadorSeleccionadoId
+            : arqueroActual?.playerId,
+    actorSecundario: esContraAsistida ? iniciadorContra?.displayName : null,
+    actorSecundarioId: esContraAsistida ? iniciadorContra?.playerId : null,
+    zonaTiroValor: zonaTiroEvento,
+    zonaArcoValor: zonaArcoEvento,
+    detalle: esContraAsistida
+        ? 'Contra iniciada por arquero y finalizada por jugador'
+        : null,
+    subtipo: esContraDirectaArquero
+        ? 'arco_a_arco'
+        : esContraAsistida
+            ? 'contra_asistida'
+            : null,
+    mantieneContexto: mantieneContexto,
+    prevState: prevState,
+    modoEvento: modoAntesDelEvento,
+    esContraDirectaArquero: esContraDirectaArquero,
+  );
 
-      mostrarSelectorLateralJugador = false;
-    });
-
-    _registrarEvento(
-      tipo: 'tiro',
-      resultado: resultado,
-      actorPrincipal: actor,
-      actorPrincipalId: esContraDirectaArquero
-          ? _getCurrentGoalkeeperProfile()?.playerId
-          : modoAntesDelEvento == 'ataque'
-          ? jugadorSeleccionadoId
-          : _getCurrentGoalkeeperProfile()?.playerId,
-      zonaTiroValor: zonaTiroEvento,
-      zonaArcoValor: zonaArcoEvento,
-      mantieneContexto: mantieneContexto,
-      prevState: prevState,
-      modoEvento: modoAntesDelEvento,
-      esContraDirectaArquero: esContraDirectaArquero,
-    );
-    _clearSelection(
-      keepContra:
-          resultado == 'atajado' ||
-          resultado == 'palo' ||
-          modoAntesDelEvento == 'defensa',
-    );
-  }
+  _clearSelection(
+    keepContra:
+        resultado == 'atajado' ||
+        resultado == 'palo' ||
+        modoAntesDelEvento == 'defensa',
+  );
+}
 
   void _seleccionarJugadorParaTiroPendiente(PlayerProfile jugador) {
     final dorsal = jugador.numeroPreferido ?? '-';
@@ -20101,7 +20126,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
             _row('Penales', '$penales'),
             _row('Penales atajados', '$penalesAtajados'),
             _row(
-  'Arco a arco',
+  'Arco a Arco',
   '${_valor('arcoAArcoGoles')}/${_valor('arcoAArcoIntentos') > 0 ? _valor('arcoAArcoIntentos') : _valor('contraDirecta')}',
 ),
             _row('Palos', '${_valor('palos')}'),
@@ -20155,7 +20180,7 @@ class DetalleArqueroPartidoScreen extends StatelessWidget {
               _row('Penales', '$penales'),
               _row('Penales atajados', '$penalesAtajados'),
               _row(
-  'Arco a arco',
+  'Arco a Arco',
   '${_dynamicInt(data['arcoAArcoGoles'])}/${_dynamicInt(data['arcoAArcoIntentos']) > 0 ? _dynamicInt(data['arcoAArcoIntentos']) : _dynamicInt(data['contraDirecta'])}',
 ),
               _row('Palos', '${_dynamicInt(data['palos'])}'),

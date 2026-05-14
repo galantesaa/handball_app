@@ -71,6 +71,7 @@ class EventoModel {
   final String? actorPrincipal;
   final String? actorPrincipalId;
   final String? actorSecundario;
+  final String? actorSecundarioId;
   final String? zonaTiro;
   final String? zonaArco;
   final String? detalle;
@@ -91,6 +92,7 @@ class EventoModel {
     this.actorPrincipal,
     this.actorPrincipalId,
     this.actorSecundario,
+    this.actorSecundarioId,
     this.zonaTiro,
     this.zonaArco,
     this.detalle,
@@ -111,6 +113,7 @@ class EventoModel {
       actorPrincipal: map['actorPrincipal']?.toString(),
       actorPrincipalId: map['actorPrincipalId']?.toString(),
       actorSecundario: map['actorSecundario']?.toString(),
+      actorSecundarioId: map['actorSecundarioId']?.toString(),
       zonaTiro: map['zonaTiro']?.toString(),
       zonaArco: map['zonaArco']?.toString(),
       detalle: map['detalle']?.toString(),
@@ -135,6 +138,7 @@ class EventoModel {
       'actorPrincipal': actorPrincipal,
       'actorPrincipalId': actorPrincipalId,
       'actorSecundario': actorSecundario,
+      'actorSecundarioId': actorSecundarioId,
       'zonaTiro': zonaTiro,
       'zonaArco': zonaArco,
       'detalle': detalle,
