@@ -12591,6 +12591,103 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     return _currentFieldPlayerActorName();
   }
 
+String _actorDisplayNameFromPlayer(PlayerProfile jugador) {
+  final dorsal = (jugador.numeroPreferido ?? '').trim();
+  final nombre = jugador.nombreLista.trim();
+
+  if (dorsal.isEmpty || dorsal == '-') {
+    return nombre.isEmpty ? 'Jugador' : nombre;
+  }
+
+  return '$dorsal · $nombre';
+}
+
+bool _debePedirJugadorDeCampoParaAtaque(String modoEvento) {
+  return modoEvento == 'ataque' && _jugadoresCampoConvocados.isNotEmpty;
+}
+
+String _fallbackActorParaModo(String modoEvento) {
+  if (modoEvento == 'defensa') {
+    return _currentGoalkeeperActorName;
+  }
+
+  return 'Jugador';
+}
+
+String? _fallbackActorIdParaModo(String modoEvento) {
+  if (modoEvento == 'defensa') {
+    return _getCurrentGoalkeeperProfile()?.playerId;
+  }
+
+  return null;
+}
+
+bool _penalMantieneContexto(String resultado) {
+  return resultado == 'atajado' || resultado == 'palo';
+}
+
+bool _penalConservaContra({
+  required String resultado,
+  required String modoAntesDelEvento,
+}) {
+  if (resultado == 'atajado' || resultado == 'palo') return true;
+  if (resultado == 'fuera') return modoAntesDelEvento == 'defensa';
+
+  return false;
+}
+
+void _aplicarResultadoPenalNormal({
+  required String resultado,
+  required String modoAntesDelEvento,
+}) {
+  setState(() {
+    penales++;
+
+    if (resultado == 'gol') {
+      if (modoAntesDelEvento == 'ataque') {
+        golesSanFernando++;
+        modo = 'defensa';
+      } else {
+        golesRival++;
+        golesRecibidos++;
+        modo = 'ataque';
+      }
+
+      mostrarContra = false;
+      contraDebeCambiarModo = true;
+      return;
+    }
+
+    if (resultado == 'atajado') {
+      if (modoAntesDelEvento == 'defensa') {
+        atajadas++;
+      }
+
+      mostrarContra = true;
+      contraDebeCambiarModo = true;
+      return;
+    }
+
+    if (resultado == 'palo') {
+      // Palo NO es atajada.
+      mostrarContra = true;
+      contraDebeCambiarModo = true;
+      return;
+    }
+
+    if (resultado == 'fuera') {
+      if (modoAntesDelEvento == 'ataque') {
+        modo = 'defensa';
+        mostrarContra = false;
+      } else {
+        modo = 'ataque';
+        mostrarContra = true;
+        contraDebeCambiarModo = false;
+      }
+    }
+  });
+}
+
   static const bool _showCourtOverlay = true;
   static const bool _showTouchDebug = false;
 
@@ -14588,370 +14685,184 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _showNormalPenaltyResultSheet() {
-    final String? currentModo = modo;
-    final String? currentZonaArco = zonaArco;
+  final String? currentModo = modo;
+  final String? currentZonaArco = zonaArco;
 
-    if (currentZonaArco == null || currentModo == null) return;
+  if (currentZonaArco == null || currentModo == null) return;
 
-    void finalizarPenal({
-      required String resultadoPenal,
-      required String modoAntesDelEvento,
-      required String zonaArcoPenal,
-      required bool keepContra,
-    }) {
-      final bool necesitaSeleccionJugador =
-          modoAntesDelEvento == 'ataque' &&
-          _jugadoresCampoConvocados.isNotEmpty &&
-          jugadorSeleccionadoId == null;
+  Future<void> resolverPenalNormal(String resultadoPenal) async {
+    final Map<String, dynamic> prevState = _captureStateSnapshot();
+    final String modoAntesDelEvento = currentModo;
+    final String zonaArcoPenal = currentZonaArco;
 
-      if (necesitaSeleccionJugador && eventos.isNotEmpty) {
-        setState(() {
-          zonaTiro = null;
-          zonaArco = null;
-          penalEnCurso = false;
-          actorPenalActual = null;
+    Navigator.pop(context);
 
-          _penalPendienteResultado = resultadoPenal;
-          _penalPendienteModo = modoAntesDelEvento;
-          _penalPendienteZonaArco = zonaArcoPenal;
-          _penalPendienteIndex = eventos.length - 1;
+    PlayerProfile? jugadorPateador;
 
-          mostrarSelectorLateralJugador = true;
+    if (_debePedirJugadorDeCampoParaAtaque(modoAntesDelEvento)) {
+      jugadorPateador = await _pickFieldPlayerForEvent(
+        title: '¿Quién pateó el penal?',
+      );
 
-          if (!keepContra) {
-            mostrarContra = false;
-            origenJugadaActual = 'normal';
-            contraDebeCambiarModo = true;
-          }
-        });
-      } else {
-        _clearSelection(keepContra: keepContra);
-      }
-
-      Navigator.pop(context);
+      if (!mounted || jugadorPateador == null) return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    final String actor = jugadorPateador != null
+        ? _actorDisplayNameFromPlayer(jugadorPateador)
+        : _fallbackActorParaModo(modoAntesDelEvento);
+
+    final String? actorId = jugadorPateador?.playerId ??
+        _fallbackActorIdParaModo(modoAntesDelEvento);
+
+    _aplicarResultadoPenalNormal(
+      resultado: resultadoPenal,
+      modoAntesDelEvento: modoAntesDelEvento,
+    );
+
+    _registrarEvento(
+      tipo: 'penal',
+      resultado: resultadoPenal,
+      actorPrincipal: actor,
+      actorPrincipalId: actorId,
+      zonaArcoValor: zonaArcoPenal,
+      subtipo: 'penal_7m',
+      mantieneContexto: _penalMantieneContexto(resultadoPenal),
+      prevState: prevState,
+      modoEvento: modoAntesDelEvento,
+    );
+
+    _clearSelection(
+      keepContra: _penalConservaContra(
+        resultado: resultadoPenal,
+        modoAntesDelEvento: modoAntesDelEvento,
       ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $currentZonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              _floatingOption('Gol', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'ataque') {
-                    golesSanFernando++;
-                    modo = 'defensa';
-                  } else {
-                    golesRival++;
-                    golesRecibidos++;
-                    modo = 'ataque';
-                  }
-
-                  mostrarContra = false;
-                  contraDebeCambiarModo = true;
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  actorPrincipalId: modoAntesDelEvento == 'ataque'
-                      ? (jugadorSeleccionadoId ?? 'generic_attack_player')
-                      : _getCurrentGoalkeeperProfile()?.playerId,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                finalizarPenal(
-                  resultadoPenal: 'gol',
-                  modoAntesDelEvento: modoAntesDelEvento,
-                  zonaArcoPenal: currentZonaArco,
-                  keepContra: false,
-                );
-              }),
-
-              _floatingOption('Atajado', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'defensa') {
-                    atajadas++;
-                  }
-
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  actorPrincipalId: modoAntesDelEvento == 'ataque'
-                      ? (jugadorSeleccionadoId ?? 'generic_attack_player')
-                      : _getCurrentGoalkeeperProfile()?.playerId,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: true,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                finalizarPenal(
-                  resultadoPenal: 'atajado',
-                  modoAntesDelEvento: modoAntesDelEvento,
-                  zonaArcoPenal: currentZonaArco,
-                  keepContra: true,
-                );
-              }),
-
-              _floatingOption('Palo', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'defensa') {
-                    atajadas++;
-                  }
-
-                  mostrarContra = true;
-                  contraDebeCambiarModo = true;
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'palo',
-                  actorPrincipal: actor,
-                  actorPrincipalId: modoAntesDelEvento == 'ataque'
-                      ? (jugadorSeleccionadoId ?? 'generic_attack_player')
-                      : _getCurrentGoalkeeperProfile()?.playerId,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: true,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                finalizarPenal(
-                  resultadoPenal: 'palo',
-                  modoAntesDelEvento: modoAntesDelEvento,
-                  zonaArcoPenal: currentZonaArco,
-                  keepContra: true,
-                );
-              }),
-
-              _floatingOption('Fuera', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                setState(() {
-                  penales++;
-
-                  if (modoAntesDelEvento == 'ataque') {
-                    modo = 'defensa';
-                    mostrarContra = false;
-                  } else {
-                    modo = 'ataque';
-                    mostrarContra = true;
-                    contraDebeCambiarModo = false;
-                  }
-                });
-
-                _registrarEvento(
-                  tipo: 'penal',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  actorPrincipalId: modoAntesDelEvento == 'ataque'
-                      ? (jugadorSeleccionadoId ?? 'generic_attack_player')
-                      : _getCurrentGoalkeeperProfile()?.playerId,
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'penal_7m',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                finalizarPenal(
-                  resultadoPenal: 'fuera',
-                  modoAntesDelEvento: modoAntesDelEvento,
-                  zonaArcoPenal: currentZonaArco,
-                  keepContra: modoAntesDelEvento == 'defensa',
-                );
-              }),
-            ],
-          ),
-        );
-      },
     );
   }
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $currentZonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _floatingOption('Gol', () async {
+              await resolverPenalNormal('gol');
+            }),
+            _floatingOption('Atajado', () async {
+              await resolverPenalNormal('atajado');
+            }),
+            _floatingOption('Palo', () async {
+              await resolverPenalNormal('palo');
+            }),
+            _floatingOption('Fuera', () async {
+              await resolverPenalNormal('fuera');
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   void _showPenaltyShootoutResultSheet() {
-    final String? currentModo = modo;
-    final String? currentZonaArco = zonaArco;
+  final String? currentModo = modo;
+  final String? currentZonaArco = zonaArco;
 
-    if (currentZonaArco == null || currentModo == null) return;
+  if (currentZonaArco == null || currentModo == null) return;
 
-    final String actor = currentModo == 'defensa'
-        ? _currentGoalkeeperActorName
-        : _resolvePrimaryActorForShot(
-            eventMode: currentModo,
-            allowGoalkeeperInAttack: true,
-          );
-    String? actorIdForMode(String mode) {
-      if (mode == 'ataque') {
-        return jugadorSeleccionadoId;
-      }
+  Future<void> resolverPenalTanda(String resultadoPenal) async {
+    final Map<String, dynamic> prevState = _captureStateSnapshot();
+    final String modoAntesDelEvento = currentModo;
+    final String zonaArcoPenal = currentZonaArco;
 
-      if (mode == 'defensa') {
-        return _getCurrentGoalkeeperProfile()?.playerId;
-      }
+    Navigator.pop(context);
 
-      return null;
+    PlayerProfile? jugadorPateador;
+
+    if (_debePedirJugadorDeCampoParaAtaque(modoAntesDelEvento)) {
+      jugadorPateador = await _pickFieldPlayerForEvent(
+        title: '¿Quién pateó el penal?',
+      );
+
+      if (!mounted || jugadorPateador == null) return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Penal → $currentZonaArco',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
+    final String actor = jugadorPateador != null
+        ? _actorDisplayNameFromPlayer(jugadorPateador)
+        : _fallbackActorParaModo(modoAntesDelEvento);
 
-              _floatingOption('Gol', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
+    final String? actorId = jugadorPateador?.playerId ??
+        _fallbackActorIdParaModo(modoAntesDelEvento);
 
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'gol',
-                  actorPrincipal: actor,
-                  actorPrincipalId: actorIdForMode(modoAntesDelEvento),
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _registrarPenalTanda('gol');
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Atajado', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'atajado',
-                  actorPrincipal: actor,
-                  actorPrincipalId: actorIdForMode(modoAntesDelEvento),
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _registrarPenalTanda('atajado');
-                Navigator.pop(context);
-              }),
-
-              _floatingOption('Fuera', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'fuera',
-                  actorPrincipal: actor,
-                  actorPrincipalId: actorIdForMode(modoAntesDelEvento),
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _registrarPenalTanda('fuera');
-                Navigator.pop(context);
-              }),
-              _floatingOption('Palo', () async {
-                final Map<String, dynamic> prevState = _captureStateSnapshot();
-                final String modoAntesDelEvento = currentModo;
-                final String actor = await _actorParaTiro(modoAntesDelEvento);
-
-                _registrarEvento(
-                  tipo: 'penal_tanda',
-                  resultado: 'palo',
-                  actorPrincipal: actor,
-                  actorPrincipalId: actorIdForMode(modoAntesDelEvento),
-                  zonaArcoValor: currentZonaArco,
-                  subtipo: 'tanda_penales',
-                  mantieneContexto: false,
-                  prevState: prevState,
-                  modoEvento: modoAntesDelEvento,
-                );
-
-                _registrarPenalTanda('palo');
-                Navigator.pop(context);
-              }),
-            ],
-          ),
-        );
-      },
+    _registrarEvento(
+      tipo: 'penal_tanda',
+      resultado: resultadoPenal,
+      actorPrincipal: actor,
+      actorPrincipalId: actorId,
+      zonaArcoValor: zonaArcoPenal,
+      subtipo: 'tanda_penales',
+      mantieneContexto: false,
+      prevState: prevState,
+      modoEvento: modoAntesDelEvento,
     );
+
+    _registrarPenalTanda(resultadoPenal);
   }
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Penal → $currentZonaArco',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _floatingOption('Gol', () async {
+              await resolverPenalTanda('gol');
+            }),
+            _floatingOption('Atajado', () async {
+              await resolverPenalTanda('atajado');
+            }),
+            _floatingOption('Fuera', () async {
+              await resolverPenalTanda('fuera');
+            }),
+            _floatingOption('Palo', () async {
+              await resolverPenalTanda('palo');
+            }),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   void _registrarPenalTanda(String resultado) {
     final String? currentModo = modo;
@@ -15066,78 +14977,106 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
     );
   }
 
-  Future<void> _showFieldPlayerSelector() async {
-    final jugadores = _jugadoresConvocados
-        .where((p) => !p.esArquero && !p.esCuerpoTecnico)
-        .toList();
+  Future<PlayerProfile?> _pickFieldPlayerForEvent({
+  required String title,
+}) async {
+  final jugadores = _jugadoresCampoConvocados;
 
-    final seleccionado = await showModalBottomSheet<PlayerProfile>(
-      context: context,
-      backgroundColor: const Color(0xFF0F1722),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
-      builder: (_) {
-        return Padding(
+  return showModalBottomSheet<PlayerProfile>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFF0F1722),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Seleccionar jugador',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 520),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              if (jugadores.isEmpty)
-                const Text(
-                  'No hay jugadores de campo convocados',
-                  style: TextStyle(color: Colors.white70),
-                )
-              else
-                ...jugadores.map((p) {
-                  final dorsal = p.numeroPreferido;
-                  final nombre = '${p.apellido}, ${p.nombre}'.trim();
-
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFF182338),
-                      child: Text(
-                        dorsal == null || dorsal.isEmpty ? '-' : dorsal,
-                        style: const TextStyle(color: Colors.white),
+                const SizedBox(height: 16),
+                if (jugadores.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 18),
+                    child: Text(
+                      'No hay jugadores de campo convocados',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: jugadores.length,
+                      separatorBuilder: (_, __) => Divider(
+                        color: Colors.white.withOpacity(0.06),
+                        height: 1,
                       ),
+                      itemBuilder: (_, index) {
+                        final jugador = jugadores[index];
+                        final dorsal = jugador.numeroPreferido;
+                        final nombre = jugador.nombreLista;
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: const Color(0xFF182338),
+                            child: Text(
+                              dorsal == null || dorsal.trim().isEmpty
+                                  ? '-'
+                                  : dorsal,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          title: Text(
+                            nombre,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Jugador de campo',
+                            style: TextStyle(color: Color(0xFFAAB4C3)),
+                          ),
+                          onTap: () => Navigator.pop(context, jugador),
+                        );
+                      },
                     ),
-                    title: Text(
-                      nombre,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Jugador de campo',
-                      style: TextStyle(color: Color(0xFFAAB4C3)),
-                    ),
-                    onTap: () => Navigator.pop(context, p),
-                  );
-                }),
-            ],
+                  ),
+              ],
+            ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
 
-    if (seleccionado == null) return;
+Future<void> _showFieldPlayerSelector() async {
+  final seleccionado = await _pickFieldPlayerForEvent(
+    title: 'Seleccionar jugador',
+  );
 
-    setState(() {
-      final dorsal = seleccionado.numeroPreferido;
-      final nombre = '${seleccionado.apellido}, ${seleccionado.nombre}'.trim();
+  if (!mounted || seleccionado == null) return;
 
-      jugadorSeleccionado = dorsal == null || dorsal.isEmpty
-          ? nombre
-          : '$dorsal · $nombre';
-    });
-  }
+  setState(() {
+    _currentFieldPlayer = seleccionado;
+    jugadorSeleccionado = _actorDisplayNameFromPlayer(seleccionado);
+    jugadorSeleccionadoId = seleccionado.playerId;
+  });
+}
 
   Future<void> _showGoalkeeperSelectorSheet({
     String title = 'Seleccionar arquero',
@@ -15633,21 +15572,38 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _clearSelection({bool keepContra = false}) {
-    setState(() {
-      zonaTiro = null;
-      zonaArco = null;
-      penalEnCurso = false;
-      actorPenalActual = null;
+  setState(() {
+    zonaTiro = null;
+    zonaArco = null;
 
-      mostrarSelectorLateralJugador = false; // 🔥 CLAVE
+    penalEnCurso = false;
+    actorPenalActual = null;
 
-      if (!keepContra) {
-        mostrarContra = false;
-        origenJugadaActual = 'normal';
-        contraDebeCambiarModo = true;
-      }
-    });
-  }
+    jugadorSeleccionado = null;
+    jugadorSeleccionadoId = null;
+    _currentFieldPlayer = null;
+
+    mostrarSelectorLateralJugador = false;
+
+    _tiroPendienteResultado = null;
+    _tiroPendienteModo = null;
+    _tiroPendienteZonaTiro = null;
+    _tiroPendienteZonaArco = null;
+    _tiroPendienteMantieneContexto = false;
+    _tiroPendientePrevState = null;
+
+    _penalPendienteResultado = null;
+    _penalPendienteModo = null;
+    _penalPendienteZonaArco = null;
+    _penalPendienteIndex = null;
+
+    if (!keepContra) {
+      mostrarContra = false;
+      origenJugadaActual = 'normal';
+      contraDebeCambiarModo = true;
+    }
+  });
+}
 
   Widget _buildEventButton({
     required String text,
