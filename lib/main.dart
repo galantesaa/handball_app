@@ -1900,55 +1900,57 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _institutionController = TextEditingController();
 
-String _safeContextInstitutionId(String? value) {
-  return (value ?? '')
-      .trim()
-      .toLowerCase()
-      .replaceAll('á', 'a')
-      .replaceAll('é', 'e')
-      .replaceAll('í', 'i')
-      .replaceAll('ó', 'o')
-      .replaceAll('ú', 'u')
-      .replaceAll('ü', 'u')
-      .replaceAll('ñ', 'n')
-      .replaceAll(RegExp(r'\s+'), '_')
-      .replaceAll(RegExp(r'[^a-z0-9_]'), '');
-}
-
-String _contextKeyForInstitution(String? institutionId) {
-  final safeId = _safeContextInstitutionId(institutionId);
-  return safeId.isEmpty
-      ? 'active_context_legacy_institution_v1'
-      : 'active_context_${safeId}_v1';
-}
-
-Future<ActiveContext?> _readContextForInstitution(String? institutionId) async {
-  final prefs = await SharedPreferences.getInstance();
-  final raw = prefs.getString(_contextKeyForInstitution(institutionId));
-
-  if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
-    return null;
+  String _safeContextInstitutionId(String? value) {
+    return (value ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
   }
 
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) return null;
-
-    return ActiveContext.fromJson(Map<String, dynamic>.from(decoded));
-  } catch (_) {
-    await prefs.remove(_contextKeyForInstitution(institutionId));
-    return null;
+  String _contextKeyForInstitution(String? institutionId) {
+    final safeId = _safeContextInstitutionId(institutionId);
+    return safeId.isEmpty
+        ? 'active_context_legacy_institution_v1'
+        : 'active_context_${safeId}_v1';
   }
-}
 
-Future<void> _saveContextForInstitution(ActiveContext context) async {
-  final prefs = await SharedPreferences.getInstance();
+  Future<ActiveContext?> _readContextForInstitution(
+    String? institutionId,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_contextKeyForInstitution(institutionId));
 
-  await prefs.setString(
-    _contextKeyForInstitution(context.institutionId),
-    jsonEncode(context.toJson()),
-  );
-}
+    if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+
+      return ActiveContext.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (_) {
+      await prefs.remove(_contextKeyForInstitution(institutionId));
+      return null;
+    }
+  }
+
+  Future<void> _saveContextForInstitution(ActiveContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      _contextKeyForInstitution(context.institutionId),
+      jsonEncode(context.toJson()),
+    );
+  }
 
   List<String> get contexto => <String>[
     temporadaSeleccionada,
@@ -2118,28 +2120,28 @@ Future<void> _saveContextForInstitution(ActiveContext context) async {
 
     final savedContext = await _readContextForInstitution(selected.id);
 
-final restoredSeason = savedContext?.season ?? '';
-final restoredCompetition = savedContext?.competition ?? '';
-final restoredTournament = savedContext?.tournament ?? '';
-final restoredCategory = savedContext?.category ?? '';
+    final restoredSeason = savedContext?.season ?? '';
+    final restoredCompetition = savedContext?.competition ?? '';
+    final restoredTournament = savedContext?.tournament ?? '';
+    final restoredCategory = savedContext?.category ?? '';
 
-await _loadStructureData(institutionId: selected.id);
+    await _loadStructureData(institutionId: selected.id);
 
-if (!mounted) return;
+    if (!mounted) return;
 
-setState(() {
-  tieneInstitucion = true;
-  institucionId = selected.id;
-  institucionNombre = selected.name;
-  institucionEscudo = selected.displayShieldPath;
-  temporadaSeleccionada = restoredSeason;
-  competenciaSeleccionada = restoredCompetition;
-  torneoSeleccionado = restoredTournament;
-  categoriaSeleccionada = restoredCategory;
-  _contextStep = restoredSeason.isEmpty ? 'temporada' : '';
-});
+    setState(() {
+      tieneInstitucion = true;
+      institucionId = selected.id;
+      institucionNombre = selected.name;
+      institucionEscudo = selected.displayShieldPath;
+      temporadaSeleccionada = restoredSeason;
+      competenciaSeleccionada = restoredCompetition;
+      torneoSeleccionado = restoredTournament;
+      categoriaSeleccionada = restoredCategory;
+      _contextStep = restoredSeason.isEmpty ? 'temporada' : '';
+    });
 
-await _saveActiveContext();
+    await _saveActiveContext();
 
     if (!mounted) return;
 
@@ -2249,7 +2251,10 @@ await _saveActiveContext();
     );
 
     if (!exists) {
-      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
+      final created = await _structureRepository.addSeason(
+        value,
+        institutionId: institucionId,
+      );
 
       if (!mounted) return;
 
@@ -2331,10 +2336,10 @@ await _saveActiveContext();
 
     if (!exists) {
       final created = await _structureRepository.addTournamentToCompetition(
-  competitionName: competenciaSeleccionada,
-  tournament: value,
-  institutionId: institucionId,
-);
+        competitionName: competenciaSeleccionada,
+        tournament: value,
+        institutionId: institucionId,
+      );
 
       if (!mounted) return;
 
@@ -2377,7 +2382,10 @@ await _saveActiveContext();
     );
 
     if (!exists) {
-      final created = await _structureRepository.addCategory(value, institutionId: institucionId);
+      final created = await _structureRepository.addCategory(
+        value,
+        institutionId: institucionId,
+      );
 
       if (!mounted) return;
 
@@ -2399,14 +2407,14 @@ await _saveActiveContext();
 
     if (!mounted) return;
     await _structureRepository.ensureInitialStructureFromActiveContext(
-  institutionId: activeContext.institutionId,
-  season: activeContext.season,
-  competition: activeContext.competition,
-  tournament: activeContext.tournament,
-  category: activeContext.category,
-);
+      institutionId: activeContext.institutionId,
+      season: activeContext.season,
+      competition: activeContext.competition,
+      tournament: activeContext.tournament,
+      category: activeContext.category,
+    );
 
-await _loadStructureData(institutionId: activeContext.institutionId);
+    await _loadStructureData(institutionId: activeContext.institutionId);
     final resolvedInstitutionShield = await _resolveInstitutionShieldPath(
       institutionId: activeContext.institutionId,
       institutionName: activeContext.institutionName,
@@ -2549,46 +2557,46 @@ await _loadStructureData(institutionId: activeContext.institutionId);
   }
 
   Future<void> _loadStructureData({String? institutionId}) async {
-  final targetInstitutionId = institutionId ?? institucionId;
+    final targetInstitutionId = institutionId ?? institucionId;
 
-  final seasons = await _structureRepository.getSeasons(
-    institutionId: targetInstitutionId,
-  );
+    final seasons = await _structureRepository.getSeasons(
+      institutionId: targetInstitutionId,
+    );
 
-  final categories = await _structureRepository.getCategories(
-    institutionId: targetInstitutionId,
-  );
+    final categories = await _structureRepository.getCategories(
+      institutionId: targetInstitutionId,
+    );
 
-  final competitions = await _structureRepository.getCompetitions(
-    institutionId: targetInstitutionId,
-  );
+    final competitions = await _structureRepository.getCompetitions(
+      institutionId: targetInstitutionId,
+    );
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    temporadasDinamicas = seasons;
-    categoriasDinamicas = categories;
-    competenciasDinamicas = competitions;
-  });
-}
+    setState(() {
+      temporadasDinamicas = seasons;
+      categoriasDinamicas = categories;
+      competenciasDinamicas = competitions;
+    });
+  }
 
   Future<void> _saveActiveContext() async {
-  final context = ActiveContext(
-    hasInstitution: tieneInstitucion,
-    institutionName: institucionNombre,
-    institutionId: institucionId,
-    season: temporadaSeleccionada,
-    competition: competenciaSeleccionada,
-    tournament: torneoSeleccionado,
-    category: categoriaSeleccionada,
-  );
+    final context = ActiveContext(
+      hasInstitution: tieneInstitucion,
+      institutionName: institucionNombre,
+      institutionId: institucionId,
+      season: temporadaSeleccionada,
+      competition: competenciaSeleccionada,
+      tournament: torneoSeleccionado,
+      category: categoriaSeleccionada,
+    );
 
-  await _settingsRepository.saveActiveContext(context);
+    await _settingsRepository.saveActiveContext(context);
 
-  if ((context.institutionId ?? '').trim().isNotEmpty) {
-    await _saveContextForInstitution(context);
+    if ((context.institutionId ?? '').trim().isNotEmpty) {
+      await _saveContextForInstitution(context);
+    }
   }
-}
 
   Future<String?> _showTextInputDialog({
     required String title,
@@ -2684,7 +2692,10 @@ await _loadStructureData(institutionId: activeContext.institutionId);
     );
 
     if (!exists) {
-      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
+      final created = await _structureRepository.addSeason(
+        value,
+        institutionId: institucionId,
+      );
 
       if (!mounted) return;
 
@@ -2716,7 +2727,10 @@ await _loadStructureData(institutionId: activeContext.institutionId);
 
     if (value == null) return null;
 
-    final created = await _structureRepository.addSeason(value, institutionId: institucionId);
+    final created = await _structureRepository.addSeason(
+      value,
+      institutionId: institucionId,
+    );
 
     if (!mounted) return null;
 
@@ -2737,7 +2751,10 @@ await _loadStructureData(institutionId: activeContext.institutionId);
 
     if (value == null) return;
 
-    final created = await _structureRepository.addCategory(value, institutionId: institucionId);
+    final created = await _structureRepository.addCategory(
+      value,
+      institutionId: institucionId,
+    );
 
     if (!mounted) return;
 
@@ -2772,10 +2789,10 @@ await _loadStructureData(institutionId: activeContext.institutionId);
     if (value == null) return;
 
     final created = await _structureRepository.addTournamentToCompetition(
-  competitionName: competenciaSeleccionada,
-  tournament: value,
-  institutionId: institucionId,
-);
+      competitionName: competenciaSeleccionada,
+      tournament: value,
+      institutionId: institucionId,
+    );
 
     if (!mounted) return;
 
@@ -2807,7 +2824,7 @@ await _loadStructureData(institutionId: activeContext.institutionId);
 
     final created = await _structureRepository.addCompetition(
       name: result.name,
-        institutionId: institucionId,
+      institutionId: institucionId,
       type: result.type,
       tournaments: result.tournaments,
       mode: result.mode,
@@ -4046,7 +4063,10 @@ await _loadStructureData(institutionId: activeContext.institutionId);
     final value = selectedValue.trim();
 
     if (!temporadasDinamicas.contains(value)) {
-      final created = await _structureRepository.addSeason(value, institutionId: institucionId);
+      final created = await _structureRepository.addSeason(
+        value,
+        institutionId: institucionId,
+      );
 
       if (!mounted) return;
 
@@ -4630,65 +4650,65 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   String get _partidosFinalizadosStorageKey =>
       'finalizados_$_contextStorageSuffix';
 
-String get _legacyProximoPartidoStorageKey =>
-    'proximo_partido_${widget.categoria}_${widget.torneo}';
+  String get _legacyProximoPartidoStorageKey =>
+      'proximo_partido_${widget.categoria}_${widget.torneo}';
 
-String get _legacySiguientesPartidosStorageKey =>
-    'siguientes_${widget.categoria}_${widget.torneo}';
+  String get _legacySiguientesPartidosStorageKey =>
+      'siguientes_${widget.categoria}_${widget.torneo}';
 
-Map<String, dynamic> _normalizeLegacyUpcomingMap(Map<String, dynamic> raw) {
-  return {
-    ...raw,
-    'temporada': raw['temporada'] ?? widget.temporada,
-    'competencia': raw['competencia'] ?? widget.competencia,
-    'institutionId': raw['institutionId'] ?? widget.institutionId,
-    'equipoPropio': raw['equipoPropio'] ?? _institutionName,
-    'escudoPropio': raw['escudoPropio'] ?? _institutionShieldPath,
-    'estado': raw['estado'] ?? 'Pendiente',
-    'estadoPartido': raw['estadoPartido'] ?? 'no_iniciado',
-  };
-}
-
-Future<List<Map<String, dynamic>>> _readLegacyUpcomingMaps() async {
-  final prefs = await SharedPreferences.getInstance();
-  final result = <Map<String, dynamic>>[];
-
-  final rawProximo = prefs.getString(_legacyProximoPartidoStorageKey);
-
-  if (rawProximo != null &&
-      rawProximo.trim().isNotEmpty &&
-      rawProximo.trim() != 'null') {
-    try {
-      final decoded = jsonDecode(rawProximo);
-      if (decoded is Map) {
-        result.add(
-          _normalizeLegacyUpcomingMap(Map<String, dynamic>.from(decoded)),
-        );
-      }
-    } catch (_) {}
+  Map<String, dynamic> _normalizeLegacyUpcomingMap(Map<String, dynamic> raw) {
+    return {
+      ...raw,
+      'temporada': raw['temporada'] ?? widget.temporada,
+      'competencia': raw['competencia'] ?? widget.competencia,
+      'institutionId': raw['institutionId'] ?? widget.institutionId,
+      'equipoPropio': raw['equipoPropio'] ?? _institutionName,
+      'escudoPropio': raw['escudoPropio'] ?? _institutionShieldPath,
+      'estado': raw['estado'] ?? 'Pendiente',
+      'estadoPartido': raw['estadoPartido'] ?? 'no_iniciado',
+    };
   }
 
-  final rawSiguientes = prefs.getString(_legacySiguientesPartidosStorageKey);
+  Future<List<Map<String, dynamic>>> _readLegacyUpcomingMaps() async {
+    final prefs = await SharedPreferences.getInstance();
+    final result = <Map<String, dynamic>>[];
 
-  if (rawSiguientes != null &&
-      rawSiguientes.trim().isNotEmpty &&
-      rawSiguientes.trim() != 'null') {
-    try {
-      final decoded = jsonDecode(rawSiguientes);
-      if (decoded is List) {
-        for (final item in decoded) {
-          if (item is Map) {
-            result.add(
-              _normalizeLegacyUpcomingMap(Map<String, dynamic>.from(item)),
-            );
+    final rawProximo = prefs.getString(_legacyProximoPartidoStorageKey);
+
+    if (rawProximo != null &&
+        rawProximo.trim().isNotEmpty &&
+        rawProximo.trim() != 'null') {
+      try {
+        final decoded = jsonDecode(rawProximo);
+        if (decoded is Map) {
+          result.add(
+            _normalizeLegacyUpcomingMap(Map<String, dynamic>.from(decoded)),
+          );
+        }
+      } catch (_) {}
+    }
+
+    final rawSiguientes = prefs.getString(_legacySiguientesPartidosStorageKey);
+
+    if (rawSiguientes != null &&
+        rawSiguientes.trim().isNotEmpty &&
+        rawSiguientes.trim() != 'null') {
+      try {
+        final decoded = jsonDecode(rawSiguientes);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is Map) {
+              result.add(
+                _normalizeLegacyUpcomingMap(Map<String, dynamic>.from(item)),
+              );
+            }
           }
         }
-      }
-    } catch (_) {}
-  }
+      } catch (_) {}
+    }
 
-  return result;
-}
+    return result;
+  }
 
   String get _institutionTitle {
     final value = widget.institutionName.trim();
@@ -4889,66 +4909,64 @@ Future<List<Map<String, dynamic>>> _readLegacyUpcomingMaps() async {
     return '$dd/$mm';
   }
 
-  List<Map<String, dynamic>> _buildAperturaBase({
-  required String categoria,
-}) {
-  final equipoPropio = _institutionName;
-  final escudoPropio = _institutionShieldPath;
+  List<Map<String, dynamic>> _buildAperturaBase({required String categoria}) {
+    final equipoPropio = _institutionName;
+    final escudoPropio = _institutionShieldPath;
 
-  return [
-    {
-      'fechaNumero': 1,
-      'fecha': '21/03',
-      'hora': '13:00',
-      'local': 'Municipalidad de Vicente Lopez',
-      'visitante': equipoPropio,
-      'equipoPropio': equipoPropio,
-      'escudoPropio': escudoPropio,
-      'torneo': 'Apertura',
-      'categoria': categoria,
-      'institutionId': widget.institutionId,
-    },
+    return [
+      {
+        'fechaNumero': 1,
+        'fecha': '21/03',
+        'hora': '13:00',
+        'local': 'Municipalidad de Vicente Lopez',
+        'visitante': equipoPropio,
+        'equipoPropio': equipoPropio,
+        'escudoPropio': escudoPropio,
+        'torneo': 'Apertura',
+        'categoria': categoria,
+        'institutionId': widget.institutionId,
+      },
 
-    {
-      'fechaNumero': 2,
-      'fecha': '28/03',
-      'hora': '13:00',
-      'local': equipoPropio,
-      'visitante': 'Colegio Ward',
-      'equipoPropio': equipoPropio,
-      'escudoPropio': escudoPropio,
-      'torneo': 'Apertura',
-      'categoria': categoria,
-      'institutionId': widget.institutionId,
-    },
+      {
+        'fechaNumero': 2,
+        'fecha': '28/03',
+        'hora': '13:00',
+        'local': equipoPropio,
+        'visitante': 'Colegio Ward',
+        'equipoPropio': equipoPropio,
+        'escudoPropio': escudoPropio,
+        'torneo': 'Apertura',
+        'categoria': categoria,
+        'institutionId': widget.institutionId,
+      },
 
-    {
-      'fechaNumero': 3,
-      'fecha': '11/04',
-      'hora': '13:00',
-      'local': 'S.A.G. Villa Ballester',
-      'visitante': equipoPropio,
-      'equipoPropio': equipoPropio,
-      'escudoPropio': escudoPropio,
-      'torneo': 'Apertura',
-      'categoria': categoria,
-      'institutionId': widget.institutionId,
-    },
+      {
+        'fechaNumero': 3,
+        'fecha': '11/04',
+        'hora': '13:00',
+        'local': 'S.A.G. Villa Ballester',
+        'visitante': equipoPropio,
+        'equipoPropio': equipoPropio,
+        'escudoPropio': escudoPropio,
+        'torneo': 'Apertura',
+        'categoria': categoria,
+        'institutionId': widget.institutionId,
+      },
 
-    {
-      'fechaNumero': 4,
-      'fecha': '18/04',
-      'hora': '13:00',
-      'local': equipoPropio,
-      'visitante': 'Argentinos Juniors',
-      'equipoPropio': equipoPropio,
-      'escudoPropio': escudoPropio,
-      'torneo': 'Apertura',
-      'categoria': categoria,
-      'institutionId': widget.institutionId,
-    },
-  ];
-}
+      {
+        'fechaNumero': 4,
+        'fecha': '18/04',
+        'hora': '13:00',
+        'local': equipoPropio,
+        'visitante': 'Argentinos Juniors',
+        'equipoPropio': equipoPropio,
+        'escudoPropio': escudoPropio,
+        'torneo': 'Apertura',
+        'categoria': categoria,
+        'institutionId': widget.institutionId,
+      },
+    ];
+  }
 
   List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
     final apertura = _buildAperturaBase(categoria: categoria);
@@ -4971,51 +4989,55 @@ Future<List<Map<String, dynamic>>> _readLegacyUpcomingMaps() async {
 
   Map<String, dynamic> _convertirAFixturePartido(Map<String, dynamic> raw) {
     final bool somosLocales =
-    FixtureRepositoryV2.normalize(raw['local']) ==
-    FixtureRepositoryV2.normalize(_institutionName);
+        FixtureRepositoryV2.normalize(raw['local']) ==
+        FixtureRepositoryV2.normalize(_institutionName);
 
     final rival = somosLocales
         ? (raw['visitante'] ?? 'Rival').toString()
         : (raw['local'] ?? 'Rival').toString();
 
     return {
-  'temporada': widget.temporada,
-  'competencia': widget.competencia,
-  'institutionId': widget.institutionId,
-  'equipoPropio': _institutionName,
-  'escudoPropio': _institutionShieldPath,
-  'rival': rival,
-  'fechaNumero': raw['fechaNumero'],
-  'fecha': raw['fecha'],
-  'hora': raw['hora'],
-  'condicion': somosLocales ? 'Local' : 'Visitante',
-  'torneo': raw['torneo'],
-  'categoria': raw['categoria'],
-  'equipoLocal': raw['local'],
-  'equipoVisitante': raw['visitante'],
-  'escudoLocal': somosLocales ? _institutionShieldPath : _rivalShieldAssetByName(rival),
-  'escudoVisitante': somosLocales ? _rivalShieldAssetByName(rival) : _institutionShieldPath,
-  'estado': 'Pendiente',
-  'estadoPartido': 'no_iniciado',
-  'golesSanFernando': 0,
-  'golesRival': 0,
-  'golesRecibidos': 0,
-  'atajadas': 0,
-  'penales': 0,
-  'exclusiones2Min': 0,
-  'amarillas': 0,
-  'rojas': 0,
-  'perdidas': 0,
-  'recuperaciones': 0,
-  'penalesConvertidosSanFernando': 0,
-  'penalesConvertidosRival': 0,
-  'eventos': <Map<String, dynamic>>[],
-  'modoActual': null,
-  'modoInicioPrimerTiempo': null,
-  'modoInicioPrimerTiempoAlargue': null,
-  'currentGoalkeeperNumber': null,
-  'escudoRival': _rivalShieldAssetByName(rival),
-};
+      'temporada': widget.temporada,
+      'competencia': widget.competencia,
+      'institutionId': widget.institutionId,
+      'equipoPropio': _institutionName,
+      'escudoPropio': _institutionShieldPath,
+      'rival': rival,
+      'fechaNumero': raw['fechaNumero'],
+      'fecha': raw['fecha'],
+      'hora': raw['hora'],
+      'condicion': somosLocales ? 'Local' : 'Visitante',
+      'torneo': raw['torneo'],
+      'categoria': raw['categoria'],
+      'equipoLocal': raw['local'],
+      'equipoVisitante': raw['visitante'],
+      'escudoLocal': somosLocales
+          ? _institutionShieldPath
+          : _rivalShieldAssetByName(rival),
+      'escudoVisitante': somosLocales
+          ? _rivalShieldAssetByName(rival)
+          : _institutionShieldPath,
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': _rivalShieldAssetByName(rival),
+    };
   }
 
   String? _rivalShieldAssetByName(String rival) {
@@ -5258,12 +5280,14 @@ Future<List<Map<String, dynamic>>> _readLegacyUpcomingMaps() async {
     }
 
     for (final item in legacyUpcomingMaps) {
-  if (!_matchesCurrentContext(item)) continue;
+      if (!_matchesCurrentContext(item)) continue;
 
-  mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
-    item,
-  )] = Map<String, dynamic>.from(item);
-}
+      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+        item,
+      )] = Map<String, dynamic>.from(
+        item,
+      );
+    }
 
     final todos = mergedByIdentity.values.toList();
 
@@ -7113,7 +7137,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           rightValue ?? double.tryParse(right.replaceAll('%', '')) ?? 0;
 
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
             Expanded(
@@ -7352,7 +7376,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               compareMode: 'lower',
             ),
 
-            const Divider(color: Color(0x223FFFFFF), height: 16, thickness: 1),
+            const Divider(color: Color(0x223FFFFFF), height: 10, thickness: 1),
 
             statRow(
               'Robos',
@@ -7367,7 +7391,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               compareMode: 'lower',
             ),
 
-            const Divider(color: Color(0x223FFFFFF), height: 16, thickness: 1),
+            const Divider(color: Color(0x223FFFFFF), height: 10, thickness: 1),
 
             const Text(
               'Penales y disciplina',
@@ -7398,7 +7422,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               compareMode: 'lower',
             ),
 
-            const Divider(color: Color(0x223FFFFFF), height: 16, thickness: 1),
+            const Divider(color: Color(0x223FFFFFF), height: 10, thickness: 1),
 
             statRow(
               '2 min',
@@ -7419,7 +7443,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               compareMode: 'lower',
             ),
 
-            const SizedBox(height: 7),
+            const SizedBox(height: 2),
 
             Container(
               width: double.infinity,
@@ -10851,8 +10875,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 2,
@@ -10863,8 +10887,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 3,
@@ -10875,8 +10899,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 4,
@@ -10887,8 +10911,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 5,
@@ -10899,8 +10923,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 6,
@@ -10911,8 +10935,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 7,
@@ -10923,8 +10947,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 8,
@@ -10935,8 +10959,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 9,
@@ -10947,8 +10971,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 10,
@@ -10959,8 +10983,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 11,
@@ -10971,8 +10995,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 12,
@@ -10983,8 +11007,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 13,
@@ -10995,8 +11019,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 14,
@@ -11007,8 +11031,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
       {
         'fechaNumero': 15,
@@ -11019,8 +11043,8 @@ class _FixtureScreenState extends State<FixtureScreen> {
         'torneo': 'Apertura',
         'categoria': categoria,
         'equipoPropio': equipoPropio,
-'escudoPropio': escudoPropio,
-'institutionId': widget.institutionId,
+        'escudoPropio': escudoPropio,
+        'institutionId': widget.institutionId,
       },
     ];
   }
@@ -11156,43 +11180,47 @@ class _FixtureScreenState extends State<FixtureScreen> {
         : (raw['local'] ?? 'Rival').toString();
 
     return {
-  'temporada': widget.temporada,
-  'competencia': widget.competencia,
-  'institutionId': widget.institutionId,
-  'equipoPropio': _institutionName,
-  'escudoPropio': _institutionShieldPath,
-  'rival': rival,
-  'fechaNumero': raw['fechaNumero'],
-  'fecha': raw['fecha'],
-  'hora': raw['hora'],
-  'condicion': somosLocales ? 'Local' : 'Visitante',
-  'torneo': raw['torneo'],
-  'categoria': raw['categoria'],
-  'equipoLocal': raw['local'],
-  'equipoVisitante': raw['visitante'],
-  'escudoLocal': somosLocales ? _institutionShieldPath : _rivalShieldAssetByName(rival),
-  'escudoVisitante': somosLocales ? _rivalShieldAssetByName(rival) : _institutionShieldPath,
-  'estado': 'Pendiente',
-  'estadoPartido': 'no_iniciado',
-  'golesSanFernando': 0,
-  'golesRival': 0,
-  'golesRecibidos': 0,
-  'atajadas': 0,
-  'penales': 0,
-  'exclusiones2Min': 0,
-  'amarillas': 0,
-  'rojas': 0,
-  'perdidas': 0,
-  'recuperaciones': 0,
-  'penalesConvertidosSanFernando': 0,
-  'penalesConvertidosRival': 0,
-  'eventos': <Map<String, dynamic>>[],
-  'modoActual': null,
-  'modoInicioPrimerTiempo': null,
-  'modoInicioPrimerTiempoAlargue': null,
-  'currentGoalkeeperNumber': null,
-  'escudoRival': _rivalShieldAssetByName(rival),
-};
+      'temporada': widget.temporada,
+      'competencia': widget.competencia,
+      'institutionId': widget.institutionId,
+      'equipoPropio': _institutionName,
+      'escudoPropio': _institutionShieldPath,
+      'rival': rival,
+      'fechaNumero': raw['fechaNumero'],
+      'fecha': raw['fecha'],
+      'hora': raw['hora'],
+      'condicion': somosLocales ? 'Local' : 'Visitante',
+      'torneo': raw['torneo'],
+      'categoria': raw['categoria'],
+      'equipoLocal': raw['local'],
+      'equipoVisitante': raw['visitante'],
+      'escudoLocal': somosLocales
+          ? _institutionShieldPath
+          : _rivalShieldAssetByName(rival),
+      'escudoVisitante': somosLocales
+          ? _rivalShieldAssetByName(rival)
+          : _institutionShieldPath,
+      'estado': 'Pendiente',
+      'estadoPartido': 'no_iniciado',
+      'golesSanFernando': 0,
+      'golesRival': 0,
+      'golesRecibidos': 0,
+      'atajadas': 0,
+      'penales': 0,
+      'exclusiones2Min': 0,
+      'amarillas': 0,
+      'rojas': 0,
+      'perdidas': 0,
+      'recuperaciones': 0,
+      'penalesConvertidosSanFernando': 0,
+      'penalesConvertidosRival': 0,
+      'eventos': <Map<String, dynamic>>[],
+      'modoActual': null,
+      'modoInicioPrimerTiempo': null,
+      'modoInicioPrimerTiempoAlargue': null,
+      'currentGoalkeeperNumber': null,
+      'escudoRival': _rivalShieldAssetByName(rival),
+    };
   }
 
   Widget _buildEmptyFixtureState() {
@@ -14264,13 +14292,19 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
 
     final Map<String, dynamic> prevState = _captureStateSnapshot();
 
+    final String modoAntesDelEvento = modo!;
+
     final String actor = _actorPrincipalActual(
       fallbackAtaque: 'Jugador generico ataque',
       fallbackDefensa: 'Jugador generico defensa',
     );
 
+    final String? actorId = modoAntesDelEvento == 'ataque'
+        ? jugadorSeleccionadoId
+        : null;
+
     final String? zonaActual = zonaTiro;
-    final bool estabaEnAtaque = modo == 'ataque';
+    final bool estabaEnAtaque = modoAntesDelEvento == 'ataque';
 
     setState(() {
       if (estabaEnAtaque) {
@@ -14289,11 +14323,13 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
       tipo: 'perdida',
       resultado: estabaEnAtaque ? 'perdida' : 'recuperacion',
       actorPrincipal: actor,
+      actorPrincipalId: actorId,
       zonaTiroValor: zonaActual,
       detalle: subtipo,
       subtipo: subtipo,
       mantieneContexto: false,
       prevState: prevState,
+      modoEvento: modoAntesDelEvento,
     );
 
     _clearSelection(keepContra: true);
