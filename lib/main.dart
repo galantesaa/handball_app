@@ -9380,6 +9380,277 @@ Widget _buildInAppGoalkeepersOverviewCard(
   );
 }
 
+List<Map<String, dynamic>> get _eventosMapeados {
+  final result = <Map<String, dynamic>>[];
+
+  for (final evento in _eventos) {
+    if (evento is Map) {
+      result.add(Map<String, dynamic>.from(evento));
+    }
+  }
+
+  return result;
+}
+
+bool _esArcoAArcoEvento(Map<String, dynamic> evento) {
+  final tipo = (evento['tipo'] ?? evento['kind'] ?? '').toString();
+  final subtipo = (evento['subtipo'] ?? '').toString();
+  final zonaTiro = (evento['zonaTiro'] ?? '').toString();
+  final esContraDirectaArquero = evento['esContraDirectaArquero'] == true;
+
+  return tipo == 'tiro' &&
+      (subtipo == 'arco_a_arco' ||
+          zonaTiro == 'Contra directa arquero' ||
+          esContraDirectaArquero);
+}
+
+bool _esContraAsistidaEvento(Map<String, dynamic> evento) {
+  final tipo = (evento['tipo'] ?? evento['kind'] ?? '').toString();
+  final subtipo = (evento['subtipo'] ?? '').toString();
+  final origenJugada = (evento['origenJugada'] ?? '').toString();
+  final modo = (evento['modo'] ?? '').toString();
+  final actorSecundarioId = (evento['actorSecundarioId'] ?? '').toString();
+
+  if (tipo != 'tiro') return false;
+  if (_esArcoAArcoEvento(evento)) return false;
+
+  if (subtipo == 'contra_asistida') return true;
+
+  // Compatibilidad defensiva para eventos futuros/legacy:
+  // si viene de contra, está en ataque y tiene iniciador secundario,
+  // se interpreta como contra asistida.
+  return origenJugada == 'contra' &&
+      modo == 'ataque' &&
+      actorSecundarioId.trim().isNotEmpty &&
+      actorSecundarioId.trim().toLowerCase() != 'null';
+}
+
+String _nombreCortoEvento(dynamic value) {
+  final text = (value ?? '').toString().trim();
+
+  if (text.isEmpty || text.toLowerCase() == 'null') {
+    return '-';
+  }
+
+  return text;
+}
+
+String _topActorLabel({
+  required List<Map<String, dynamic>> eventos,
+  required String idKey,
+  required String nameKey,
+}) {
+  final counts = <String, int>{};
+  final labels = <String, String>{};
+
+  for (final evento in eventos) {
+    final rawId = (evento[idKey] ?? '').toString().trim();
+    final rawName = (evento[nameKey] ?? '').toString().trim();
+
+    final hasId = rawId.isNotEmpty && rawId.toLowerCase() != 'null';
+    final hasName = rawName.isNotEmpty && rawName.toLowerCase() != 'null';
+
+    if (!hasId && !hasName) continue;
+
+    final key = hasId ? rawId : rawName;
+    counts[key] = (counts[key] ?? 0) + 1;
+
+    if (hasName) {
+      labels[key] = rawName;
+    }
+  }
+
+  if (counts.isEmpty) return '-';
+
+  final sorted = counts.entries.toList()
+    ..sort((a, b) {
+      final byCount = b.value.compareTo(a.value);
+      if (byCount != 0) return byCount;
+      return a.key.compareTo(b.key);
+    });
+
+  final winnerKey = sorted.first.key;
+  final label = labels[winnerKey] ?? winnerKey;
+  final count = sorted.first.value;
+
+  return '$label · $count';
+}
+
+String _lecturaTacticaContras({
+  required int intentosTotales,
+  required int golesTotales,
+  required int asistidas,
+  required int arcoAArco,
+  required double eficacia,
+}) {
+  if (intentosTotales == 0) {
+    return 'No hay contras registradas para analizar.';
+  }
+
+  if (eficacia >= 60 && golesTotales >= 2) {
+    return 'La contra fue una vía fuerte de gol.';
+  }
+
+  if (asistidas > arcoAArco) {
+    return 'Predominó la salida rápida con finalización de jugador.';
+  }
+
+  if (arcoAArco > asistidas) {
+    return 'Predominó el arco a arco del arquero.';
+  }
+
+  if (golesTotales == 0) {
+    return 'Hubo intención de contra, pero sin eficacia de gol.';
+  }
+
+  return 'La contra aportó volumen, con margen para mejorar eficacia.';
+}
+
+Widget _buildContraMiniStat({
+  required String value,
+  required String label,
+}) {
+  return Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF182338).withOpacity(0.82),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildContraAnalysisCard() {
+  final eventos = _eventosMapeados;
+
+  final contrasAsistidas = eventos.where(_esContraAsistidaEvento).toList();
+  final arcoAArco = eventos.where(_esArcoAArcoEvento).toList();
+
+  final intentosAsistidos = contrasAsistidas.length;
+  final intentosArcoAArco = arcoAArco.length;
+  final intentosTotales = intentosAsistidos + intentosArcoAArco;
+
+  final golesAsistidos = contrasAsistidas.where((evento) {
+    return (evento['resultado'] ?? '').toString() == 'gol';
+  }).length;
+
+  final golesArcoAArco = arcoAArco.where((evento) {
+    return (evento['resultado'] ?? '').toString() == 'gol';
+  }).length;
+
+  final golesTotales = golesAsistidos + golesArcoAArco;
+
+  final eficacia = intentosTotales == 0
+      ? 0.0
+      : (golesTotales / intentosTotales) * 100;
+
+  final mejorIniciador = _topActorLabel(
+    eventos: <Map<String, dynamic>>[
+      ...contrasAsistidas,
+      ...arcoAArco,
+    ],
+    idKey: 'actorSecundarioId',
+    nameKey: 'actorSecundario',
+  );
+
+  final mejorFinalizador = _topActorLabel(
+    eventos: contrasAsistidas,
+    idKey: 'actorPrincipalId',
+    nameKey: 'actorPrincipal',
+  );
+
+  final lectura = _lecturaTacticaContras(
+    intentosTotales: intentosTotales,
+    golesTotales: golesTotales,
+    asistidas: intentosAsistidos,
+    arcoAArco: intentosArcoAArco,
+    eficacia: eficacia,
+  );
+
+  return _buildSectionCard(
+    title: 'Análisis de contras',
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _buildContraMiniStat(
+              value: '$intentosTotales',
+              label: 'Contras',
+            ),
+            const SizedBox(width: 8),
+            _buildContraMiniStat(
+              value: '$golesTotales',
+              label: 'Goles',
+            ),
+            const SizedBox(width: 8),
+            _buildContraMiniStat(
+              value: '${eficacia.toStringAsFixed(1)}%',
+              label: 'Eficacia',
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _buildInfoRow('Asistidas', '$intentosAsistidos'),
+        _buildInfoRow('Arco a arco', '$golesArcoAArco/$intentosArcoAArco'),
+        _buildInfoRow('Goles de contra', '$golesTotales/$intentosTotales'),
+        _buildInfoRow('Mejor iniciador', _nombreCortoEvento(mejorIniciador)),
+        _buildInfoRow(
+          'Mejor finalizador',
+          _nombreCortoEvento(mejorFinalizador),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF182338).withOpacity(0.72),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Text(
+            lectura,
+            style: const TextStyle(
+              color: Color(0xFF22C55E),
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              height: 1.25,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     final eventosImportantes = _eventosImportantes();
@@ -9419,11 +9690,13 @@ Widget _buildInAppGoalkeepersOverviewCard(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInAppMatchOverviewCard(context),
-                  const SizedBox(height: 16),
-                  _buildInAppGoalkeepersOverviewCard(context, estadisticasPorArquero),
-                  const SizedBox(height: 16),
-                  _buildSectionCard(
-                    title: 'Ataque y juego',
+const SizedBox(height: 16),
+_buildInAppGoalkeepersOverviewCard(context, estadisticasPorArquero),
+const SizedBox(height: 16),
+_buildContraAnalysisCard(),
+const SizedBox(height: 16),
+_buildSectionCard(
+  title: 'Ataque y juego',
                     child: Column(
                       children: [
                         _buildInfoRow('Goles a favor', '$_golesSanFernandoV2'),
