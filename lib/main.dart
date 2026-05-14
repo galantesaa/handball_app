@@ -7195,79 +7195,115 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     }
 
     String shortTeamName(String name) {
-      final lower = name.toLowerCase();
+  final clean = fixTextoRoto(name).trim();
+  final lower = clean.toLowerCase();
 
-      if (lower.contains('vélez')) return 'Vélez';
-      if (lower.contains('san fernando')) return 'San Fernando';
+  if (lower.contains('san fernando')) return 'San Fernando';
+  if (lower.contains('campana')) return 'Campana';
+  if (lower.contains('quilmes')) return 'Quilmes';
+  if (lower.contains('vélez') || lower.contains('velez')) return 'Vélez';
+  if (lower.contains('river')) return 'River';
+  if (lower.contains('ferro')) return 'Ferro';
+  if (lower.contains('ballester')) return 'Ballester';
+  if (lower.contains('ward')) return 'Ward';
+  if (lower.contains('dorrego')) return 'Dorrego';
+  if (lower.contains('sedalo') || lower.contains('s.e.d.a.l.o')) {
+    return 'SEDALO';
+  }
 
-      // fallback inteligente
-      final words = name.split(' ');
-      if (words.length >= 2) {
-        return words.last;
-      }
+  final words = clean
+      .split(RegExp(r'\s+'))
+      .where((word) {
+        final w = word.toLowerCase().replaceAll('.', '');
+        return w.isNotEmpty &&
+            w != 'club' &&
+            w != 'handball' &&
+            w != 'ca' &&
+            w != 'c.a' &&
+            w != 'aacf' &&
+            w != 'aacf';
+      })
+      .toList();
 
-      return name;
-    }
+  if (words.isNotEmpty) return words.first;
+
+  return clean.isEmpty ? '-' : clean;
+}
 
     Widget controlIndexBar() {
-      final localShort = shortTeamName(localName);
-      final visitanteShort = shortTeamName(visitanteName);
+  final localShort = shortTeamName(localName);
+  final visitanteShort = shortTeamName(visitanteName);
 
-      return Column(
+  final bool localDominante = localControl >= visitanteControl;
+
+  const Color dominantColor = Color(0xFF27D36B);
+  const Color neutralColor = Color(0xFF8FA3BF);
+  const Color inactiveBarColor = Color(0xFF324057);
+
+  final Color localTextColor = localDominante ? dominantColor : neutralColor;
+  final Color visitanteTextColor =
+      localDominante ? neutralColor : dominantColor;
+
+  final Color localBarColor =
+      localDominante ? dominantColor : inactiveBarColor;
+  final Color visitanteBarColor =
+      localDominante ? inactiveBarColor : dominantColor;
+
+  return Column(
+    children: [
+      Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${localControl.toStringAsFixed(0)}% $localShort',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    decoration: TextDecoration.none,
-                    color: Color(0xFF27D36B),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              '${localControl.toStringAsFixed(0)}% $localShort',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: localTextColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
               ),
-              Expanded(
-                child: Text(
-                  '${visitanteControl.toStringAsFixed(0)}% $visitanteShort',
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    decoration: TextDecoration.none,
-                    color: Color(0xFF8FA3BF),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: SizedBox(
-              height: 6,
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: localControl.round().clamp(1, 99),
-                    child: Container(color: const Color(0xFF27D36B)),
-                  ),
-                  Expanded(
-                    flex: visitanteControl.round().clamp(1, 99),
-                    child: Container(color: const Color(0xFF324057)),
-                  ),
-                ],
+          Expanded(
+            child: Text(
+              '${visitanteControl.toStringAsFixed(0)}% $visitanteShort',
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                decoration: TextDecoration.none,
+                color: visitanteTextColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
         ],
-      );
-    }
+      ),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          height: 6,
+          child: Row(
+            children: [
+              Expanded(
+                flex: localControl.round().clamp(1, 99),
+                child: Container(color: localBarColor),
+              ),
+              Expanded(
+                flex: visitanteControl.round().clamp(1, 99),
+                child: Container(color: visitanteBarColor),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
     Widget compactUnifiedPanel() {
       return Container(
@@ -8531,6 +8567,35 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     }).length;
   }
 
+  int get _tirosAlPalo {
+  return _eventos.where((e) {
+    if (e is! Map) return false;
+
+    final map = Map<String, dynamic>.from(e);
+    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+    final resultado = (map['resultado'] ?? '').toString();
+
+    final esEventoDeLanzamiento =
+        tipo == 'tiro' || tipo == 'penal' || tipo == 'penal_tanda';
+
+    return esEventoDeLanzamiento && resultado == 'palo';
+  }).length;
+}
+
+int get _penalesRivalDesdeEventos {
+  return _eventos.where((e) {
+    if (e is! Map) return false;
+
+    final map = Map<String, dynamic>.from(e);
+    final tipo = (map['tipo'] ?? map['kind'] ?? '').toString();
+    final modoEvento = (map['modo'] ?? '').toString();
+
+    final esPenal = tipo == 'penal' || tipo == 'penal_tanda';
+
+    return esPenal && modoEvento == 'defensa';
+  }).length;
+}
+
   String _fechaTexto() => (partido['fecha'] ?? '-').toString();
   String _horaTexto() => (partido['hora'] ?? '-').toString();
   String _condicionTexto() => (partido['condicion'] ?? '-').toString();
@@ -8668,6 +8733,605 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     );
   }
 
+Widget _buildInAppMatchOverviewCard(BuildContext context) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final double availableWidth =
+          constraints.maxWidth.isFinite && constraints.maxWidth > 0
+              ? constraints.maxWidth
+              : MediaQuery.of(context).size.width;
+
+      final double cardWidth = min(availableWidth, 430.0);
+      final double scale = cardWidth / 390.0;
+      final double cardHeight = 693.0 * scale;
+
+      return Center(
+        child: SizedBox(
+          width: cardWidth,
+          height: cardHeight,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.topCenter,
+              child: _buildShareMatchOverviewCard(context),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+int _goalkeeperStatInt(Map<String, dynamic> stats, String key) {
+  final value = stats[key];
+
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value.trim()) ?? 0;
+
+  return 0;
+}
+
+double _goalkeeperStatDouble(Map<String, dynamic> stats, String key) {
+  final value = stats[key];
+
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value.trim()) ?? 0.0;
+
+  return 0.0;
+}
+
+String _goalkeeperName(Map<String, dynamic> stats) {
+  final nombre = (stats['arqueroNombre'] ?? stats['arquero'] ?? 'Arquero')
+      .toString()
+      .trim();
+
+  if (nombre.isEmpty || nombre.toLowerCase() == 'null') {
+    return 'Arquero';
+  }
+
+  return nombre;
+}
+
+String _goalkeeperDorsal(Map<String, dynamic> stats) {
+  final direct = (stats['arqueroDorsal'] ?? '').toString().trim();
+
+  if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
+    return direct;
+  }
+
+  final nombre = _goalkeeperName(stats);
+  final match = RegExp(r'^(\d+)').firstMatch(nombre);
+
+  if (match != null) {
+    return match.group(1) ?? '-';
+  }
+
+  return '-';
+}
+
+Color _goalkeeperLevelColor(double eficacia) {
+  if (eficacia >= 45.0) return const Color(0xFF22C55E);
+  if (eficacia >= 30.0) return const Color(0xFFC58B1D);
+  return const Color(0xFFEF4444);
+}
+
+String _goalkeeperLevelText(double eficacia, {required bool destacado}) {
+  if (destacado) return 'TOP';
+  if (eficacia >= 45.0) return 'ALTO';
+  if (eficacia >= 30.0) return 'MEDIO';
+  return 'BAJO';
+}
+
+void _openGoalkeeperDetail(
+  BuildContext context,
+  Map<String, dynamic> arquero,
+) {
+  final nombre = _goalkeeperName(arquero);
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => DetalleArqueroPartidoScreen(
+        stats: {
+          ...arquero,
+          'arqueroNombre': nombre,
+        },
+      ),
+    ),
+  );
+}
+
+void _openGoalkeepersFullAnalysis(
+  BuildContext context,
+  List<Map<String, dynamic>> arqueros,
+) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ArquerosPartidoScreen(
+        estadisticasPorArquero: arqueros,
+        categoria: partidoV2.categoria,
+      ),
+    ),
+  );
+}
+
+Widget _buildGoalkeeperMiniStat({
+  required String value,
+  required String label,
+}) {
+  return Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2436).withOpacity(0.92),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildGoalkeeperInsightRow(String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFAAB4C3),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildInAppGoalkeeperFeaturedTile({
+  required BuildContext context,
+  required Map<String, dynamic> arquero,
+  required bool destacado,
+}) {
+  final nombre = _goalkeeperName(arquero);
+  final dorsal = _goalkeeperDorsal(arquero);
+  final eficacia = _goalkeeperStatDouble(arquero, 'eficacia');
+  final atajadas = _goalkeeperStatInt(arquero, 'atajadas');
+  final goles = _goalkeeperStatInt(arquero, 'golesRecibidos');
+  final penales = _goalkeeperStatInt(arquero, 'penales');
+  final penalesAtajados = _goalkeeperStatInt(arquero, 'penalesAtajados');
+  final contraDirecta = _goalkeeperStatInt(arquero, 'contraDirecta');
+
+  final color = _goalkeeperLevelColor(eficacia);
+  final label = _goalkeeperLevelText(eficacia, destacado: destacado);
+
+  return GestureDetector(
+    onTap: () => _openGoalkeeperDetail(context, arquero),
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28).withOpacity(0.96),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: color.withOpacity(destacado ? 0.85 : 0.45),
+          width: destacado ? 1.6 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(destacado ? 0.14 : 0.06),
+            blurRadius: destacado ? 18 : 10,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: color.withOpacity(0.45)),
+                ),
+                child: Center(
+                  child: Text(
+                    dorsal,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  nombre.replaceFirst(RegExp(r'^\d+\s*·\s*'), ''),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    height: 1.1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.22),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: LinearProgressIndicator(
+              value: (eficacia / 100).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: Colors.white.withOpacity(0.10),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _buildGoalkeeperMiniStat(
+                value: '${eficacia.toStringAsFixed(1)}%',
+                label: 'Eficacia',
+              ),
+              const SizedBox(width: 8),
+              _buildGoalkeeperMiniStat(
+                value: '$atajadas',
+                label: 'Atajadas',
+              ),
+              const SizedBox(width: 8),
+              _buildGoalkeeperMiniStat(
+                value: '$goles',
+                label: 'Goles',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(color: Colors.white.withOpacity(0.08)),
+          const SizedBox(height: 6),
+          _buildGoalkeeperInsightRow('Zona fuerte', _zonaFuerte(arquero)),
+          _buildGoalkeeperInsightRow('Zona débil', _zonaDebil(arquero)),
+          _buildGoalkeeperInsightRow(
+            'Más atacada',
+            _zonaMasAtacada(arquero),
+          ),
+          _buildGoalkeeperInsightRow(
+            'Penales',
+            '$penalesAtajados/$penales',
+          ),
+          _buildGoalkeeperInsightRow('Contra directa', '$contraDirecta'),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Ver detalle individual ›',
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildInAppGoalkeeperCompactTile({
+  required BuildContext context,
+  required Map<String, dynamic> arquero,
+}) {
+  final nombre = _goalkeeperName(arquero);
+  final dorsal = _goalkeeperDorsal(arquero);
+  final eficacia = _goalkeeperStatDouble(arquero, 'eficacia');
+  final atajadas = _goalkeeperStatInt(arquero, 'atajadas');
+  final goles = _goalkeeperStatInt(arquero, 'golesRecibidos');
+  final penales = _goalkeeperStatInt(arquero, 'penales');
+  final penalesAtajados = _goalkeeperStatInt(arquero, 'penalesAtajados');
+
+  final color = _goalkeeperLevelColor(eficacia);
+  final label = _goalkeeperLevelText(eficacia, destacado: false);
+
+  return GestureDetector(
+    onTap: () => _openGoalkeeperDetail(context, arquero),
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111A28).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withOpacity(0.50)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                dorsal,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  nombre.replaceFirst(RegExp(r'^\d+\s*·\s*'), ''),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildGoalkeeperMiniStat(
+                value: '${eficacia.toStringAsFixed(1)}%',
+                label: 'Eficacia',
+              ),
+              const SizedBox(width: 8),
+              _buildGoalkeeperMiniStat(
+                value: '$atajadas',
+                label: 'Atajadas',
+              ),
+              const SizedBox(width: 8),
+              _buildGoalkeeperMiniStat(
+                value: '$goles',
+                label: 'Goles',
+              ),
+              const SizedBox(width: 8),
+              _buildGoalkeeperMiniStat(
+                value: '$penalesAtajados/$penales',
+                label: 'Penales',
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildInAppGoalkeepersOverviewCard(
+  BuildContext context,
+  List<Map<String, dynamic>> arqueros,
+) {
+  final ordenados = [...arqueros]..sort((a, b) {
+    final eb = _goalkeeperStatDouble(b, 'eficacia');
+    final ea = _goalkeeperStatDouble(a, 'eficacia');
+
+    return eb.compareTo(ea);
+  });
+
+  if (ordenados.isEmpty) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.92),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: const Text(
+        'No hay estadísticas de arqueros para este partido.',
+        style: TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  final mejor = ordenados.first;
+  final segundo = ordenados.length > 1 ? ordenados[1] : null;
+
+  final mejorNombre = _goalkeeperName(mejor);
+  final mejorDorsal = _goalkeeperDorsal(mejor);
+  final mejorEficacia = _goalkeeperStatDouble(mejor, 'eficacia');
+
+  final segundaEficacia = segundo == null
+      ? 0.0
+      : _goalkeeperStatDouble(segundo, 'eficacia');
+
+  final diferencia = segundo == null ? 0.0 : mejorEficacia - segundaEficacia;
+
+  final lectura = segundo == null
+      ? 'Análisis individual del arquero destacado'
+      : diferencia >= 20.0
+      ? 'Dominio claro del arquero $mejorDorsal'
+      : diferencia >= 10.0
+      ? 'Ventaja moderada de $mejorDorsal'
+      : 'Rendimiento parejo entre arqueros';
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F1722).withOpacity(0.94),
+      borderRadius: BorderRadius.circular(28),
+      border: Border.all(color: Colors.white.withOpacity(0.06)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.25),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+  'Análisis de arqueros',
+  style: TextStyle(
+    color: Colors.white,
+    fontSize: 22,
+    fontWeight: FontWeight.w900,
+  ),
+),
+        const SizedBox(height: 14),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111A28),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: [
+              _buildGoalkeeperInsightRow('Mejor arquero', mejorNombre),
+              _buildGoalkeeperInsightRow(
+                'Eficacia',
+                '${mejorEficacia.toStringAsFixed(1)}%',
+              ),
+              if (segundo != null)
+                _buildGoalkeeperInsightRow(
+                  'Diferencia',
+                  '+${diferencia.toStringAsFixed(1)} pts',
+                ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: LinearProgressIndicator(
+                  value: (mejorEficacia / 100).clamp(0.0, 1.0),
+                  minHeight: 8,
+                  backgroundColor: Colors.white.withOpacity(0.10),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _goalkeeperLevelColor(mejorEficacia),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  lectura,
+                  style: TextStyle(
+                    color: _goalkeeperLevelColor(mejorEficacia),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildInAppGoalkeeperFeaturedTile(
+          context: context,
+          arquero: mejor,
+          destacado: true,
+        ),
+        if (segundo != null) ...[
+          const SizedBox(height: 12),
+          _buildInAppGoalkeeperCompactTile(
+            context: context,
+            arquero: segundo,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     final eventosImportantes = _eventosImportantes();
@@ -8675,10 +9339,19 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Resumen del partido'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+          title: const Text('Resumen'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            IconButton(
+              tooltip: 'Compartir resumen',
+              icon: const Icon(Icons.ios_share_rounded),
+              onPressed: () {
+                _shareResumenComoImagen(context);
+              },
+            ),
+          ],
+        ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -8693,104 +9366,13 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${partidoV2.categoria} · ${partidoV2.torneo}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFFD4DCE7),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _buildHeaderCard(context),
+                  _buildInAppMatchOverviewCard(context),
                   const SizedBox(height: 16),
-                  _buildKpiGrid(),
-                  const SizedBox(height: 16),
-                  _buildSectionCard(
-                    title: 'Datos del partido',
-                    child: Column(
-                      children: [
-                        _buildInfoRow('Rival', partidoV2.rival),
-                        _buildInfoRow('Fecha', partidoV2.fecha),
-                        _buildInfoRow('Hora', partidoV2.hora),
-                        _buildInfoRow('Condición', _condicionTexto()),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ArquerosPartidoScreen(
-                            estadisticasPorArquero: estadisticasPorArquero,
-                            categoria: partidoV2.categoria,
-                          ),
-                        ),
-                      );
-                    },
-                    child: _buildSectionCard(
-                      title: 'Arqueros del partido',
-                      child: Column(
-                        children: [
-                          _buildInfoRow(
-                            'Eficacia global',
-                            '${_eficaciaDesdeArqueros.toStringAsFixed(1)}%',
-                          ),
-                          _buildInfoRow('Atajadas', '$_atajadasDesdeArqueros'),
-                          _buildInfoRow(
-                            'Goles recibidos',
-                            '$_golesRecibidosDesdeArqueros',
-                          ),
-                          _buildInfoRow('Penales rival', '$_penalesV2'),
-                          const SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF182338).withOpacity(0.85),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.06),
-                              ),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(
-                                  Icons.sports_handball_rounded,
-                                  color: Color(0xFF4F8CFF),
-                                  size: 22,
-                                ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'Ver análisis completo de arqueros',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: Colors.white70,
-                                  size: 26,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildInAppGoalkeepersOverviewCard(context, estadisticasPorArquero),
                   const SizedBox(height: 16),
                   _buildSectionCard(
                     title: 'Ataque y juego',
@@ -8802,6 +9384,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                         _buildInfoRow('Tiros con gol', '$_tirosGol'),
                         _buildInfoRow('Tiros atajados', '$_tirosAtajados'),
                         _buildInfoRow('Tiros fuera', '$_tirosFuera'),
+                        _buildInfoRow('Tiros al palo', '$_tirosAlPalo'),
                         _buildInfoRow('Pérdidas', '$_perdidasV2'),
                         _buildInfoRow('Recuperaciones', '$_recuperacionesV2'),
                       ],
@@ -11652,30 +12235,96 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   }
 
   Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
-    final squadMap = widget.partido['matchSquad'] as Map<String, dynamic>?;
+  final String categoria =
+      (widget.partido['categoria'] ?? 'Cadetes').toString().trim();
 
-    if (squadMap != null) return;
+  final String temporada =
+      (widget.partido['temporada'] ?? '2026').toString().trim();
 
-    final categoria = (widget.partido['categoria'] ?? 'Cadetes').toString();
+  final String rawInstitutionId =
+      (widget.partido['institutionId'] ?? '').toString().trim();
 
-    await RosterStorage.seedCategoryIfEmpty(
+  final String rawInstitutionIdLower = rawInstitutionId.toLowerCase();
+
+  final bool esLegacySanFernando =
+      rawInstitutionId.isEmpty ||
+      rawInstitutionIdLower == 'null' ||
+      rawInstitutionIdLower == 'legacy_institution';
+
+  final String? institutionId = esLegacySanFernando
+      ? 'san_fernando_handball'
+      : rawInstitutionId;
+
+  await RosterStorage.seedCategoryIfEmpty(
+    categoria: categoria,
+    temporada: temporada,
+    institutionId: institutionId,
+  );
+
+  var roster = await RosterStorage.readRosterForCategory(
+    categoria: categoria,
+    temporada: temporada,
+    institutionId: institutionId,
+    includeStaff: false,
+  );
+
+  // Defensa extra para backups/legacy San Fernando:
+  // si por algún motivo SharedPreferences no devolvió plantel,
+  // usamos el roster base hardcodeado de San Fernando.
+  if (roster.isEmpty && esLegacySanFernando) {
+    roster = RosterRepository.rosterForCategory(
       categoria: categoria,
-      temporada: '2026',
-    );
-
-    final roster = await RosterStorage.readRosterForCategory(
-      categoria: categoria,
-      temporada: '2026',
+      temporada: temporada,
       includeStaff: false,
     );
-
-    final arqueros = roster.where((p) => p.esArquero).toList();
-
-    widget.partido['matchSquad'] = MatchSquadConfig(
-      convocadosIds: arqueros.map((p) => p.playerId).toSet(),
-      arquerosIds: arqueros.map((p) => p.playerId).toSet(),
-    ).toMap();
   }
+
+  final jugadoresValidos = roster.where((p) => !p.esCuerpoTecnico).toList();
+
+  final squadRaw = widget.partido['matchSquad'];
+  final savedSquad = MatchSquadConfig.fromMap(
+    squadRaw is Map ? Map<String, dynamic>.from(squadRaw) : null,
+  );
+
+  final bool tieneConvocatoriaGuardada =
+      savedSquad.convocadosIds.isNotEmpty || savedSquad.arquerosIds.isNotEmpty;
+
+  final Set<String> arquerosDefaultIds = jugadoresValidos
+      .where((p) => p.esArquero)
+      .map((p) => p.playerId)
+      .toSet();
+
+  final Set<String> resolvedArquerosIds = tieneConvocatoriaGuardada
+      ? {...savedSquad.arquerosIds}
+      : {...arquerosDefaultIds};
+
+  final Set<String> resolvedConvocadosIds = tieneConvocatoriaGuardada
+      ? {...savedSquad.convocadosIds}
+      : {...arquerosDefaultIds};
+
+  // Si hay arqueros de partido, siempre deben estar dentro de convocados.
+  resolvedConvocadosIds.addAll(resolvedArquerosIds);
+
+  final snapshotPlayers = jugadoresValidos.where((player) {
+    return resolvedConvocadosIds.contains(player.playerId);
+  }).toList();
+
+  widget.partido['institutionId'] ??= institutionId;
+
+  widget.partido['matchSquad'] = MatchSquadConfig(
+    convocadosIds: resolvedConvocadosIds,
+    arquerosIds: resolvedArquerosIds,
+  ).toMap();
+
+  widget.partido['matchRosterSnapshot'] = snapshotPlayers.map((player) {
+    return {
+      ...player.toMap(),
+      'categoriaOrigen': categoria,
+      'convocado': true,
+      'arqueroPartido': resolvedArquerosIds.contains(player.playerId),
+    };
+  }).toList();
+}
 
   Future<void> _irAPartidoEnVivo() async {
     await _asegurarConvocatoriaDefaultSoloArqueros();
@@ -12797,33 +13446,59 @@ void _aplicarResultadoPenalNormal({
   /// Esto permite usar arqueros creados/editados en Plantel 2.1.
   /// ===============================
   List<PlayerProfile> _availableGoalkeepersForMatch() {
-    final matchSquadRaw = widget.partido['matchSquad'];
-    final snapshotRaw = widget.partido['matchRosterSnapshot'];
+  final String categoria =
+      (widget.partido['categoria'] ?? 'Cadetes').toString();
 
-    final rosterBase = snapshotRaw is List
-        ? snapshotRaw
-              .whereType<Map>()
-              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
-              .where((p) => !p.esCuerpoTecnico)
-              .toList()
-        : <PlayerProfile>[];
+  final String temporada =
+      (widget.partido['temporada'] ?? '2026').toString();
 
-    if (matchSquadRaw is Map) {
-      final config = MatchSquadConfig.fromMap(
-        Map<String, dynamic>.from(matchSquadRaw),
-      );
+  final String institutionId =
+      (widget.partido['institutionId'] ?? '').toString().trim().toLowerCase();
 
-      final arquerosConvocados = rosterBase.where((p) {
-        return p.esArquero && config.arquerosIds.contains(p.playerId);
-      }).toList();
+  final bool esContextoSanFernandoOLegacy =
+    institutionId.isEmpty ||
+    institutionId == 'null' ||
+    institutionId == 'legacy_institution' ||
+    institutionId == 'san_fernando_handball' ||
+    institutionId == 'san_fernando';
 
-      if (arquerosConvocados.isNotEmpty) {
-        return arquerosConvocados;
-      }
+  final matchSquadRaw = widget.partido['matchSquad'];
+  final snapshotRaw = widget.partido['matchRosterSnapshot'];
+
+  final rosterDesdeSnapshot = snapshotRaw is List
+      ? snapshotRaw
+          .whereType<Map>()
+          .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+          .where((p) => !p.esCuerpoTecnico)
+          .toList()
+      : <PlayerProfile>[];
+
+  final rosterBase = rosterDesdeSnapshot.isNotEmpty
+      ? rosterDesdeSnapshot
+      : esContextoSanFernandoOLegacy
+          ? RosterRepository.rosterForCategory(
+              categoria: categoria,
+              temporada: temporada,
+              includeStaff: false,
+            )
+          : <PlayerProfile>[];
+
+  if (matchSquadRaw is Map) {
+    final config = MatchSquadConfig.fromMap(
+      Map<String, dynamic>.from(matchSquadRaw),
+    );
+
+    final arquerosConvocados = rosterBase.where((p) {
+      return p.esArquero && config.arquerosIds.contains(p.playerId);
+    }).toList();
+
+    if (arquerosConvocados.isNotEmpty) {
+      return arquerosConvocados;
     }
-
-    return rosterBase.where((p) => p.esArquero).toList();
   }
+
+  return rosterBase.where((p) => p.esArquero).toList();
+}
 
   PlayerProfile? _getCurrentGoalkeeperProfile() {
     final arqueros = _availableGoalkeepersForMatch();
@@ -13993,10 +14668,15 @@ void _aplicarResultadoPenalNormal({
           ? null
           : () {
               setState(() {
+                final bool veniaDeContra = origenJugadaActual == 'contra';
+
                 zonaTiro = (zonaTiro == fullLabel) ? null : fullLabel;
                 zonaArco = null;
                 mostrarContra = false;
-                origenJugadaActual = 'normal';
+
+                if (!veniaDeContra) {
+                  origenJugadaActual = 'normal';
+                }
               });
             },
       child: CustomPaint(
@@ -14036,10 +14716,15 @@ void _aplicarResultadoPenalNormal({
           ? null
           : () {
               setState(() {
+                final bool veniaDeContra = origenJugadaActual == 'contra';
+
                 zonaTiro = (zonaTiro == fullLabel) ? null : fullLabel;
                 zonaArco = null;
                 mostrarContra = false;
-                origenJugadaActual = 'normal';
+
+                if (!veniaDeContra) {
+                  origenJugadaActual = 'normal';
+                }
               });
             },
       child: CustomPaint(
@@ -14070,9 +14755,10 @@ void _aplicarResultadoPenalNormal({
   /// el arquero pueda tirar directo al arco sin seleccionar zona de tiro.
   /// ===============================
   bool get _esContraArqueroDirecta {
-    return origenJugadaActual == 'contra' &&
-        _getCurrentGoalkeeperProfile() != null;
-  }
+      return origenJugadaActual == 'contra' &&
+          zonaTiro == null &&
+          _getCurrentGoalkeeperProfile() != null;
+    }
 
   /// ===============================
   /// CELDA DE ARCO
@@ -14547,74 +15233,84 @@ void _aplicarResultadoPenalNormal({
   }
 
   void _registrarFueraPorGesto() {
-    final String? currentMode = modo;
-    final String? currentGoalZone = zonaArco;
+  final String? currentMode = modo;
+  final String? currentGoalZone = zonaArco;
 
-    if (!_fueraGestureEnabled ||
-        currentMode == null ||
-        currentGoalZone == null) {
-      return;
-    }
+  if (!_fueraGestureEnabled ||
+      currentMode == null ||
+      currentGoalZone == null) {
+    return;
+  }
 
-    final Map<String, dynamic> prevState = _captureStateSnapshot();
-    final String modoAntesDelEvento = currentMode;
+  final Map<String, dynamic> prevState = _captureStateSnapshot();
+  final String modoAntesDelEvento = currentMode;
 
-    final String actor = _resolvePrimaryActorForShot(
-      eventMode: modoAntesDelEvento,
-      allowGoalkeeperInAttack: true,
-    );
-    final bool esContraDirectaArquero =
-        origenJugadaActual == 'contra' && zonaTiro == 'Contra directa arquero';
+  final bool esPenal = penalEnCurso;
+  final bool esTanda = _isPenaltyShootout();
 
-    final String? actorId = esContraDirectaArquero
-        ? _getCurrentGoalkeeperProfile()?.playerId
-        : modoAntesDelEvento == 'ataque'
-        ? jugadorSeleccionadoId
-        : _getCurrentGoalkeeperProfile()?.playerId;
+  final bool esArcoAArcoArquero =
+      !esPenal && !esTanda && _esContraArqueroDirecta;
 
-    final bool esPenal = penalEnCurso;
-    final bool esTanda = _isPenaltyShootout();
+  final String actor = esArcoAArcoArquero
+      ? _currentGoalkeeperActorName
+      : _resolvePrimaryActorForShot(
+          eventMode: modoAntesDelEvento,
+          allowGoalkeeperInAttack: true,
+        );
 
-    if (esTanda) {
-      _registrarEvento(
-        tipo: 'penal_tanda',
-        resultado: 'fuera',
-        actorPrincipal: actor,
-        actorPrincipalId: actorId,
-        zonaArcoValor: currentGoalZone,
-        subtipo: 'tanda_penales',
-        mantieneContexto: false,
-        prevState: prevState,
-        modoEvento: modoAntesDelEvento,
-      );
-      _registrarPenalTanda('fuera');
-      return;
-    }
+  final String? actorId = esArcoAArcoArquero
+      ? _getCurrentGoalkeeperProfile()?.playerId
+      : modoAntesDelEvento == 'ataque'
+      ? jugadorSeleccionadoId
+      : _getCurrentGoalkeeperProfile()?.playerId;
 
-    setState(() {
-      if (esPenal) {
-        penales++;
-      }
-      modo = modoAntesDelEvento == 'ataque' ? 'defensa' : 'ataque';
-      mostrarContra = modoAntesDelEvento == 'defensa';
-      contraDebeCambiarModo = false;
-    });
-
+  if (esTanda) {
     _registrarEvento(
-      tipo: esPenal ? 'penal' : 'tiro',
+      tipo: 'penal_tanda',
       resultado: 'fuera',
       actorPrincipal: actor,
       actorPrincipalId: actorId,
-      zonaTiroValor: esPenal ? null : zonaTiro,
       zonaArcoValor: currentGoalZone,
-      subtipo: esPenal ? 'penal_7m' : 'fuera_gesto',
+      subtipo: 'tanda_penales',
       mantieneContexto: false,
       prevState: prevState,
       modoEvento: modoAntesDelEvento,
     );
 
-    _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+    _registrarPenalTanda('fuera');
+    return;
   }
+
+  setState(() {
+    if (esPenal) {
+      penales++;
+    }
+
+    modo = modoAntesDelEvento == 'ataque' ? 'defensa' : 'ataque';
+    mostrarContra = modoAntesDelEvento == 'defensa';
+    contraDebeCambiarModo = false;
+  });
+
+  _registrarEvento(
+    tipo: esPenal ? 'penal' : 'tiro',
+    resultado: 'fuera',
+    actorPrincipal: actor,
+    actorPrincipalId: actorId,
+    zonaTiroValor: esPenal
+        ? null
+        : esArcoAArcoArquero
+        ? 'Contra directa arquero'
+        : zonaTiro,
+    zonaArcoValor: currentGoalZone,
+    subtipo: esPenal ? 'penal_7m' : 'fuera_gesto',
+    mantieneContexto: false,
+    prevState: prevState,
+    modoEvento: modoAntesDelEvento,
+    esContraDirectaArquero: esArcoAArcoArquero,
+  );
+
+  _clearSelection(keepContra: modoAntesDelEvento == 'defensa');
+}
 
   void _activarContra() {
     setState(() {
@@ -14684,35 +15380,86 @@ void _aplicarResultadoPenalNormal({
     );
   }
 
-  void _showNormalPenaltyResultSheet() {
+void _showNormalPenaltyResultSheet() {
   final String? currentModo = modo;
   final String? currentZonaArco = zonaArco;
 
   if (currentZonaArco == null || currentModo == null) return;
 
-  Future<void> resolverPenalNormal(String resultadoPenal) async {
+  String actorParaPenal(String modoAntesDelEvento) {
+    if (modoAntesDelEvento == 'defensa') {
+      return _currentGoalkeeperActorName;
+    }
+
+    final selected = jugadorSeleccionado?.trim();
+
+    if (selected != null && selected.isNotEmpty) {
+      return selected;
+    }
+
+    return 'Jugador';
+  }
+
+  String? actorIdParaPenal(String modoAntesDelEvento) {
+    if (modoAntesDelEvento == 'defensa') {
+      return _getCurrentGoalkeeperProfile()?.playerId;
+    }
+
+    final selectedId = jugadorSeleccionadoId?.trim();
+
+    if (selectedId != null && selectedId.isNotEmpty) {
+      return selectedId;
+    }
+
+    return null;
+  }
+
+  void finalizarPenal({
+    required String resultadoPenal,
+    required String modoAntesDelEvento,
+    required String zonaArcoPenal,
+    required bool keepContra,
+  }) {
+    final bool necesitaSeleccionJugador =
+        modoAntesDelEvento == 'ataque' &&
+        _jugadoresCampoConvocados.isNotEmpty &&
+        jugadorSeleccionadoId == null;
+
+    if (necesitaSeleccionJugador && eventos.isNotEmpty) {
+      setState(() {
+        zonaTiro = null;
+        zonaArco = null;
+
+        penalEnCurso = false;
+        actorPenalActual = null;
+
+        _penalPendienteResultado = resultadoPenal;
+        _penalPendienteModo = modoAntesDelEvento;
+        _penalPendienteZonaArco = zonaArcoPenal;
+        _penalPendienteIndex = eventos.length - 1;
+
+        mostrarSelectorLateralJugador = true;
+
+        if (!keepContra) {
+          mostrarContra = false;
+          origenJugadaActual = 'normal';
+          contraDebeCambiarModo = true;
+        }
+      });
+    } else {
+      _clearSelection(keepContra: keepContra);
+    }
+
+    Navigator.pop(context);
+  }
+
+  Future<void> registrarPenalNormal(String resultadoPenal) async {
     final Map<String, dynamic> prevState = _captureStateSnapshot();
     final String modoAntesDelEvento = currentModo;
     final String zonaArcoPenal = currentZonaArco;
 
-    Navigator.pop(context);
-
-    PlayerProfile? jugadorPateador;
-
-    if (_debePedirJugadorDeCampoParaAtaque(modoAntesDelEvento)) {
-      jugadorPateador = await _pickFieldPlayerForEvent(
-        title: '¿Quién pateó el penal?',
-      );
-
-      if (!mounted || jugadorPateador == null) return;
-    }
-
-    final String actor = jugadorPateador != null
-        ? _actorDisplayNameFromPlayer(jugadorPateador)
-        : _fallbackActorParaModo(modoAntesDelEvento);
-
-    final String? actorId = jugadorPateador?.playerId ??
-        _fallbackActorIdParaModo(modoAntesDelEvento);
+    final String actor = actorParaPenal(modoAntesDelEvento);
+    final String? actorId = actorIdParaPenal(modoAntesDelEvento);
 
     _aplicarResultadoPenalNormal(
       resultado: resultadoPenal,
@@ -14731,7 +15478,10 @@ void _aplicarResultadoPenalNormal({
       modoEvento: modoAntesDelEvento,
     );
 
-    _clearSelection(
+    finalizarPenal(
+      resultadoPenal: resultadoPenal,
+      modoAntesDelEvento: modoAntesDelEvento,
+      zonaArcoPenal: zonaArcoPenal,
       keepContra: _penalConservaContra(
         resultado: resultadoPenal,
         modoAntesDelEvento: modoAntesDelEvento,
@@ -14761,16 +15511,16 @@ void _aplicarResultadoPenalNormal({
             ),
             const SizedBox(height: 16),
             _floatingOption('Gol', () async {
-              await resolverPenalNormal('gol');
+              await registrarPenalNormal('gol');
             }),
             _floatingOption('Atajado', () async {
-              await resolverPenalNormal('atajado');
+              await registrarPenalNormal('atajado');
             }),
             _floatingOption('Palo', () async {
-              await resolverPenalNormal('palo');
+              await registrarPenalNormal('palo');
             }),
             _floatingOption('Fuera', () async {
-              await resolverPenalNormal('fuera');
+              await registrarPenalNormal('fuera');
             }),
           ],
         ),
@@ -15258,7 +16008,7 @@ Future<void> _showFieldPlayerSelector() async {
             children: [
               Text(
                 esContraDirecta
-                    ? 'Contra directa arquero → $zonaArco'
+                    ? 'Arco a arco → $zonaArco'
                     : 'Resultado → $zonaArco',
                 style: const TextStyle(
                   color: Colors.white,
@@ -15503,46 +16253,60 @@ Future<void> _showFieldPlayerSelector() async {
   }
 
   void _seleccionarJugadorParaPenalPendiente(PlayerProfile jugador) {
-    final index = _penalPendienteIndex;
+  final index = _penalPendienteIndex;
 
-    if (index == null || index < 0 || index >= eventos.length) {
-      setState(() {
-        mostrarSelectorLateralJugador = false;
-        _penalPendienteResultado = null;
-        _penalPendienteModo = null;
-        _penalPendienteZonaArco = null;
-        _penalPendienteIndex = null;
-      });
-      return;
-    }
-
-    final dorsal = jugador.numeroPreferido ?? '-';
-    final nombre = jugador.nombreLista;
-    final actor = '$dorsal · $nombre';
-
-    final eventoOriginal = Map<String, dynamic>.from(eventos[index]);
-
-    final actualizado = {
-      ...eventoOriginal,
-      'actorPrincipal': actor,
-      'actorPrincipalId': jugador.playerId,
-    };
-
+  if (index == null || index < 0 || index >= eventos.length) {
     setState(() {
-      eventos[index] = actualizado;
-
       mostrarSelectorLateralJugador = false;
-      jugadorSeleccionado = actor;
-      jugadorSeleccionadoId = jugador.playerId;
 
       _penalPendienteResultado = null;
       _penalPendienteModo = null;
       _penalPendienteZonaArco = null;
       _penalPendienteIndex = null;
-    });
 
-    _persistLiveMatch();
+      jugadorSeleccionado = null;
+      jugadorSeleccionadoId = null;
+      _currentFieldPlayer = null;
+    });
+    return;
   }
+
+  final dorsal = jugador.numeroPreferido ?? '-';
+  final nombre = jugador.nombreLista;
+  final actor = '$dorsal · $nombre';
+
+  final eventoOriginal = Map<String, dynamic>.from(eventos[index]);
+
+  final actualizado = {
+    ...eventoOriginal,
+    'actorPrincipal': actor,
+    'actorPrincipalId': jugador.playerId,
+  };
+
+  final dynamic eventId = actualizado['id'];
+  final gameEventIndex = gameEvents.indexWhere((event) => event.id == eventId);
+
+  setState(() {
+    eventos[index] = actualizado;
+
+    if (gameEventIndex >= 0) {
+      gameEvents[gameEventIndex] = GameEvent.fromLegacyMap(actualizado);
+    }
+
+    mostrarSelectorLateralJugador = false;
+
+    jugadorSeleccionado = null;
+    jugadorSeleccionadoId = null;
+    _currentFieldPlayer = null;
+
+    _penalPendienteResultado = null;
+    _penalPendienteModo = null;
+    _penalPendienteZonaArco = null;
+    _penalPendienteIndex = null;
+  });
+
+  _persistLiveMatch();
+}
 
   Widget _floatingOption(String text, VoidCallback onTap) {
     return Padding(
