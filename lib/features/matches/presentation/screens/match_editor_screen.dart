@@ -287,14 +287,34 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
 
     final escudoRival = await _resolveRivalShield(rival);
 
-    if (!mounted) return;
+if (!mounted) return;
 
-    final partido = PartidoModel(
+final equipoPropio = widget.equipoPropio?.trim().isNotEmpty == true
+    ? widget.equipoPropio!.trim()
+    : 'Institución';
+
+final escudoPropio = widget.escudoPropio?.trim().isNotEmpty == true
+    ? widget.escudoPropio!.trim()
+    : null;
+
+final somosLocales = _condicion.trim().toLowerCase() == 'local';
+
+final equipoLocal = somosLocales ? equipoPropio : rival;
+final equipoVisitante = somosLocales ? rival : equipoPropio;
+
+final escudoLocal = somosLocales ? escudoPropio : escudoRival;
+final escudoVisitante = somosLocales ? escudoRival : escudoPropio;
+
+final partido = PartidoModel(
       temporada: widget.temporada,
       competencia: widget.competencia,
       institutionId: widget.institutionId,
-      equipoPropio: widget.equipoPropio,
-      escudoPropio: widget.escudoPropio,
+      equipoPropio: equipoPropio,
+escudoPropio: escudoPropio,
+equipoLocal: equipoLocal,
+equipoVisitante: equipoVisitante,
+escudoLocal: escudoLocal,
+escudoVisitante: escudoVisitante,
       rival: rival,
       fechaNumero: fechaNumero,
       fecha: fecha,

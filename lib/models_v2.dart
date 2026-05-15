@@ -171,7 +171,11 @@ class PartidoModel {
   final String competencia;
   final String? institutionId;
   final String? equipoPropio;
-  final String? escudoPropio;    
+  final String? escudoPropio;
+  final String? equipoLocal;
+  final String? equipoVisitante;
+  final String? escudoLocal;
+  final String? escudoVisitante;    
 
   final String estado;
   final String estadoPartido;
@@ -234,6 +238,10 @@ class PartidoModel {
     this.institutionId,
     this.equipoPropio,
     this.escudoPropio,
+    this.equipoLocal,
+    this.equipoVisitante,
+    this.escudoLocal,
+    this.escudoVisitante,
   });
 
   factory PartidoModel.fromMap(Map<String, dynamic> map) {
@@ -243,9 +251,17 @@ class PartidoModel {
       temporada: (map['temporada'] ?? '2026').toString(),
       competencia: (map['competencia'] ?? 'Local').toString(),
       institutionId: map['institutionId']?.toString(),
-      equipoPropio: map['equipoPropio']?.toString(),
-      escudoPropio: map['escudoPropio']?.toString(),
-      rival: (map['rival'] ?? 'Rival').toString(),
+
+equipoPropio: map['equipoPropio']?.toString(),
+escudoPropio: map['escudoPropio']?.toString(),
+
+equipoLocal: map['equipoLocal']?.toString(),
+equipoVisitante: map['equipoVisitante']?.toString(),
+
+escudoLocal: map['escudoLocal']?.toString(),
+escudoVisitante: map['escudoVisitante']?.toString(),
+
+rival: (map['rival'] ?? 'Rival').toString(),
       fechaNumero: map['fechaNumero'] as int?,
       fecha: (map['fecha'] ?? '').toString(),
       hora: (map['hora'] ?? '').toString(),
@@ -293,6 +309,10 @@ class PartidoModel {
       'institutionId': institutionId,
       'equipoPropio': equipoPropio,
       'escudoPropio': escudoPropio,
+      'equipoLocal': equipoLocal,
+'equipoVisitante': equipoVisitante,
+'escudoLocal': escudoLocal,
+'escudoVisitante': escudoVisitante,
       'rival': rival,
       'fechaNumero': fechaNumero,
       'fecha': fecha,
@@ -331,6 +351,10 @@ class PartidoModel {
     String? institutionId,
     String? equipoPropio,
     String? escudoPropio,
+    String? equipoLocal,
+String? equipoVisitante,
+String? escudoLocal,
+String? escudoVisitante,
     String? rival,
     int? fechaNumero,
     String? fecha,
@@ -367,6 +391,10 @@ class PartidoModel {
       institutionId: institutionId ?? this.institutionId,
       equipoPropio: equipoPropio ?? this.equipoPropio,
       escudoPropio: escudoPropio ?? this.escudoPropio,
+      equipoLocal: equipoLocal ?? this.equipoLocal,
+equipoVisitante: equipoVisitante ?? this.equipoVisitante,
+escudoLocal: escudoLocal ?? this.escudoLocal,
+escudoVisitante: escudoVisitante ?? this.escudoVisitante,
       rival: rival ?? this.rival,
       fechaNumero: fechaNumero ?? this.fechaNumero,
       fecha: fecha ?? this.fecha,
