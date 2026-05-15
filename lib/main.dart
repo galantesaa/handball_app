@@ -768,65 +768,26 @@ class RosterStorage {
     return id == 'san_fernando_handball' || id == 'san_fernando';
   }
 
+  static String _key({
+    required String categoria,
+    required String temporada,
+    required String? institutionId,
+  }) {
+    final categoriaNormalizada = _normalize(categoria);
+    final temporadaNormalizada = _normalize(temporada);
+
+    final institutionNormalizada = _normalize(institutionId).isEmpty
+        ? 'san_fernando_handball'
+        : _normalize(institutionId);
+
+    return 'roster_${institutionNormalizada}_${temporadaNormalizada}_$categoriaNormalizada';
+  }
+
   static String _legacyKey({
     required String categoria,
     required String temporada,
   }) {
-    return 'roster_${temporada}_$categoria';
-  }
-
-  static String _key({
-    required String? institutionId,
-    required String categoria,
-    required String temporada,
-  }) {
-    final safeInstitutionId = _normalize(institutionId);
-
-    if (safeInstitutionId.isEmpty) {
-      return _legacyKey(categoria: categoria, temporada: temporada);
-    }
-
-    return 'roster_${safeInstitutionId}_${temporada}_$categoria';
-  }
-
-  static Future<List<PlayerProfile>> readRosterForCategory({
-    required String categoria,
-    required String temporada,
-    String? institutionId,
-    bool includeStaff = false,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final scopedKey = _key(
-      institutionId: institutionId,
-      categoria: categoria,
-      temporada: temporada,
-    );
-
-    final rawScoped = prefs.getString(scopedKey);
-
-    if (rawScoped != null && rawScoped.trim().isNotEmpty) {
-      return _decodeRoster(rawScoped, includeStaff: includeStaff);
-    }
-
-    final legacyKey = _legacyKey(categoria: categoria, temporada: temporada);
-    final rawLegacy = prefs.getString(legacyKey);
-
-    if (_isSanFernandoInstitution(institutionId) &&
-        rawLegacy != null &&
-        rawLegacy.trim().isNotEmpty) {
-      return _decodeRoster(rawLegacy, includeStaff: includeStaff);
-    }
-
-    if (_isSanFernandoInstitution(institutionId)) {
-      return RosterRepository.rosterForCategory(
-        categoria: categoria,
-        temporada: temporada,
-        includeStaff: includeStaff,
-      );
-    }
-
-    return const [];
+    return 'roster_${_normalize(temporada)}_${_normalize(categoria)}';
   }
 
   static List<PlayerProfile> _decodeRoster(
@@ -836,17 +797,15 @@ class RosterStorage {
     try {
       final decoded = jsonDecode(raw);
 
-      if (decoded is! List) {
-        return const [];
-      }
+      if (decoded is! List) return const [];
 
-      final players = decoded
+      final result = decoded
           .whereType<Map>()
           .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
           .where((p) => includeStaff || !p.esCuerpoTecnico)
           .toList();
 
-      players.sort((a, b) {
+      result.sort((a, b) {
         final aNum = int.tryParse(a.numeroPreferido ?? '');
         final bNum = int.tryParse(b.numeroPreferido ?? '');
 
@@ -860,51 +819,94 @@ class RosterStorage {
         return aNum.compareTo(bNum);
       });
 
-      return players;
+      return result;
     } catch (_) {
       return const [];
     }
   }
 
+  static Future<List<PlayerProfile>> readRosterForCategory({
+    required String categoria,
+    required String temporada,
+    required String? institutionId,
+    bool includeStaff = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final key = _key(
+      categoria: categoria,
+      temporada: temporada,
+      institutionId: institutionId,
+    );
+
+    final raw = prefs.getString(key);
+
+    if (raw != null && raw.trim().isNotEmpty && raw.trim() != 'null') {
+      final decoded = _decodeRoster(raw, includeStaff: includeStaff);
+      if (decoded.isNotEmpty) return decoded;
+    }
+
+    final legacyRaw = prefs.getString(
+      _legacyKey(categoria: categoria, temporada: temporada),
+    );
+
+    if (legacyRaw != null &&
+        legacyRaw.trim().isNotEmpty &&
+        legacyRaw.trim() != 'null') {
+      await prefs.setString(key, legacyRaw);
+
+      final migrated = _decodeRoster(legacyRaw, includeStaff: includeStaff);
+      if (migrated.isNotEmpty) return migrated;
+    }
+
+    if (_isSanFernandoInstitution(institutionId)) {
+      return RosterRepository.rosterForCategory(
+        categoria: categoria,
+        temporada: temporada,
+        includeStaff: includeStaff,
+      );
+    }
+
+    return const [];
+  }
+
   static Future<void> saveRosterForCategory({
     required String categoria,
     required String temporada,
-    String? institutionId,
+    required String? institutionId,
     required List<PlayerProfile> players,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
     final key = _key(
-      institutionId: institutionId,
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
     );
 
-    final data = players.map((p) => p.toMap()).toList();
-
-    await prefs.setString(key, jsonEncode(data));
+    await prefs.setString(
+      key,
+      jsonEncode(players.map((p) => p.toMap()).toList()),
+    );
   }
 
   static Future<void> seedCategoryIfEmpty({
     required String categoria,
     required String temporada,
-    String? institutionId,
+    required String? institutionId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
     final key = _key(
-      institutionId: institutionId,
       categoria: categoria,
       temporada: temporada,
+      institutionId: institutionId,
     );
 
     if (prefs.containsKey(key)) return;
+    if (!_isSanFernandoInstitution(institutionId)) return;
 
-    if (!_isSanFernandoInstitution(institutionId)) {
-      return;
-    }
-
-    final base = RosterRepository.rosterForCategory(
+    final roster = RosterRepository.rosterForCategory(
       categoria: categoria,
       temporada: temporada,
       includeStaff: true,
@@ -914,7 +916,7 @@ class RosterStorage {
       categoria: categoria,
       temporada: temporada,
       institutionId: institutionId,
-      players: base,
+      players: roster,
     );
   }
 }
@@ -966,17 +968,31 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
   late Set<String> convocadosIds;
   late Set<String> arquerosIds;
 
-  String get categoria => (widget.partido['categoria'] ?? 'Cadetes').toString();
-  String get temporada => '2026';
-  String? get institutionId {
-    final value = widget.partido['institutionId']?.toString().trim();
+  String get categoria {
+  final value = (widget.partido['categoria'] ?? '').toString().trim();
+  if (value.isEmpty || value.toLowerCase() == 'null') return 'Cadetes';
+  return value;
+}
 
-    if (value == null || value.isEmpty || value.toLowerCase() == 'null') {
-      return null;
-    }
+String get temporada {
+  final value = (widget.partido['temporada'] ?? '').toString().trim();
+  if (value.isEmpty || value.toLowerCase() == 'null') return '2026';
+  return value;
+}
 
-    return value;
+String? get institutionId {
+  final value = widget.partido['institutionId']?.toString().trim();
+
+  if (value == null || value.isEmpty || value.toLowerCase() == 'null') {
+    return null;
   }
+
+  if (value == 'legacy_institution') {
+    return 'san_fernando_handball';
+  }
+
+  return value;
+}
 
   late Future<List<PlayerProfile>> _rosterFuture;
 
@@ -1123,35 +1139,41 @@ class _MatchSquadScreenState extends State<MatchSquadScreen> {
   }
 
   void _guardar() {
-    final todos = [..._rosterPrincipal, ..._rosterExtras];
+  final todos = [..._rosterPrincipal, ..._rosterExtras];
 
-    /// Solo se guardan los jugadores realmente convocados.
-    /// Esto evita que el partido en vivo reciba todo el plantel completo.
-    final convocados = todos.where((p) {
-      return convocadosIds.contains(p.playerId);
-    }).toList();
+  final convocados = todos.where((p) {
+    return convocadosIds.contains(p.playerId);
+  }).toList();
 
-    widget.partido['matchSquad'] = MatchSquadConfig(
-      convocadosIds: convocadosIds,
-      arquerosIds: arquerosIds,
-    ).toMap();
+  final safeArquerosIds = arquerosIds.where((id) {
+    return convocados.any((p) => p.playerId == id && p.esArquero);
+  }).toSet();
 
-    /// Snapshot real del partido.
-    /// Incluye:
-    /// - arqueros convocados por defecto
-    /// - jugadores de campo solo si fueron seleccionados manualmente
-    /// - categoría de origen para refuerzos
-    widget.partido['matchRosterSnapshot'] = convocados.map((p) {
-      return {
-        ...p.toMap(),
-        'categoriaOrigen': _categoriaPorJugadorId[p.playerId] ?? categoria,
-        'convocado': true,
-        'arqueroPartido': arquerosIds.contains(p.playerId),
-      };
-    }).toList();
+  final safeConvocadosIds = convocados.map((p) => p.playerId).toSet()
+    ..addAll(safeArquerosIds);
 
-    Navigator.pop(context, widget.partido['matchSquad']);
-  }
+  final matchSquad = MatchSquadConfig(
+    convocadosIds: safeConvocadosIds,
+    arquerosIds: safeArquerosIds,
+  ).toMap();
+
+  final snapshot = convocados.map((p) {
+    return {
+      ...p.toMap(),
+      'categoriaOrigen': _categoriaPorJugadorId[p.playerId] ?? categoria,
+      'convocado': true,
+      'arqueroPartido': safeArquerosIds.contains(p.playerId),
+    };
+  }).toList();
+
+  widget.partido['temporada'] = temporada;
+  widget.partido['categoria'] = categoria;
+  widget.partido['institutionId'] = institutionId;
+  widget.partido['matchSquad'] = matchSquad;
+  widget.partido['matchRosterSnapshot'] = snapshot;
+
+  Navigator.pop(context, Map<String, dynamic>.from(widget.partido));
+}
 
   @override
   Widget build(BuildContext context) {
@@ -6054,12 +6076,14 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => FixtureScreen(
-                    temporada: widget.temporada,
-                    competencia: widget.competencia,
-                    torneo: widget.torneo,
-                    categoria: widget.categoria,
-                    institutionName: widget.institutionName,
-                  ),
+  temporada: widget.temporada,
+  competencia: widget.competencia,
+  torneo: widget.torneo,
+  categoria: widget.categoria,
+  institutionName: widget.institutionName,
+  institutionId: widget.institutionId,
+  institutionShieldPath: widget.institutionShieldPath,
+),
                 ),
               );
             },
@@ -12419,71 +12443,109 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
-    final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
-
-    final PartidoModel? finalizadoV2 = _finalizadosV2
-        .cast<PartidoModel?>()
-        .firstWhere(
-          (p) =>
-              p != null &&
-              PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
-          orElse: () => null,
-        );
-
-    final bool estaFinalizadoV2 = finalizadoV2 != null;
-
-    final Map<String, dynamic> partidoVisual = estaFinalizadoV2
-        ? {
-            ...partido,
-            ...finalizadoV2.toMap(),
-            'fechaNumero': partido['fechaNumero'],
-            'rival': partido['rival'],
-            'condicion': partido['condicion'],
-            'escudoRival': partido['escudoRival'],
-          }
-        : partido;
-
-    final String rival = fixTextoRoto(partidoVisual['rival'] ?? 'Rival');
-    final String? escudoRival =
-        (partidoVisual['escudoRival'] as String?) ??
-        _rivalShieldAssetByName(rival);
-
-    final match = MatchModel.fromMap(
-      {...partidoVisual, 'rival': rival, 'escudoRival': escudoRival},
-      finalizadoOverride: estaFinalizadoV2,
-      escudoRivalOverride: escudoRival,
-    );
-
-    Future<void> abrir() async {
-      if (estaFinalizadoV2 && finalizadoV2 != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ResumenPartidoFinalizadoScreen(
-              partido: {
-                ...partido,
-                ...finalizadoV2.toMap(),
-                'fechaNumero': partido['fechaNumero'],
-                'rival': partido['rival'],
-                'condicion': partido['condicion'],
-                'escudoRival': partido['escudoRival'],
-              },
-            ),
-          ),
-        );
-      } else {
-        await _abrirPartido(context, partido);
-      }
-    }
-
-    return MatchCardPro(
-      match: match,
-      actionText: estaFinalizadoV2 ? 'Ver resumen' : 'Abrir partido',
-      onPressed: abrir,
-      showFechaChip: true,
-      showEstadoChip: true,
-    );
+  String? clean(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
   }
+
+  final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
+
+  final PartidoModel? finalizadoV2 = _finalizadosV2
+      .cast<PartidoModel?>()
+      .firstWhere(
+        (p) =>
+            p != null &&
+            PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
+        orElse: () => null,
+      );
+
+  final bool estaFinalizadoV2 = finalizadoV2 != null;
+  final finalizadoMap = finalizadoV2?.toMap() ?? <String, dynamic>{};
+
+  final Map<String, dynamic> partidoVisual = estaFinalizadoV2
+      ? {
+          ...partido,
+          ...finalizadoMap,
+
+          'fechaNumero': partido['fechaNumero'],
+          'rival': partido['rival'],
+          'condicion': partido['condicion'],
+
+          'equipoPropio':
+              clean(finalizadoMap['equipoPropio']) ??
+              clean(partido['equipoPropio']) ??
+              _institutionName,
+
+          'escudoPropio':
+              clean(finalizadoMap['escudoPropio']) ??
+              clean(partido['escudoPropio']) ??
+              _institutionShieldPath,
+
+          'equipoLocal':
+              clean(finalizadoMap['equipoLocal']) ??
+              clean(partido['equipoLocal']),
+
+          'equipoVisitante':
+              clean(finalizadoMap['equipoVisitante']) ??
+              clean(partido['equipoVisitante']),
+
+          'escudoLocal':
+              clean(finalizadoMap['escudoLocal']) ??
+              clean(partido['escudoLocal']),
+
+          'escudoVisitante':
+              clean(finalizadoMap['escudoVisitante']) ??
+              clean(partido['escudoVisitante']),
+
+          'escudoRival':
+              clean(finalizadoMap['escudoRival']) ??
+              clean(partido['escudoRival']),
+        }
+      : partido;
+
+  final String rival = fixTextoRoto(partidoVisual['rival'] ?? 'Rival');
+
+  final String? escudoRival =
+      clean(partidoVisual['escudoRival']) ?? _rivalShieldAssetByName(rival);
+
+  final match = MatchModel.fromMap(
+    {
+      ...partidoVisual,
+      'rival': rival,
+      'escudoRival': escudoRival,
+    },
+    finalizadoOverride: estaFinalizadoV2,
+    escudoRivalOverride: escudoRival,
+  );
+
+  Future<void> abrir() async {
+    if (estaFinalizadoV2 && finalizadoV2 != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResumenPartidoFinalizadoScreen(
+            partido: {
+              ...partidoVisual,
+              'rival': rival,
+              'escudoRival': escudoRival,
+            },
+          ),
+        ),
+      );
+    } else {
+      await _abrirPartido(context, partido);
+    }
+  }
+
+  return MatchCardPro(
+    match: match,
+    actionText: estaFinalizadoV2 ? 'Ver resumen' : 'Abrir partido',
+    onPressed: abrir,
+    showFechaChip: true,
+    showEstadoChip: true,
+  );
+}
 
   /// CHIP DE ESTADO (CON COLOR DINÁMICO)
   /// ===============================
@@ -12719,101 +12781,107 @@ String? get _escudoVisitantePath {
   return _somosLocales ? _rivalEscudoResuelto : _equipoPropioEscudo;
 }
 
-  Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
-    final String categoria = (widget.partido['categoria'] ?? 'Cadetes')
-        .toString()
-        .trim();
-
-    final String temporada = (widget.partido['temporada'] ?? '2026')
-        .toString()
-        .trim();
-
-    final String rawInstitutionId = (widget.partido['institutionId'] ?? '')
-        .toString()
-        .trim();
-
-    final String rawInstitutionIdLower = rawInstitutionId.toLowerCase();
-
-    final bool esLegacySanFernando =
-        rawInstitutionId.isEmpty ||
-        rawInstitutionIdLower == 'null' ||
-        rawInstitutionIdLower == 'legacy_institution';
-
-    final String? institutionId = esLegacySanFernando
-        ? 'san_fernando_handball'
-        : rawInstitutionId;
-
-    await RosterStorage.seedCategoryIfEmpty(
-      categoria: categoria,
-      temporada: temporada,
-      institutionId: institutionId,
-    );
-
-    var roster = await RosterStorage.readRosterForCategory(
-      categoria: categoria,
-      temporada: temporada,
-      institutionId: institutionId,
-      includeStaff: false,
-    );
-
-    // Defensa extra para backups/legacy San Fernando:
-    // si por algún motivo SharedPreferences no devolvió plantel,
-    // usamos el roster base hardcodeado de San Fernando.
-    if (roster.isEmpty && esLegacySanFernando) {
-      roster = RosterRepository.rosterForCategory(
-        categoria: categoria,
-        temporada: temporada,
-        includeStaff: false,
-      );
-    }
-
-    final jugadoresValidos = roster.where((p) => !p.esCuerpoTecnico).toList();
-
-    final squadRaw = widget.partido['matchSquad'];
-    final savedSquad = MatchSquadConfig.fromMap(
-      squadRaw is Map ? Map<String, dynamic>.from(squadRaw) : null,
-    );
-
-    final bool tieneConvocatoriaGuardada =
-        savedSquad.convocadosIds.isNotEmpty ||
-        savedSquad.arquerosIds.isNotEmpty;
-
-    final Set<String> arquerosDefaultIds = jugadoresValidos
-        .where((p) => p.esArquero)
-        .map((p) => p.playerId)
-        .toSet();
-
-    final Set<String> resolvedArquerosIds = tieneConvocatoriaGuardada
-        ? {...savedSquad.arquerosIds}
-        : {...arquerosDefaultIds};
-
-    final Set<String> resolvedConvocadosIds = tieneConvocatoriaGuardada
-        ? {...savedSquad.convocadosIds}
-        : {...arquerosDefaultIds};
-
-    // Si hay arqueros de partido, siempre deben estar dentro de convocados.
-    resolvedConvocadosIds.addAll(resolvedArquerosIds);
-
-    final snapshotPlayers = jugadoresValidos.where((player) {
-      return resolvedConvocadosIds.contains(player.playerId);
-    }).toList();
-
-    widget.partido['institutionId'] ??= institutionId;
-
-    widget.partido['matchSquad'] = MatchSquadConfig(
-      convocadosIds: resolvedConvocadosIds,
-      arquerosIds: resolvedArquerosIds,
-    ).toMap();
-
-    widget.partido['matchRosterSnapshot'] = snapshotPlayers.map((player) {
-      return {
-        ...player.toMap(),
-        'categoriaOrigen': categoria,
-        'convocado': true,
-        'arqueroPartido': resolvedArquerosIds.contains(player.playerId),
-      };
-    }).toList();
+Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
+  String clean(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return '';
+    return text;
   }
+
+  final snapshotRaw = widget.partido['matchRosterSnapshot'];
+  if (snapshotRaw is List && snapshotRaw.isNotEmpty) {
+    return;
+  }
+
+  final categoria = clean(widget.partido['categoria']).isEmpty
+      ? 'Cadetes'
+      : clean(widget.partido['categoria']);
+
+  final temporada = clean(widget.partido['temporada']).isEmpty
+      ? '2026'
+      : clean(widget.partido['temporada']);
+
+  final rawInstitutionId = clean(widget.partido['institutionId']);
+  final rawInstitutionIdLower = rawInstitutionId.toLowerCase();
+
+  final bool esLegacySanFernando =
+      rawInstitutionId.isEmpty ||
+      rawInstitutionIdLower == 'legacy_institution' ||
+      rawInstitutionIdLower == 'san_fernando' ||
+      rawInstitutionIdLower == 'san_fernando_handball';
+
+  final String? institutionId = esLegacySanFernando
+      ? 'san_fernando_handball'
+      : rawInstitutionId;
+
+  await RosterStorage.seedCategoryIfEmpty(
+    categoria: categoria,
+    temporada: temporada,
+    institutionId: institutionId,
+  );
+
+  final roster = await RosterStorage.readRosterForCategory(
+    categoria: categoria,
+    temporada: temporada,
+    institutionId: institutionId,
+    includeStaff: false,
+  );
+
+  final jugadoresValidos = roster.where((p) => !p.esCuerpoTecnico).toList();
+
+  final squadRaw = widget.partido['matchSquad'];
+  final savedSquad = MatchSquadConfig.fromMap(
+    squadRaw is Map ? Map<String, dynamic>.from(squadRaw) : null,
+  );
+
+  final arquerosDefaultIds = jugadoresValidos
+      .where((p) => p.esArquero)
+      .map((p) => p.playerId)
+      .toSet();
+
+  final savedConvocadosValidos = savedSquad.convocadosIds.where((id) {
+    return jugadoresValidos.any((p) => p.playerId == id);
+  }).toSet();
+
+  final savedArquerosValidos = savedSquad.arquerosIds.where((id) {
+    return jugadoresValidos.any((p) => p.playerId == id && p.esArquero);
+  }).toSet();
+
+  final tieneConvocatoriaGuardada =
+      savedConvocadosValidos.isNotEmpty || savedArquerosValidos.isNotEmpty;
+
+  final resolvedArquerosIds = tieneConvocatoriaGuardada
+      ? savedArquerosValidos
+      : arquerosDefaultIds;
+
+  final resolvedConvocadosIds = tieneConvocatoriaGuardada
+      ? savedConvocadosValidos
+      : arquerosDefaultIds;
+
+  resolvedConvocadosIds.addAll(resolvedArquerosIds);
+
+  final snapshotPlayers = jugadoresValidos.where((player) {
+    return resolvedConvocadosIds.contains(player.playerId);
+  }).toList();
+
+  widget.partido['institutionId'] = institutionId;
+  widget.partido['temporada'] = temporada;
+  widget.partido['categoria'] = categoria;
+
+  widget.partido['matchSquad'] = MatchSquadConfig(
+    convocadosIds: resolvedConvocadosIds,
+    arquerosIds: resolvedArquerosIds,
+  ).toMap();
+
+  widget.partido['matchRosterSnapshot'] = snapshotPlayers.map((player) {
+    return {
+      ...player.toMap(),
+      'categoriaOrigen': categoria,
+      'convocado': true,
+      'arqueroPartido': resolvedArquerosIds.contains(player.playerId),
+    };
+  }).toList();
+}
 
   Future<void> _irAPartidoEnVivo() async {
     await _asegurarConvocatoriaDefaultSoloArqueros();
@@ -12885,23 +12953,29 @@ String? get _escudoVisitantePath {
   }
 
   Future<void> _abrirPlantel() async {
-    final resultado = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MatchSquadScreen(partido: widget.partido),
-      ),
-    );
+  final resultado = await Navigator.push<Map<String, dynamic>>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => MatchSquadScreen(partido: widget.partido),
+    ),
+  );
 
-    if (resultado != null && mounted) {
-      setState(() {
-        widget.partido['matchSquad'] = resultado;
-      });
+  if (!mounted || resultado == null) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Plantel del partido actualizado')),
-      );
-    }
-  }
+  setState(() {
+    widget.partido
+      ..['matchSquad'] = resultado['matchSquad']
+      ..['matchRosterSnapshot'] = resultado['matchRosterSnapshot']
+      ..['temporada'] = resultado['temporada'] ?? widget.partido['temporada']
+      ..['categoria'] = resultado['categoria'] ?? widget.partido['categoria']
+      ..['institutionId'] =
+          resultado['institutionId'] ?? widget.partido['institutionId'];
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Plantel del partido actualizado')),
+  );
+}
 
   /// ===============================
   /// ABRIR RESUMEN
@@ -13885,39 +13959,35 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   List<PlayerProfile> get _jugadoresConvocados {
-    final squadMapRaw = widget.partido['matchSquad'];
-    final snapshotRaw = widget.partido['matchRosterSnapshot'];
+  final snapshotRaw = widget.partido['matchRosterSnapshot'];
+  final squadMapRaw = widget.partido['matchSquad'];
 
-    final rosterBase = snapshotRaw is List
-        ? snapshotRaw
-              .whereType<Map>()
-              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
-              .where((p) => !p.esCuerpoTecnico)
-              .toList()
-        : RosterRepository.rosterForCategory(
-            categoria: (widget.partido['categoria'] ?? '').toString(),
-            temporada: (widget.partido['temporada'] ?? '2026').toString(),
-            includeStaff: false,
-          );
+  final snapshotPlayers = snapshotRaw is List
+      ? snapshotRaw
+          .whereType<Map>()
+          .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+          .where((p) => !p.esCuerpoTecnico)
+          .toList()
+      : <PlayerProfile>[];
 
-    if (squadMapRaw is! Map) {
-      return rosterBase.where((p) => !p.esCuerpoTecnico).toList();
-    }
+  if (snapshotPlayers.isNotEmpty) {
+    if (squadMapRaw is! Map) return snapshotPlayers;
 
     final squad = MatchSquadConfig.fromMap(
       Map<String, dynamic>.from(squadMapRaw),
     );
 
     if (squad.convocadosIds.isEmpty && squad.arquerosIds.isEmpty) {
-      return rosterBase.where((p) => !p.esCuerpoTecnico).toList();
+      return snapshotPlayers;
     }
 
-    return rosterBase
-        .where((p) => squad.convocadosIds.contains(p.playerId))
-        .where((p) => !p.esCuerpoTecnico)
-        .toList();
+    return snapshotPlayers.where((p) {
+      return squad.convocadosIds.contains(p.playerId);
+    }).toList();
   }
 
+  return const <PlayerProfile>[];
+}
   List<PlayerProfile> get _jugadoresCampoConvocados {
     return _jugadoresConvocados
         .where((p) => !p.esArquero && !p.esCuerpoTecnico)
@@ -13936,60 +14006,38 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   /// Esto permite usar arqueros creados/editados en Plantel 2.1.
   /// ===============================
   List<PlayerProfile> _availableGoalkeepersForMatch() {
-    final String categoria = (widget.partido['categoria'] ?? 'Cadetes')
-        .toString();
+  final snapshotRaw = widget.partido['matchRosterSnapshot'];
+  final matchSquadRaw = widget.partido['matchSquad'];
 
-    final String temporada = (widget.partido['temporada'] ?? '2026').toString();
+  final snapshotPlayers = snapshotRaw is List
+      ? snapshotRaw
+          .whereType<Map>()
+          .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
+          .where((p) => !p.esCuerpoTecnico)
+          .toList()
+      : <PlayerProfile>[];
 
-    final String institutionId = (widget.partido['institutionId'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+  final config = MatchSquadConfig.fromMap(
+    matchSquadRaw is Map ? Map<String, dynamic>.from(matchSquadRaw) : null,
+  );
 
-    final bool esContextoSanFernandoOLegacy =
-        institutionId.isEmpty ||
-        institutionId == 'null' ||
-        institutionId == 'legacy_institution' ||
-        institutionId == 'san_fernando_handball' ||
-        institutionId == 'san_fernando';
+  final arquerosMarcados = snapshotPlayers.where((p) {
+    final raw = snapshotRaw is List
+        ? snapshotRaw.whereType<Map>().where((e) {
+            return (e['playerId'] ?? '').toString() == p.playerId;
+          }).toList()
+        : const <Map>[];
 
-    final matchSquadRaw = widget.partido['matchSquad'];
-    final snapshotRaw = widget.partido['matchRosterSnapshot'];
+    final arqueroPartido = raw.isNotEmpty && raw.first['arqueroPartido'] == true;
 
-    final rosterDesdeSnapshot = snapshotRaw is List
-        ? snapshotRaw
-              .whereType<Map>()
-              .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
-              .where((p) => !p.esCuerpoTecnico)
-              .toList()
-        : <PlayerProfile>[];
+    return p.esArquero &&
+        (arqueroPartido || config.arquerosIds.contains(p.playerId));
+  }).toList();
 
-    final rosterBase = rosterDesdeSnapshot.isNotEmpty
-        ? rosterDesdeSnapshot
-        : esContextoSanFernandoOLegacy
-        ? RosterRepository.rosterForCategory(
-            categoria: categoria,
-            temporada: temporada,
-            includeStaff: false,
-          )
-        : <PlayerProfile>[];
+  if (arquerosMarcados.isNotEmpty) return arquerosMarcados;
 
-    if (matchSquadRaw is Map) {
-      final config = MatchSquadConfig.fromMap(
-        Map<String, dynamic>.from(matchSquadRaw),
-      );
-
-      final arquerosConvocados = rosterBase.where((p) {
-        return p.esArquero && config.arquerosIds.contains(p.playerId);
-      }).toList();
-
-      if (arquerosConvocados.isNotEmpty) {
-        return arquerosConvocados;
-      }
-    }
-
-    return rosterBase.where((p) => p.esArquero).toList();
-  }
+  return snapshotPlayers.where((p) => p.esArquero).toList();
+}
 
   PlayerProfile? _getCurrentGoalkeeperProfile() {
     final arqueros = _availableGoalkeepersForMatch();
@@ -19073,6 +19121,8 @@ class _PlantelScreenState extends State<PlantelScreen> {
                           MaterialPageRoute(
                             builder: (_) => CuerpoTecnicoScreen(
                               categoria: categoriaSeleccionada,
+                              temporada: widget.temporada,
+                              institutionId: widget.institutionId,
                             ),
                           ),
                         );
@@ -19273,6 +19323,31 @@ class _PlantelScreenState extends State<PlantelScreen> {
   }
 }
 
+class RosterStorageId {
+  RosterStorageId._();
+
+  static String safePlayerId(String value) {
+    final safe = value
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+
+    if (safe.isEmpty) {
+      return 'player_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    return '${safe}_${DateTime.now().millisecondsSinceEpoch}';
+  }
+}
+
 class ArquerosScreen extends StatefulWidget {
   final String categoria;
   final String temporada;
@@ -19422,212 +19497,30 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
   /// y lo guarda en el plantel persistente.
   /// ===============================
   Future<void> _abrirAltaArquero() async {
-    final nombreController = TextEditingController();
-    final apellidoController = TextEditingController();
-    final dorsalController = TextEditingController();
+  final nombreController = TextEditingController();
+  final apellidoController = TextEditingController();
+  final dorsalController = TextEditingController();
 
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF0F1722),
-          title: const Text(
-            'Agregar arquero',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _inputArquero('Nombre', nombreController),
-                const SizedBox(height: 10),
-                _inputArquero('Apellido', apellidoController),
-                const SizedBox(height: 10),
-                _inputArquero('Dorsal', dorsalController),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmado != true) return;
-
-    final nombre = nombreController.text.trim();
-    final apellido = apellidoController.text.trim();
-    final dorsal = dorsalController.text.trim();
-
-    if (nombre.isEmpty && apellido.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresá al menos nombre o apellido')),
-      );
-      return;
-    }
-
-    final rosterActual = await RosterStorage.readRosterForCategory(
-      categoria: widget.categoria,
-      temporada: widget.temporada,
-      institutionId: widget.institutionId,
-      includeStaff: true,
-    );
-
-    final nuevoArquero = PlayerProfile(
-      playerId: 'local_gk_${DateTime.now().millisecondsSinceEpoch}',
-      clubId: widget.institutionId ?? 'local',
-      nombre: nombre,
-      apellido: apellido,
-      posicion: 'Arquero',
-      numeroPreferido: dorsal.isEmpty ? null : dorsal,
-      esArquero: true,
-      esCuerpoTecnico: false,
-    );
-
-    await RosterStorage.saveRosterForCategory(
-      categoria: widget.categoria,
-      temporada: widget.temporada,
-      institutionId: widget.institutionId,
-      players: [...rosterActual, nuevoArquero],
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _arquerosFuture = _loadArqueros();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Arquero agregado al plantel')),
-    );
-  }
-
-  /// ===============================
-  /// EDITAR ARQUERO
-  /// Permite modificar nombre, apellido y dorsal.
-  /// Tambien permite eliminarlo del plantel persistente.
-  /// ===============================
-  Future<void> _abrirEditarArquero(PlayerProfile arquero) async {
-    final nombreController = TextEditingController(text: arquero.nombre);
-    final apellidoController = TextEditingController(text: arquero.apellido);
-    final dorsalController = TextEditingController(
-      text: arquero.numeroPreferido ?? '',
-    );
-
-    final accion = await showDialog<String>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF0F1722),
-          title: const Text(
-            'Editar arquero',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _inputArquero('Nombre', nombreController),
-                const SizedBox(height: 10),
-                _inputArquero('Apellido', apellidoController),
-                const SizedBox(height: 10),
-                _inputArquero('Dorsal', dorsalController),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'delete'),
-              child: const Text(
-                'Eliminar',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'cancel'),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'save'),
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (accion == null || accion == 'cancel') return;
-
-    if (accion == 'delete') {
-      await _confirmarEliminarArquero(arquero);
-      return;
-    }
-
-    final rosterActual = await RosterStorage.readRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      includeStaff: true,
-    );
-
-    final actualizado = rosterActual.map((p) {
-      if (p.playerId != arquero.playerId) return p;
-
-      return PlayerProfile(
-        playerId: p.playerId,
-        clubId: p.clubId,
-        nombre: nombreController.text.trim(),
-        apellido: apellidoController.text.trim(),
-        posicion: 'Arquero',
-        numeroPreferido: dorsalController.text.trim().isEmpty
-            ? null
-            : dorsalController.text.trim(),
-        esArquero: true,
-        esCuerpoTecnico: false,
-      );
-    }).toList();
-
-    await RosterStorage.saveRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      players: actualizado,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _arquerosFuture = _loadArqueros();
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Arquero actualizado')));
-  }
-
-  /// ===============================
-  /// ELIMINAR ARQUERO
-  /// Elimina al arquero del plantel persistente de esta categoría.
-  /// No borra eventos historicos ya cargados.
-  /// ===============================
-  Future<void> _confirmarEliminarArquero(PlayerProfile arquero) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
+  final guardar = await showDialog<bool>(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
         backgroundColor: const Color(0xFF0F1722),
         title: const Text(
-          'Eliminar arquero',
+          'Agregar arquero',
           style: TextStyle(color: Colors.white),
         ),
-        content: Text(
-          '¿Seguro que queres eliminar a ${arquero.displayName} de ${widget.categoria}?',
-          style: const TextStyle(color: Colors.white70),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputArquero('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputArquero('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputArquero('Dorsal', dorsalController),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -19636,43 +19529,233 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (guardar != true) return;
+
+  final nombre = nombreController.text.trim();
+  final apellido = apellidoController.text.trim();
+  final dorsal = dorsalController.text.trim();
+
+  if (nombre.isEmpty && apellido.isEmpty) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Ingresá nombre o apellido del arquero')),
+    );
+    return;
+  }
+
+  final rosterActual = await RosterStorage.readRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    includeStaff: true,
+  );
+
+  final safeBase = '${widget.institutionId ?? 'local'}_${widget.temporada}_${widget.categoria}_${nombre}_$apellido_$dorsal';
+  final playerId = RosterStorageId.safePlayerId(safeBase);
+
+  final nuevoArquero = PlayerProfile(
+    playerId: playerId,
+    clubId: widget.institutionId ?? 'local',
+    nombre: nombre,
+    apellido: apellido,
+    posicion: 'Arquero',
+    numeroPreferido: dorsal.isEmpty ? null : dorsal,
+    esArquero: true,
+    esCuerpoTecnico: false,
+  );
+
+  await RosterStorage.saveRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    players: [...rosterActual, nuevoArquero],
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    _arquerosFuture = _loadArqueros();
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Arquero agregado al plantel')),
+  );
+}
+
+  /// ===============================
+  /// EDITAR ARQUERO
+  /// Permite modificar nombre, apellido y dorsal.
+  /// Tambien permite eliminarlo del plantel persistente.
+  /// ===============================
+  Future<void> _abrirEditarArquero(PlayerProfile arquero) async {
+  final nombreController = TextEditingController(text: arquero.nombre);
+  final apellidoController = TextEditingController(text: arquero.apellido);
+  final dorsalController = TextEditingController(
+    text: arquero.numeroPreferido ?? '',
+  );
+
+  final accion = await showDialog<String>(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Editar arquero',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputArquero('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputArquero('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputArquero('Dorsal', dorsalController),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'delete'),
             child: const Text(
               'Eliminar',
               style: TextStyle(color: Colors.redAccent),
             ),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Guardar'),
+          ),
         ],
-      ),
-    );
+      );
+    },
+  );
 
-    if (confirmar != true) return;
+  if (accion == null || accion == 'cancel') return;
 
-    final rosterActual = await RosterStorage.readRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      includeStaff: true,
-    );
-
-    final actualizado = rosterActual
-        .where((p) => p.playerId != arquero.playerId)
-        .toList();
-
-    await RosterStorage.saveRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      players: actualizado,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _arquerosFuture = _loadArqueros();
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Arquero eliminado')));
+  if (accion == 'delete') {
+    await _confirmarEliminarArquero(arquero);
+    return;
   }
+
+  final rosterActual = await RosterStorage.readRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    includeStaff: true,
+  );
+
+  final actualizado = rosterActual.map((p) {
+    if (p.playerId != arquero.playerId) return p;
+
+    return PlayerProfile(
+      playerId: p.playerId,
+      clubId: p.clubId,
+      nombre: nombreController.text.trim(),
+      apellido: apellidoController.text.trim(),
+      posicion: 'Arquero',
+      numeroPreferido: dorsalController.text.trim().isEmpty
+          ? null
+          : dorsalController.text.trim(),
+      esArquero: true,
+      esCuerpoTecnico: false,
+    );
+  }).toList();
+
+  await RosterStorage.saveRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    players: actualizado,
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    _arquerosFuture = _loadArqueros();
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Arquero actualizado')),
+  );
+}
+
+  /// ===============================
+  /// ELIMINAR ARQUERO
+  /// Elimina al arquero del plantel persistente de esta categoría.
+  /// No borra eventos historicos ya cargados.
+  /// ===============================
+  Future<void> _confirmarEliminarArquero(PlayerProfile arquero) async {
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: const Color(0xFF0F1722),
+      title: const Text(
+        'Eliminar arquero',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: Text(
+        '¿Seguro que queres eliminar a ${arquero.displayName} de ${widget.categoria}?',
+        style: const TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text(
+            'Eliminar',
+            style: TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmar != true) return;
+
+  final rosterActual = await RosterStorage.readRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    includeStaff: true,
+  );
+
+  final actualizado = rosterActual
+      .where((p) => p.playerId != arquero.playerId)
+      .toList();
+
+  await RosterStorage.saveRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    players: actualizado,
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    _arquerosFuture = _loadArqueros();
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Arquero eliminado')),
+  );
+}
 
   /// Campo visual reutilizable para alta/edicion de arquero.
   Widget _inputArquero(String label, TextEditingController controller) {
@@ -21852,10 +21935,11 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
     }
 
     final rosterActual = await RosterStorage.readRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      includeStaff: true,
-    );
+  categoria: widget.categoria,
+  temporada: widget.temporada,
+  institutionId: widget.institutionId,
+  includeStaff: true,
+);
 
     final actualizado = rosterActual.map((p) {
       if (p.playerId != jugador.playerId) return p;
@@ -21877,10 +21961,11 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
     }).toList();
 
     await RosterStorage.saveRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      players: actualizado,
-    );
+  categoria: widget.categoria,
+  temporada: widget.temporada,
+  institutionId: widget.institutionId,
+  players: actualizado,
+);
 
     if (!mounted) return;
 
@@ -21930,20 +22015,22 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
     if (confirmar != true) return;
 
     final rosterActual = await RosterStorage.readRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      includeStaff: true,
-    );
+  categoria: widget.categoria,
+  temporada: widget.temporada,
+  institutionId: widget.institutionId,
+  includeStaff: true,
+);
 
     final actualizado = rosterActual
         .where((p) => p.playerId != jugador.playerId)
         .toList();
 
     await RosterStorage.saveRosterForCategory(
-      categoria: widget.categoria,
-      temporada: '2026',
-      players: actualizado,
-    );
+  categoria: widget.categoria,
+  temporada: widget.temporada,
+  institutionId: widget.institutionId,
+  players: actualizado,
+);
 
     if (!mounted) return;
 
@@ -22090,8 +22177,15 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
 /// ===============================
 class CuerpoTecnicoScreen extends StatefulWidget {
   final String categoria;
+  final String temporada;
+  final String? institutionId;
 
-  const CuerpoTecnicoScreen({super.key, required this.categoria});
+  const CuerpoTecnicoScreen({
+    super.key,
+    required this.categoria,
+    required this.temporada,
+    this.institutionId,
+  });
 
   @override
   State<CuerpoTecnicoScreen> createState() => _CuerpoTecnicoScreenState();
@@ -22158,7 +22252,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+institutionId: widget.institutionId,
       includeStaff: true,
     );
 
@@ -22175,7 +22270,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       players: [...rosterActual, nuevoStaff],
     );
 
@@ -22249,7 +22345,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+institutionId: widget.institutionId,
       includeStaff: true,
     );
 
@@ -22272,7 +22369,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+institutionId: widget.institutionId,
       players: actualizado,
     );
 
@@ -22324,7 +22422,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     final rosterActual = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+institutionId: widget.institutionId,
       includeStaff: true,
     );
 
@@ -22334,7 +22433,8 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
     await RosterStorage.saveRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+institutionId: widget.institutionId,
       players: actualizado,
     );
 
@@ -22376,12 +22476,14 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
   Future<List<PlayerProfile>> _loadStaff() async {
     await RosterStorage.seedCategoryIfEmpty(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
     );
 
     final roster = await RosterStorage.readRosterForCategory(
       categoria: widget.categoria,
-      temporada: '2026',
+      temporada: widget.temporada,
+      institutionId: widget.institutionId,
       includeStaff: true,
     );
 

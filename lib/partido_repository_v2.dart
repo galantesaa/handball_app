@@ -174,46 +174,49 @@ class PartidoRepositoryV2 {
           );
 
           final merged = {
-            ...partidoMap,
+  ...partidoMap,
 
-            'institutionId':
-                data['institutionId'] ?? partidoMap['institutionId'],
-            'temporada': data['temporada'] ?? partidoMap['temporada'] ?? '2026',
-            'competencia':
-                data['competencia'] ?? partidoMap['competencia'] ?? 'Local',
-            'torneo': data['torneo'] ?? partidoMap['torneo'],
-            'categoria': data['categoria'] ?? partidoMap['categoria'],
+  'institutionId': data['institutionId'] ?? partidoMap['institutionId'],
+  'temporada': data['temporada'] ?? partidoMap['temporada'] ?? '2026',
+  'competencia': data['competencia'] ?? partidoMap['competencia'] ?? 'Local',
+  'torneo': data['torneo'] ?? partidoMap['torneo'],
+  'categoria': data['categoria'] ?? partidoMap['categoria'],
 
-            'matchIdentity':
-                data['matchIdentity'] ?? partidoMap['matchIdentity'],
-            'archivedAt': data['archivedAt'] ?? partidoMap['archivedAt'],
+  'equipoPropio': data['equipoPropio'] ?? partidoMap['equipoPropio'],
+  'escudoPropio': data['escudoPropio'] ?? partidoMap['escudoPropio'],
+  'equipoLocal': data['equipoLocal'] ?? partidoMap['equipoLocal'],
+  'equipoVisitante': data['equipoVisitante'] ?? partidoMap['equipoVisitante'],
+  'escudoLocal': data['escudoLocal'] ?? partidoMap['escudoLocal'],
+  'escudoVisitante': data['escudoVisitante'] ?? partidoMap['escudoVisitante'],
+  'escudoRival': data['escudoRival'] ?? partidoMap['escudoRival'],
 
-            'estado': 'Finalizado',
-            'estadoPartido': 'finalizado',
-            'finalizado': true,
+  'matchIdentity': data['matchIdentity'] ?? partidoMap['matchIdentity'],
+  'archivedAt': data['archivedAt'] ?? partidoMap['archivedAt'],
 
-            'golesSanFernando':
-                data['golesSanFernando'] ?? partidoMap['golesSanFernando'],
-            'golesRival': data['golesRival'] ?? partidoMap['golesRival'],
-            'golesRecibidos':
-                data['golesRecibidos'] ?? partidoMap['golesRecibidos'],
-            'atajadas': data['atajadas'] ?? partidoMap['atajadas'],
-            'penales': data['penales'] ?? partidoMap['penales'],
-            'exclusiones2Min':
-                data['exclusiones2Min'] ?? partidoMap['exclusiones2Min'],
-            'amarillas': data['amarillas'] ?? partidoMap['amarillas'],
-            'rojas': data['rojas'] ?? partidoMap['rojas'],
-            'perdidas': data['perdidas'] ?? partidoMap['perdidas'],
-            'recuperaciones':
-                data['recuperaciones'] ?? partidoMap['recuperaciones'],
-            'penalesConvertidosSanFernando':
-                data['penalesConvertidosSanFernando'] ??
-                partidoMap['penalesConvertidosSanFernando'],
-            'penalesConvertidosRival':
-                data['penalesConvertidosRival'] ??
-                partidoMap['penalesConvertidosRival'],
-            'eventos': data['eventos'] ?? partidoMap['eventos'] ?? <dynamic>[],
-          };
+  'estado': 'Finalizado',
+  'estadoPartido': 'finalizado',
+  'finalizado': true,
+
+  'golesSanFernando':
+      data['golesSanFernando'] ?? partidoMap['golesSanFernando'],
+  'golesRival': data['golesRival'] ?? partidoMap['golesRival'],
+  'golesRecibidos': data['golesRecibidos'] ?? partidoMap['golesRecibidos'],
+  'atajadas': data['atajadas'] ?? partidoMap['atajadas'],
+  'penales': data['penales'] ?? partidoMap['penales'],
+  'exclusiones2Min':
+      data['exclusiones2Min'] ?? partidoMap['exclusiones2Min'],
+  'amarillas': data['amarillas'] ?? partidoMap['amarillas'],
+  'rojas': data['rojas'] ?? partidoMap['rojas'],
+  'perdidas': data['perdidas'] ?? partidoMap['perdidas'],
+  'recuperaciones': data['recuperaciones'] ?? partidoMap['recuperaciones'],
+  'penalesConvertidosSanFernando':
+      data['penalesConvertidosSanFernando'] ??
+      partidoMap['penalesConvertidosSanFernando'],
+  'penalesConvertidosRival':
+      data['penalesConvertidosRival'] ??
+      partidoMap['penalesConvertidosRival'],
+  'eventos': data['eventos'] ?? partidoMap['eventos'] ?? <dynamic>[],
+};
 
           items.add(PartidoModel.fromMap(merged));
         } catch (_) {
