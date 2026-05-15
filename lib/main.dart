@@ -13756,30 +13756,31 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   static const bool _showTouchDebug = false;
 
   void _activarSalidaNormal() {
-    if (modo == null) return;
+  if (modo == null) return;
 
-    setState(() {
-      // Sale jugando normal el equipo que recuperó la pelota.
+  setState(() {
+    if (contraDebeCambiarModo) {
       modo = modo == 'ataque' ? 'defensa' : 'ataque';
+    }
 
-      mostrarContra = false;
-      contraDebeCambiarModo = true;
+    mostrarContra = false;
+    contraDebeCambiarModo = true;
 
-      zonaTiro = null;
-      zonaArco = null;
+    zonaTiro = null;
+    zonaArco = null;
 
-      jugadorSeleccionado = null;
-      jugadorSeleccionadoId = null;
+    jugadorSeleccionado = null;
+    jugadorSeleccionadoId = null;
 
-      penalEnCurso = false;
-      actorPenalActual = null;
+    penalEnCurso = false;
+    actorPenalActual = null;
 
-      origenJugadaActual = 'normal';
-      mostrarSelectorLateralJugador = false;
-    });
+    origenJugadaActual = 'normal';
+    mostrarSelectorLateralJugador = false;
+  });
 
-    _persistLiveMatch();
-  }
+  _persistLiveMatch();
+}
 
   bool get _hasUndoableGameEvents {
     return gameEvents.any((e) => e.isUndoableGameEvent);
@@ -15732,22 +15733,31 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _activarContra() {
-    setState(() {
-      // 🔥 Siempre invertir modo (clave)
+  if (modo == null) return;
+
+  setState(() {
+    if (contraDebeCambiarModo) {
       modo = modo == 'ataque' ? 'defensa' : 'ataque';
+    }
 
-      mostrarContra = false;
+    mostrarContra = false;
+    contraDebeCambiarModo = true;
 
-      zonaTiro = null;
-      zonaArco = null;
+    zonaTiro = null;
+    zonaArco = null;
 
-      jugadorSeleccionado = null;
-      jugadorSeleccionadoId = null;
+    jugadorSeleccionado = null;
+    jugadorSeleccionadoId = null;
 
-      // 🔥 marcar origen
-      origenJugadaActual = 'contra';
-    });
-  }
+    penalEnCurso = false;
+    actorPenalActual = null;
+
+    origenJugadaActual = 'contra';
+    mostrarSelectorLateralJugador = false;
+  });
+
+  _persistLiveMatch();
+}
 
   void _iniciarFlujoPenalNormal() {
     final String actor = _actorPrincipalActual(
