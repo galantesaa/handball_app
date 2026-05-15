@@ -4971,6 +4971,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         'escudoRival': p['escudoRival'],
         'estado': p['estado'],
         'estadoPartido': p['estadoPartido'],
+        'equipoLocal': p['equipoLocal'],
+        'equipoVisitante': p['equipoVisitante'],
+        'escudoLocal': p['escudoLocal'],
+        'escudoVisitante': p['escudoVisitante'],
       };
     }).toList();
 
@@ -5464,6 +5468,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           'escudoRival': p['escudoRival'],
           'estado': p['estado'],
           'estadoPartido': p['estadoPartido'],
+          'equipoLocal': p['equipoLocal'],
+          'equipoVisitante': p['equipoVisitante'],
+          'escudoLocal': p['escudoLocal'],
+          'escudoVisitante': p['escudoVisitante'],
         };
       }).toList();
 
@@ -7635,6 +7643,18 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       );
     }
 
+final String _escudoLocalPath =
+    (partidoV2.escudoLocal != null &&
+            partidoV2.escudoLocal!.trim().isNotEmpty)
+        ? partidoV2.escudoLocal!
+        : 'assets/images/generic_shield.png';
+
+final String _escudoVisitantePath =
+    (partidoV2.escudoVisitante != null &&
+            partidoV2.escudoVisitante!.trim().isNotEmpty)
+        ? partidoV2.escudoVisitante!
+        : 'assets/images/generic_shield.png';
+
     return Material(
       color: Colors.transparent,
       child: DefaultTextStyle(
@@ -7682,9 +7702,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                   Expanded(
                     child: _buildShareTeam(
                       nombre: _nombreLocal,
-                      assetPath: _somosLocales
-                          ? 'assets/images/san_fernando.png'
-                          : _rivalShieldAsset(),
+                      assetPath: _escudoLocalPath,
                     ),
                   ),
                   Text(
@@ -7699,9 +7717,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                   Expanded(
                     child: _buildShareTeam(
                       nombre: _nombreVisitante,
-                      assetPath: _somosLocales
-                          ? _rivalShieldAsset()
-                          : 'assets/images/san_fernando.png',
+                      assetPath: _escudoVisitantePath,
                     ),
                   ),
                 ],
@@ -8644,13 +8660,55 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
 
   const ResumenPartidoFinalizadoScreen({super.key, required this.partido});
 
-  bool get _somosLocales => (partido['condicion'] ?? 'Local') == 'Local';
+  bool get _somosLocales {
+  return partidoV2.condicion.trim().toLowerCase() == 'local';
+}
 
-  String get _nombreLocal =>
-      _somosLocales ? 'San Fernando' : (partido['rival'] ?? 'Rival').toString();
+String? _cleanAssetPath(dynamic value) {
+  final text = (value ?? '').toString().trim();
+  if (text.isEmpty || text.toLowerCase() == 'null') return null;
+  return text;
+}
 
-  String get _nombreVisitante =>
-      _somosLocales ? (partido['rival'] ?? 'Rival').toString() : 'San Fernando';
+String _cleanTeamName(dynamic value, String fallback) {
+  final text = fixTextoRoto(value).trim();
+  if (text.isEmpty || text.toLowerCase() == 'null') return fallback;
+  return text;
+}
+
+String get _nombreLocal {
+  return _cleanTeamName(
+    partidoV2.equipoLocal,
+    _somosLocales
+        ? _cleanTeamName(partidoV2.equipoPropio, 'San Fernando')
+        : _cleanTeamName(partidoV2.rival, 'Rival'),
+  );
+}
+
+String get _nombreVisitante {
+  return _cleanTeamName(
+    partidoV2.equipoVisitante,
+    _somosLocales
+        ? _cleanTeamName(partidoV2.rival, 'Rival')
+        : _cleanTeamName(partidoV2.equipoPropio, 'San Fernando'),
+  );
+}
+
+String? get _escudoLocalPath {
+  return _cleanAssetPath(partidoV2.escudoLocal) ??
+      (_somosLocales
+          ? _cleanAssetPath(partidoV2.escudoPropio)
+          : _cleanAssetPath(partidoV2.escudoRival)) ??
+      'assets/images/san_fernando.png';
+}
+
+String? get _escudoVisitantePath {
+  return _cleanAssetPath(partidoV2.escudoVisitante) ??
+      (_somosLocales
+          ? _cleanAssetPath(partidoV2.escudoRival)
+          : _cleanAssetPath(partidoV2.escudoPropio)) ??
+      'assets/images/san_fernando.png';
+}
 
   int get _golesSanFernando => (partido['golesSanFernando'] ?? 0) as int;
   int get _golesRival => (partido['golesRival'] ?? 0) as int;
@@ -10539,9 +10597,7 @@ $arquerosDetalle
                 Expanded(
                   child: _buildShareTeam(
                     nombre: _nombreLocal,
-                    assetPath: _somosLocales
-                        ? 'assets/images/san_fernando.png'
-                        : _rivalShieldAsset(),
+                    assetPath: _escudoLocalPath,
                   ),
                 ),
                 Text(
@@ -10555,9 +10611,7 @@ $arquerosDetalle
                 Expanded(
                   child: _buildShareTeam(
                     nombre: _nombreVisitante,
-                    assetPath: _somosLocales
-                        ? _rivalShieldAsset()
-                        : 'assets/images/san_fernando.png',
+                    assetPath: _escudoVisitantePath,
                   ),
                 ),
               ],
@@ -10869,9 +10923,7 @@ $arquerosDetalle
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreLocal,
-                  assetPath: _somosLocales
-                      ? 'assets/images/san_fernando.png'
-                      : _rivalShieldAsset(),
+                  assetPath: _escudoLocalPath,
                   condicion: 'Local',
                 ),
               ),
@@ -10891,9 +10943,7 @@ $arquerosDetalle
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreVisitante,
-                  assetPath: _somosLocales
-                      ? _rivalShieldAsset()
-                      : 'assets/images/san_fernando.png',
+                  assetPath: _escudoVisitantePath,
                   condicion: 'Visitante',
                 ),
               ),
@@ -12626,24 +12676,48 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   }
 
   String get _nombreLocal {
-    return _somosLocales ? _equipoPropioNombre : partidoV2.rival;
+  final raw = partidoV2.equipoLocal?.trim();
+
+  if (raw != null && raw.isNotEmpty && raw.toLowerCase() != 'null') {
+    return fixTextoRoto(raw);
   }
 
-  String get _nombreVisitante {
-    return _somosLocales ? partidoV2.rival : _equipoPropioNombre;
+  return _somosLocales ? _equipoPropioNombre : partidoV2.rival;
+}
+
+String get _nombreVisitante {
+  final raw = partidoV2.equipoVisitante?.trim();
+
+  if (raw != null && raw.isNotEmpty && raw.toLowerCase() != 'null') {
+    return fixTextoRoto(raw);
   }
 
-  int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
+  return _somosLocales ? partidoV2.rival : _equipoPropioNombre;
+}
 
-  int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
+int get _golesLocal => _somosLocales ? golesSanFernando : golesRival;
 
-  String? get _escudoLocalPath {
-    return _somosLocales ? _equipoPropioEscudo : _rivalEscudoResuelto;
+int get _golesVisitante => _somosLocales ? golesRival : golesSanFernando;
+
+String? get _escudoLocalPath {
+  final raw = partidoV2.escudoLocal?.trim();
+
+  if (raw != null && raw.isNotEmpty && raw.toLowerCase() != 'null') {
+    return raw;
   }
 
-  String? get _escudoVisitantePath {
-    return _somosLocales ? _rivalEscudoResuelto : _equipoPropioEscudo;
+  return _somosLocales ? _equipoPropioEscudo : _rivalEscudoResuelto;
+}
+
+String? get _escudoVisitantePath {
+  final raw = partidoV2.escudoVisitante?.trim();
+
+  if (raw != null && raw.isNotEmpty && raw.toLowerCase() != 'null') {
+    return raw;
   }
+
+  return _somosLocales ? _rivalEscudoResuelto : _equipoPropioEscudo;
+}
 
   Future<void> _asegurarConvocatoriaDefaultSoloArqueros() async {
     final String categoria = (widget.partido['categoria'] ?? 'Cadetes')

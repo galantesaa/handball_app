@@ -7430,9 +7430,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                   Expanded(
                     child: _buildShareTeam(
                       nombre: _nombreLocal,
-                      assetPath: _somosLocales
-                          ? 'assets/images/san_fernando.png'
-                          : _rivalShieldAsset(),
+                      assetPath: _escudoLocalPath,
                     ),
                   ),
                   Text(
@@ -7447,9 +7445,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                   Expanded(
                     child: _buildShareTeam(
                       nombre: _nombreVisitante,
-                      assetPath: _somosLocales
-                          ? _rivalShieldAsset()
-                          : 'assets/images/san_fernando.png',
+                      assetPath: _escudoVisitantePath,
                     ),
                   ),
                 ],
@@ -9457,9 +9453,7 @@ $arquerosDetalle
                 Expanded(
                   child: _buildShareTeam(
                     nombre: _nombreLocal,
-                    assetPath: _somosLocales
-                        ? 'assets/images/san_fernando.png'
-                        : _rivalShieldAsset(),
+                    assetPath: _escudoLocalPath,
                   ),
                 ),
                 Text(
@@ -9473,9 +9467,7 @@ $arquerosDetalle
                 Expanded(
                   child: _buildShareTeam(
                     nombre: _nombreVisitante,
-                    assetPath: _somosLocales
-                        ? _rivalShieldAsset()
-                        : 'assets/images/san_fernando.png',
+                    assetPath: _escudoVisitantePath,
                   ),
                 ),
               ],
@@ -9787,9 +9779,7 @@ $arquerosDetalle
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreLocal,
-                  assetPath: _somosLocales
-                      ? 'assets/images/san_fernando.png'
-                      : _rivalShieldAsset(),
+                  assetPath: _escudoLocalPath,
                   condicion: 'Local',
                 ),
               ),
@@ -9809,9 +9799,7 @@ $arquerosDetalle
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreVisitante,
-                  assetPath: _somosLocales
-                      ? _rivalShieldAsset()
-                      : 'assets/images/san_fernando.png',
+                  assetPath: _escudoVisitantePath,
                   condicion: 'Visitante',
                 ),
               ),

@@ -4387,9 +4387,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreLocal,
-                  assetPath: _somosLocales
-                      ? 'assets/images/san_fernando.png'
-                      : _rivalShieldAsset(),
+                  assetPath: _escudoLocalPath,
                   condicion: 'Local',
                 ),
               ),
@@ -4409,9 +4407,7 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
               Expanded(
                 child: _buildTeamSide(
                   nombre: _nombreVisitante,
-                  assetPath: _somosLocales
-                      ? _rivalShieldAsset()
-                      : 'assets/images/san_fernando.png',
+                  assetPath: _escudoVisitantePath,
                   condicion: 'Visitante',
                 ),
               ),
