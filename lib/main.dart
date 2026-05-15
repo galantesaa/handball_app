@@ -765,7 +765,10 @@ class RosterStorage {
 
   static bool _isSanFernandoInstitution(String? institutionId) {
     final id = _normalize(institutionId);
-    return id == 'san_fernando_handball' || id == 'san_fernando';
+    return id.isEmpty ||
+        id == 'legacy_institution' ||
+        id == 'san_fernando_handball' ||
+        id == 'san_fernando';
   }
 
   static String _key({
@@ -773,21 +776,42 @@ class RosterStorage {
     required String temporada,
     required String? institutionId,
   }) {
-    final categoriaNormalizada = _normalize(categoria);
-    final temporadaNormalizada = _normalize(temporada);
-
-    final institutionNormalizada = _normalize(institutionId).isEmpty
+    final safeInstitution = _normalize(institutionId).isEmpty
         ? 'san_fernando_handball'
         : _normalize(institutionId);
 
-    return 'roster_${institutionNormalizada}_${temporadaNormalizada}_$categoriaNormalizada';
+    return 'roster_${safeInstitution}_${_normalize(temporada)}_${_normalize(categoria)}';
   }
 
-  static String _legacyKey({
+  static List<String> _candidateKeys({
     required String categoria,
     required String temporada,
+    required String? institutionId,
   }) {
-    return 'roster_${_normalize(temporada)}_${_normalize(categoria)}';
+    final cat = _normalize(categoria);
+    final season = _normalize(temporada);
+    final inst = _normalize(institutionId);
+
+    return <String>{
+      _key(
+        categoria: categoria,
+        temporada: temporada,
+        institutionId: institutionId,
+      ),
+
+      // Legacy principal del backup anterior.
+      'roster_${season}_$cat',
+
+      // Legacy San Fernando posible.
+      'roster_san_fernando_handball_${season}_$cat',
+      'roster_san_fernando_${season}_$cat',
+
+      // Si la institución viene como legacy.
+      'roster_legacy_institution_${season}_$cat',
+
+      // Si el backup ya tenía institutionId nuevo.
+      if (inst.isNotEmpty) 'roster_${inst}_${season}_$cat',
+    }.toList();
   }
 
   static List<PlayerProfile> _decodeRoster(
@@ -802,7 +826,16 @@ class RosterStorage {
       final result = decoded
           .whereType<Map>()
           .map((e) => PlayerProfile.fromMap(Map<String, dynamic>.from(e)))
-          .where((p) => includeStaff || !p.esCuerpoTecnico)
+          .where((p) {
+            final hasName = p.nombre.trim().isNotEmpty ||
+                p.apellido.trim().isNotEmpty ||
+                (p.numeroPreferido ?? '').trim().isNotEmpty;
+
+            if (!hasName) return false;
+            if (!includeStaff && p.esCuerpoTecnico) return false;
+
+            return true;
+          })
           .toList();
 
       result.sort((a, b) {
@@ -833,30 +866,32 @@ class RosterStorage {
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final key = _key(
+    final targetKey = _key(
       categoria: categoria,
       temporada: temporada,
       institutionId: institutionId,
     );
 
-    final raw = prefs.getString(key);
+    for (final key in _candidateKeys(
+      categoria: categoria,
+      temporada: temporada,
+      institutionId: institutionId,
+    )) {
+      final raw = prefs.getString(key);
 
-    if (raw != null && raw.trim().isNotEmpty && raw.trim() != 'null') {
+      if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+        continue;
+      }
+
       final decoded = _decodeRoster(raw, includeStaff: includeStaff);
-      if (decoded.isNotEmpty) return decoded;
-    }
 
-    final legacyRaw = prefs.getString(
-      _legacyKey(categoria: categoria, temporada: temporada),
-    );
+      if (decoded.isNotEmpty) {
+        if (key != targetKey) {
+          await prefs.setString(targetKey, raw);
+        }
 
-    if (legacyRaw != null &&
-        legacyRaw.trim().isNotEmpty &&
-        legacyRaw.trim() != 'null') {
-      await prefs.setString(key, legacyRaw);
-
-      final migrated = _decodeRoster(legacyRaw, includeStaff: includeStaff);
-      if (migrated.isNotEmpty) return migrated;
+        return decoded;
+      }
     }
 
     if (_isSanFernandoInstitution(institutionId)) {
@@ -897,13 +932,33 @@ class RosterStorage {
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final key = _key(
+    final targetKey = _key(
       categoria: categoria,
       temporada: temporada,
       institutionId: institutionId,
     );
 
-    if (prefs.containsKey(key)) return;
+    for (final key in _candidateKeys(
+      categoria: categoria,
+      temporada: temporada,
+      institutionId: institutionId,
+    )) {
+      final raw = prefs.getString(key);
+
+      if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+        continue;
+      }
+
+      final decoded = _decodeRoster(raw, includeStaff: true);
+
+      if (decoded.isNotEmpty) {
+        if (key != targetKey) {
+          await prefs.setString(targetKey, raw);
+        }
+        return;
+      }
+    }
+
     if (!_isSanFernandoInstitution(institutionId)) return;
 
     final roster = RosterRepository.rosterForCategory(
@@ -911,6 +966,8 @@ class RosterStorage {
       temporada: temporada,
       includeStaff: true,
     );
+
+    if (roster.isEmpty) return;
 
     await saveRosterForCategory(
       categoria: categoria,
@@ -7667,17 +7724,13 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
       );
     }
 
-final String _escudoLocalPath =
-    (partidoV2.escudoLocal != null &&
-            partidoV2.escudoLocal!.trim().isNotEmpty)
-        ? partidoV2.escudoLocal!
-        : 'assets/images/generic_shield.png';
+final String? _escudoLocalPath = _cleanShieldPath(
+  widget.partido['escudoLocal'] ?? partidoV2.escudoLocal,
+);
 
-final String _escudoVisitantePath =
-    (partidoV2.escudoVisitante != null &&
-            partidoV2.escudoVisitante!.trim().isNotEmpty)
-        ? partidoV2.escudoVisitante!
-        : 'assets/images/generic_shield.png';
+final String? _escudoVisitantePath = _cleanShieldPath(
+  widget.partido['escudoVisitante'] ?? partidoV2.escudoVisitante,
+);
 
     return Material(
       color: Colors.transparent,
@@ -8323,42 +8376,56 @@ final String _escudoVisitantePath =
   List<Map<String, dynamic>> _estadisticasPorArquero() {
     final Map<String, Map<String, dynamic>> acumulado = {};
 
-    PlayerProfile? arqueroDesdePlayerId(String? playerId) {
-      final id = (playerId ?? '').trim();
-      if (id.isEmpty || id == 'null') return null;
+PlayerProfile? arqueroDesdePlayerId(String? playerId) {
+  final id = (playerId ?? '').trim();
+  if (id.isEmpty || id.toLowerCase() == 'null') return null;
 
-      for (final p in RosterRepository.players) {
-        if (p.playerId == id && p.esArquero) return p;
-      }
+  final fromSnapshot = _playerFromSnapshotById(id);
+  if (fromSnapshot != null && fromSnapshot.esArquero) {
+    return fromSnapshot;
+  }
 
-      return null;
+  for (final p in RosterRepository.players) {
+    if (p.playerId == id && p.esArquero) return p;
+  }
+
+  return null;
+}
+
+PlayerProfile? arqueroDesdeDorsal(String? dorsal) {
+  final value = (dorsal ?? '').trim();
+  if (value.isEmpty || value.toLowerCase() == 'null') return null;
+
+  for (final p in _playersFromMatchRosterSnapshot()) {
+    if (p.esArquero && (p.numeroPreferido ?? '').trim() == value) {
+      return p;
     }
+  }
 
-    PlayerProfile? arqueroDesdeDorsal(String? dorsal) {
-      final value = (dorsal ?? '').trim();
-      if (value.isEmpty || value == 'null') return null;
+  final arquerosLegacy = RosterRepository.goalkeepersForCategory(
+    categoria: partidoV2.categoria,
+    temporada: partidoV2.temporada,
+  );
 
-      final arqueros = RosterRepository.goalkeepersForCategory(
-        categoria: partidoV2.categoria,
-        temporada: '2026',
-      );
+  for (final p in arquerosLegacy) {
+    if ((p.numeroPreferido ?? '').trim() == value) return p;
+  }
 
-      for (final p in arqueros) {
-        if ((p.numeroPreferido ?? '').trim() == value) return p;
-      }
+  return null;
+}
 
-      return null;
-    }
+PlayerProfile? resolverArquero(Map<String, dynamic> map) {
+  final fromSnapshot = _goalkeeperFromEvent(map);
+  if (fromSnapshot != null) return fromSnapshot;
 
-    PlayerProfile? resolverArquero(Map<String, dynamic> map) {
-      final arqueroId = (map['arqueroId'] ?? '').toString().trim();
-      final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
-      final arqueroRaw = (map['arquero'] ?? '').toString().trim();
+  final arqueroId = (map['arqueroId'] ?? '').toString().trim();
+  final actorId = (map['actorPrincipalId'] ?? '').toString().trim();
+  final arqueroRaw = (map['arquero'] ?? '').toString().trim();
 
-      return arqueroDesdePlayerId(arqueroId) ??
-          arqueroDesdePlayerId(actorId) ??
-          arqueroDesdeDorsal(arqueroRaw);
-    }
+  return arqueroDesdePlayerId(arqueroId) ??
+      arqueroDesdePlayerId(actorId) ??
+      arqueroDesdeDorsal(arqueroRaw);
+}
 
     String periodoDesdeEvento(Map<String, dynamic> map) {
       final raw =
@@ -8660,6 +8727,87 @@ final String _escudoVisitantePath =
     return lista;
   }
 
+
+List<PlayerProfile> _playersFromMatchRosterSnapshot() {
+  final raw = partido['matchRosterSnapshot'];
+
+  if (raw is! List) return const <PlayerProfile>[];
+
+  final result = <PlayerProfile>[];
+
+  for (final item in raw) {
+    if (item is! Map) continue;
+
+    try {
+      final player = PlayerProfile.fromMap(
+        Map<String, dynamic>.from(item),
+      );
+
+      if (player.playerId.trim().isEmpty) continue;
+      if (player.esCuerpoTecnico) continue;
+
+      result.add(player);
+    } catch (_) {
+      continue;
+    }
+  }
+
+  return result;
+}
+
+PlayerProfile? _playerFromSnapshotById(String? playerId) {
+  final id = (playerId ?? '').trim();
+
+  if (id.isEmpty || id.toLowerCase() == 'null') return null;
+
+  for (final player in _playersFromMatchRosterSnapshot()) {
+    if (player.playerId == id) return player;
+  }
+
+  return null;
+}
+
+PlayerProfile? _goalkeeperFromEvent(Map<String, dynamic> event) {
+  final arqueroId = (event['arqueroId'] ?? '').toString().trim();
+  final actorId = (event['actorPrincipalId'] ?? '').toString().trim();
+
+  final byArqueroId = _playerFromSnapshotById(arqueroId);
+  if (byArqueroId != null && byArqueroId.esArquero) return byArqueroId;
+
+  final byActorId = _playerFromSnapshotById(actorId);
+  if (byActorId != null && byActorId.esArquero) return byActorId;
+
+  final actorRaw = (event['arquero'] ?? event['actorPrincipal'] ?? '')
+      .toString()
+      .trim();
+
+  if (actorRaw.isEmpty || actorRaw.toLowerCase() == 'null') return null;
+
+  final dorsalMatch = RegExp(r'^(\d+)').firstMatch(actorRaw);
+  final dorsal = dorsalMatch?.group(1);
+
+  if (dorsal != null && dorsal.trim().isNotEmpty) {
+    for (final player in _playersFromMatchRosterSnapshot()) {
+      if (player.esArquero &&
+          (player.numeroPreferido ?? '').trim() == dorsal.trim()) {
+        return player;
+      }
+    }
+  }
+
+  return null;
+}
+
+String? _cleanShieldPath(dynamic value) {
+  final text = (value ?? '').toString().trim();
+
+  if (text.isEmpty || text.toLowerCase() == 'null') return null;
+
+  if (text == 'assets/images/generic_shield.png') return null;
+
+  return text;
+}
+
   int get _atajadasDesdeArqueros {
     return _estadisticasPorArquero().fold(
       0,
@@ -8719,19 +8867,23 @@ String get _nombreVisitante {
 }
 
 String? get _escudoLocalPath {
-  return _cleanAssetPath(partidoV2.escudoLocal) ??
+  return _cleanAssetPath(partido['escudoLocal']) ??
+      _cleanAssetPath(partidoV2.escudoLocal) ??
       (_somosLocales
-          ? _cleanAssetPath(partidoV2.escudoPropio)
-          : _cleanAssetPath(partidoV2.escudoRival)) ??
-      'assets/images/san_fernando.png';
+          ? _cleanAssetPath(partido['escudoPropio']) ??
+              _cleanAssetPath(partidoV2.escudoPropio)
+          : _cleanAssetPath(partido['escudoRival']) ??
+              _cleanAssetPath(partidoV2.escudoRival));
 }
 
 String? get _escudoVisitantePath {
-  return _cleanAssetPath(partidoV2.escudoVisitante) ??
+  return _cleanAssetPath(partido['escudoVisitante']) ??
+      _cleanAssetPath(partidoV2.escudoVisitante) ??
       (_somosLocales
-          ? _cleanAssetPath(partidoV2.escudoRival)
-          : _cleanAssetPath(partidoV2.escudoPropio)) ??
-      'assets/images/san_fernando.png';
+          ? _cleanAssetPath(partido['escudoRival']) ??
+              _cleanAssetPath(partidoV2.escudoRival)
+          : _cleanAssetPath(partido['escudoPropio']) ??
+              _cleanAssetPath(partidoV2.escudoPropio));
 }
 
   int get _golesSanFernando => (partido['golesSanFernando'] ?? 0) as int;
@@ -12449,60 +12601,91 @@ class _FixtureScreenState extends State<FixtureScreen> {
     return text;
   }
 
-  final identidad = PartidoRepositoryV2.buildMatchIdentityFromMap(partido);
+  Set<String> identityKeysForMap(Map<String, dynamic> map) {
+    return <String>{
+      PartidoRepositoryV2.buildMatchIdentityFromMap(map),
+      PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(map),
+      FixtureRepositoryV2.buildStableFixtureIdentityFromMap(map),
+      FixtureRepositoryV2.buildLegacyStableFixtureIdentityFromMap(map),
+    }.where((e) => e.trim().isNotEmpty && e.trim() != 'null').toSet();
+  }
 
-  final PartidoModel? finalizadoV2 = _finalizadosV2
-      .cast<PartidoModel?>()
-      .firstWhere(
-        (p) =>
-            p != null &&
-            PartidoRepositoryV2.buildMatchIdentityFromModel(p) == identidad,
-        orElse: () => null,
-      );
+  Set<String> identityKeysForModel(PartidoModel model) {
+    final map = model.toMap();
+
+    return <String>{
+      PartidoRepositoryV2.buildMatchIdentityFromModel(model),
+      PartidoRepositoryV2.buildLegacyMatchIdentityFromModel(model),
+      FixtureRepositoryV2.buildStableFixtureIdentity(model),
+      FixtureRepositoryV2.buildLegacyStableFixtureIdentity(model),
+      ...identityKeysForMap(map),
+    }.where((e) => e.trim().isNotEmpty && e.trim() != 'null').toSet();
+  }
+
+  final normalizedPartido = <String, dynamic>{
+    ...partido,
+    'temporada': partido['temporada'] ?? widget.temporada,
+    'competencia': partido['competencia'] ?? widget.competencia,
+    'torneo': partido['torneo'] ?? widget.torneo,
+    'categoria': partido['categoria'] ?? widget.categoria,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+  };
+
+  final currentKeys = identityKeysForMap(normalizedPartido);
+
+  PartidoModel? finalizadoV2;
+
+  for (final item in _finalizadosV2) {
+    final finishedKeys = identityKeysForModel(item);
+
+    if (currentKeys.any(finishedKeys.contains)) {
+      finalizadoV2 = item;
+      break;
+    }
+  }
 
   final bool estaFinalizadoV2 = finalizadoV2 != null;
   final finalizadoMap = finalizadoV2?.toMap() ?? <String, dynamic>{};
 
   final Map<String, dynamic> partidoVisual = estaFinalizadoV2
       ? {
-          ...partido,
+          ...normalizedPartido,
           ...finalizadoMap,
 
-          'fechaNumero': partido['fechaNumero'],
-          'rival': partido['rival'],
-          'condicion': partido['condicion'],
+          'fechaNumero': normalizedPartido['fechaNumero'],
+          'fecha': normalizedPartido['fecha'],
+          'hora': normalizedPartido['hora'],
+          'rival': normalizedPartido['rival'],
+          'condicion': normalizedPartido['condicion'],
 
-          'equipoPropio':
-              clean(finalizadoMap['equipoPropio']) ??
-              clean(partido['equipoPropio']) ??
+          'equipoPropio': clean(finalizadoMap['equipoPropio']) ??
+              clean(normalizedPartido['equipoPropio']) ??
               _institutionName,
 
-          'escudoPropio':
-              clean(finalizadoMap['escudoPropio']) ??
-              clean(partido['escudoPropio']) ??
+          'escudoPropio': clean(finalizadoMap['escudoPropio']) ??
+              clean(normalizedPartido['escudoPropio']) ??
               _institutionShieldPath,
 
-          'equipoLocal':
-              clean(finalizadoMap['equipoLocal']) ??
-              clean(partido['equipoLocal']),
+          'equipoLocal': clean(finalizadoMap['equipoLocal']) ??
+              clean(normalizedPartido['equipoLocal']),
 
-          'equipoVisitante':
-              clean(finalizadoMap['equipoVisitante']) ??
-              clean(partido['equipoVisitante']),
+          'equipoVisitante': clean(finalizadoMap['equipoVisitante']) ??
+              clean(normalizedPartido['equipoVisitante']),
 
-          'escudoLocal':
-              clean(finalizadoMap['escudoLocal']) ??
-              clean(partido['escudoLocal']),
+          'escudoLocal': clean(finalizadoMap['escudoLocal']) ??
+              clean(normalizedPartido['escudoLocal']),
 
-          'escudoVisitante':
-              clean(finalizadoMap['escudoVisitante']) ??
-              clean(partido['escudoVisitante']),
+          'escudoVisitante': clean(finalizadoMap['escudoVisitante']) ??
+              clean(normalizedPartido['escudoVisitante']),
 
-          'escudoRival':
-              clean(finalizadoMap['escudoRival']) ??
-              clean(partido['escudoRival']),
+          'escudoRival': clean(finalizadoMap['escudoRival']) ??
+              clean(normalizedPartido['escudoRival']),
+
+          'estado': 'Finalizado',
+          'estadoPartido': 'finalizado',
+          'finalizado': true,
         }
-      : partido;
+      : normalizedPartido;
 
   final String rival = fixTextoRoto(partidoVisual['rival'] ?? 'Rival');
 
@@ -12520,7 +12703,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
   );
 
   Future<void> abrir() async {
-    if (estaFinalizadoV2 && finalizadoV2 != null) {
+    if (estaFinalizadoV2) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -12533,9 +12716,10 @@ class _FixtureScreenState extends State<FixtureScreen> {
           ),
         ),
       );
-    } else {
-      await _abrirPartido(context, partido);
+      return;
     }
+
+    await _abrirPartido(context, normalizedPartido);
   }
 
   return MatchCardPro(
@@ -19557,7 +19741,7 @@ class _ArquerosScreenState extends State<ArquerosScreen> {
     includeStaff: true,
   );
 
-  final safeBase = '${widget.institutionId ?? 'local'}_${widget.temporada}_${widget.categoria}_${nombre}_$apellido_$dorsal';
+  final safeBase = '${widget.institutionId ?? 'local'}_${widget.temporada}_${widget.categoria}_${nombre}_${apellido}_$dorsal';
   final playerId = RosterStorageId.safePlayerId(safeBase);
 
   final nuevoArquero = PlayerProfile(
@@ -21874,109 +22058,109 @@ class _JugadoresCampoScreenState extends State<JugadoresCampoScreen> {
   /// Tambien permite eliminarlo del plantel persistente.
   /// ===============================
   Future<void> _abrirEditarJugador(PlayerProfile jugador) async {
-    final nombreController = TextEditingController(text: jugador.nombre);
-    final apellidoController = TextEditingController(text: jugador.apellido);
-    final dorsalController = TextEditingController(
-      text: jugador.numeroPreferido ?? '',
-    );
-    final posicionController = TextEditingController(
-      text: jugador.posicion ?? '',
-    );
+  final nombreController = TextEditingController(text: jugador.nombre);
+  final apellidoController = TextEditingController(text: jugador.apellido);
+  final dorsalController = TextEditingController(
+    text: jugador.numeroPreferido ?? '',
+  );
+  final posicionController = TextEditingController(
+    text: jugador.posicion ?? '',
+  );
 
-    final accion = await showDialog<String>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF0F1722),
-          title: const Text(
-            'Editar jugador',
-            style: TextStyle(color: Colors.white),
+  final accion = await showDialog<String>(
+    context: context,
+    builder: (_) {
+      return AlertDialog(
+        backgroundColor: const Color(0xFF0F1722),
+        title: const Text(
+          'Editar jugador',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _inputAltaJugador('Nombre', nombreController),
+              const SizedBox(height: 10),
+              _inputAltaJugador('Apellido', apellidoController),
+              const SizedBox(height: 10),
+              _inputAltaJugador('Dorsal', dorsalController),
+              const SizedBox(height: 10),
+              _inputAltaJugador('Posición', posicionController),
+            ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _inputAltaJugador('Nombre', nombreController),
-                const SizedBox(height: 10),
-                _inputAltaJugador('Apellido', apellidoController),
-                const SizedBox(height: 10),
-                _inputAltaJugador('Dorsal', dorsalController),
-                const SizedBox(height: 10),
-                _inputAltaJugador('Posicion', posicionController),
-              ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'delete'),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'delete'),
-              child: const Text(
-                'Eliminar',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'cancel'),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'save'),
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (accion == null || accion == 'cancel') return;
-
-    if (accion == 'delete') {
-      await _confirmarEliminarJugador(jugador);
-      return;
-    }
-
-    final rosterActual = await RosterStorage.readRosterForCategory(
-  categoria: widget.categoria,
-  temporada: widget.temporada,
-  institutionId: widget.institutionId,
-  includeStaff: true,
-);
-
-    final actualizado = rosterActual.map((p) {
-      if (p.playerId != jugador.playerId) return p;
-
-      return PlayerProfile(
-        playerId: p.playerId,
-        clubId: p.clubId,
-        nombre: nombreController.text.trim(),
-        apellido: apellidoController.text.trim(),
-        posicion: posicionController.text.trim().isEmpty
-            ? null
-            : posicionController.text.trim(),
-        numeroPreferido: dorsalController.text.trim().isEmpty
-            ? null
-            : dorsalController.text.trim(),
-        esArquero: p.esArquero,
-        esCuerpoTecnico: p.esCuerpoTecnico,
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Guardar'),
+          ),
+        ],
       );
-    }).toList();
+    },
+  );
 
-    await RosterStorage.saveRosterForCategory(
-  categoria: widget.categoria,
-  temporada: widget.temporada,
-  institutionId: widget.institutionId,
-  players: actualizado,
-);
+  if (accion == null || accion == 'cancel') return;
 
-    if (!mounted) return;
-
-    setState(() {
-      _jugadoresFuture = _loadJugadores();
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Jugador actualizado')));
+  if (accion == 'delete') {
+    await _confirmarEliminarJugador(jugador);
+    return;
   }
+
+  final rosterActual = await RosterStorage.readRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    includeStaff: true,
+  );
+
+  final actualizado = rosterActual.map((p) {
+    if (p.playerId != jugador.playerId) return p;
+
+    return PlayerProfile(
+      playerId: p.playerId,
+      clubId: p.clubId,
+      nombre: nombreController.text.trim(),
+      apellido: apellidoController.text.trim(),
+      posicion: posicionController.text.trim().isEmpty
+          ? null
+          : posicionController.text.trim(),
+      numeroPreferido: dorsalController.text.trim().isEmpty
+          ? null
+          : dorsalController.text.trim(),
+      esArquero: false,
+      esCuerpoTecnico: false,
+    );
+  }).toList();
+
+  await RosterStorage.saveRosterForCategory(
+    categoria: widget.categoria,
+    temporada: widget.temporada,
+    institutionId: widget.institutionId,
+    players: actualizado,
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    _jugadoresFuture = _loadJugadores();
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Jugador actualizado')),
+  );
+}
 
   /// ===============================
   /// ELIMINAR JUGADOR
