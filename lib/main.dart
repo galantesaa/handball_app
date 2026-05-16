@@ -763,12 +763,23 @@ class RosterStorage {
         .replaceAll(RegExp(r'[^a-z0-9_]'), '');
   }
 
-  static bool _isSanFernandoInstitution(String? institutionId) {
+  static bool _isLegacyOrSanFernandoInstitution(String? institutionId) {
     final id = _normalize(institutionId);
+
     return id.isEmpty ||
         id == 'legacy_institution' ||
         id == 'san_fernando_handball' ||
         id == 'san_fernando';
+  }
+
+  static String _resolvedInstitutionKey(String? institutionId) {
+    final normalized = _normalize(institutionId);
+
+    if (normalized.isEmpty || normalized == 'legacy_institution') {
+      return 'san_fernando_handball';
+    }
+
+    return normalized;
   }
 
   static String _key({
@@ -776,9 +787,7 @@ class RosterStorage {
     required String temporada,
     required String? institutionId,
   }) {
-    final safeInstitution = _normalize(institutionId).isEmpty
-        ? 'san_fernando_handball'
-        : _normalize(institutionId);
+    final safeInstitution = _resolvedInstitutionKey(institutionId);
 
     return 'roster_${safeInstitution}_${_normalize(temporada)}_${_normalize(categoria)}';
   }
@@ -788,35 +797,62 @@ class RosterStorage {
     required String temporada,
     required String? institutionId,
   }) {
+    final targetKey = _key(
+      categoria: categoria,
+      temporada: temporada,
+      institutionId: institutionId,
+    );
+
+    final isLegacyOrSanFernando = _isLegacyOrSanFernandoInstitution(
+      institutionId,
+    );
+
+    if (!isLegacyOrSanFernando) {
+      return <String>[targetKey];
+    }
+
     final cat = _normalize(categoria);
     final season = _normalize(temporada);
-    final inst = _normalize(institutionId);
 
     return <String>{
-      _key(
-        categoria: categoria,
-        temporada: temporada,
-        institutionId: institutionId,
-      ),
+      targetKey,
 
-      // Legacy principal del backup anterior.
+      // Legacy principal de backups anteriores.
       'roster_${season}_$cat',
 
       // Legacy San Fernando posible.
       'roster_san_fernando_handball_${season}_$cat',
       'roster_san_fernando_${season}_$cat',
 
-      // Si la institución viene como legacy.
+      // Legacy con institutionId viejo.
       'roster_legacy_institution_${season}_$cat',
-
-      // Si el backup ya tenía institutionId nuevo.
-      if (inst.isNotEmpty) 'roster_${inst}_${season}_$cat',
     }.toList();
+  }
+
+  static bool _playerBelongsToInstitution({
+    required PlayerProfile player,
+    required String? institutionId,
+  }) {
+    if (_isLegacyOrSanFernandoInstitution(institutionId)) {
+      return true;
+    }
+
+    final institution = _normalize(institutionId);
+    if (institution.isEmpty) return true;
+
+    final playerClubId = _normalize(player.clubId);
+    final playerId = _normalize(player.playerId);
+
+    if (playerClubId == institution) return true;
+    if (playerId.startsWith('${institution}_')) return true;
+
+    return false;
   }
 
   static List<PlayerProfile> _decodeRoster(
     String raw, {
     required bool includeStaff,
+    required String? institutionId,
   }) {
     try {
       final decoded = jsonDecode(raw);
@@ -835,7 +871,10 @@ class RosterStorage {
             if (!hasName) return false;
             if (!includeStaff && p.esCuerpoTecnico) return false;
 
-            return true;
+            return _playerBelongsToInstitution(
+              player: p,
+              institutionId: institutionId,
+            );
           })
           .toList();
 
@@ -873,6 +912,10 @@ class RosterStorage {
       institutionId: institutionId,
     );
 
+    final isLegacyOrSanFernando = _isLegacyOrSanFernandoInstitution(
+      institutionId,
+    );
+
     for (final key in _candidateKeys(
       categoria: categoria,
       temporada: temporada,
@@ -884,18 +927,31 @@ class RosterStorage {
         continue;
       }
 
-      final decoded = _decodeRoster(raw, includeStaff: includeStaff);
+      final decoded = _decodeRoster(
+        raw,
+        includeStaff: includeStaff,
+        institutionId: institutionId,
+      );
 
-      if (decoded.isNotEmpty) {
-        if (key != targetKey) {
-          await prefs.setString(targetKey, raw);
-        }
-
-        return decoded;
+      if (decoded.isEmpty) {
+        continue;
       }
+
+      if (isLegacyOrSanFernando && key != targetKey) {
+        await prefs.setString(targetKey, raw);
+      }
+
+      if (!isLegacyOrSanFernando && key == targetKey) {
+        await prefs.setString(
+          targetKey,
+          jsonEncode(decoded.map((p) => p.toMap()).toList()),
+        );
+      }
+
+      return decoded;
     }
 
-    if (_isSanFernandoInstitution(institutionId)) {
+    if (isLegacyOrSanFernando) {
       return RosterRepository.rosterForCategory(
         categoria: categoria,
         temporada: temporada,
@@ -920,9 +976,16 @@ class RosterStorage {
       institutionId: institutionId,
     );
 
+    final filteredPlayers = players.where((player) {
+      return _playerBelongsToInstitution(
+        player: player,
+        institutionId: institutionId,
+      );
+    }).toList();
+
     await prefs.setString(
       key,
-      jsonEncode(players.map((p) => p.toMap()).toList()),
+      jsonEncode(filteredPlayers.map((p) => p.toMap()).toList()),
     );
   }
 
@@ -939,6 +1002,40 @@ class RosterStorage {
       institutionId: institutionId,
     );
 
+    final isLegacyOrSanFernando = _isLegacyOrSanFernandoInstitution(
+      institutionId,
+    );
+
+    final existingRaw = prefs.getString(targetKey);
+
+    if (existingRaw != null &&
+        existingRaw.trim().isNotEmpty &&
+        existingRaw.trim() != 'null') {
+      final decoded = _decodeRoster(
+        existingRaw,
+        includeStaff: true,
+        institutionId: institutionId,
+      );
+
+      if (decoded.isNotEmpty) {
+        if (!isLegacyOrSanFernando) {
+          await prefs.setString(
+            targetKey,
+            jsonEncode(decoded.map((p) => p.toMap()).toList()),
+          );
+        }
+
+        return;
+      }
+
+      if (!isLegacyOrSanFernando) {
+        await prefs.setString(targetKey, jsonEncode(const []));
+        return;
+      }
+    }
+
+    if (!isLegacyOrSanFernando) return;
+
     for (final key in _candidateKeys(
       categoria: categoria,
       temporada: temporada,
@@ -950,17 +1047,20 @@ class RosterStorage {
         continue;
       }
 
-      final decoded = _decodeRoster(raw, includeStaff: true);
+      final decoded = _decodeRoster(
+        raw,
+        includeStaff: true,
+        institutionId: institutionId,
+      );
 
       if (decoded.isNotEmpty) {
         if (key != targetKey) {
           await prefs.setString(targetKey, raw);
         }
+
         return;
       }
     }
-
-    if (!_isSanFernandoInstitution(institutionId)) return;
 
     final roster = RosterRepository.rosterForCategory(
       categoria: categoria,
@@ -5450,11 +5550,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     );
 
     final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
-    final legacyUpcomingMaps = await _readLegacyUpcomingMaps();
 
     final baseMaps = <Map<String, dynamic>>[];
 
-    if (FixtureRepositoryV2.normalize(widget.competencia) == 'local') {
+    if (customMaps.isEmpty &&
+        FixtureRepositoryV2.normalize(widget.competencia) == 'local') {
       final apertura = _buildAperturaBase(
         categoria: widget.categoria,
       ).map(_convertirAFixturePartido).toList();
@@ -5467,36 +5567,36 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
       baseMaps.addAll(clausura);
     }
 
+    final legacyUpcomingMaps = customMaps.isEmpty
+        ? await _readLegacyUpcomingMaps()
+        : <Map<String, dynamic>>[];
+
+    final sourceMaps = customMaps.isNotEmpty
+        ? customMaps
+        : <Map<String, dynamic>>[...baseMaps, ...legacyUpcomingMaps];
+
     final mergedByIdentity = <String, Map<String, dynamic>>{};
 
-    for (final item in baseMaps) {
+    for (final item in sourceMaps) {
       if (!_matchesCurrentContext(item)) continue;
 
-      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
-        item,
-      )] = Map<String, dynamic>.from(
-        item,
-      );
-    }
-
-    for (final item in customMaps) {
-      if (!_matchesCurrentContext(item)) continue;
-
-      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
-        item,
-      )] = Map<String, dynamic>.from(
-        item,
-      );
-    }
-
-    for (final item in legacyUpcomingMaps) {
-      if (!_matchesCurrentContext(item)) continue;
+      final normalized = <String, dynamic>{
+        ...item,
+        'temporada': item['temporada'] ?? widget.temporada,
+        'competencia': item['competencia'] ?? widget.competencia,
+        'torneo': item['torneo'] ?? widget.torneo,
+        'categoria': item['categoria'] ?? widget.categoria,
+        'institutionId': item['institutionId'] ?? widget.institutionId,
+        'equipoPropio': item['equipoPropio'] ?? _institutionName,
+        'escudoPropio': item['escudoPropio'] ?? _institutionShieldPath,
+        'estado': item['estado'] ?? 'Pendiente',
+        'estadoPartido': item['estadoPartido'] ?? 'no_iniciado',
+      };
 
       mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
-        item,
-      )] = Map<String, dynamic>.from(
-        item,
-      );
+            normalized,
+          )] =
+          normalized;
     }
 
     final todos = mergedByIdentity.values.toList();
@@ -19239,61 +19339,59 @@ class _PlantelScreenState extends State<PlantelScreen> {
                   const SizedBox(height: 18),
                   _buildCategoriaSelector(),
                   const SizedBox(height: 18),
-                  ...[
-                    _buildPlantelCard(
-                      icon: Icons.sports_handball_rounded,
-                      title: 'Jugadores',
-                      subtitle: 'Jugadores de campo de $categoriaSeleccionada',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => JugadoresCampoScreen(
-                              categoria: widget.categoriaInicial,
-                              temporada: widget.temporada,
-                              institutionId: widget.institutionId,
-                            ),
+                  _buildPlantelCard(
+                    icon: Icons.sports_handball_rounded,
+                    title: 'Jugadores',
+                    subtitle: 'Jugadores de campo de $categoriaSeleccionada',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JugadoresCampoScreen(
+                            categoria: categoriaSeleccionada,
+                            temporada: widget.temporada,
+                            institutionId: widget.institutionId,
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPlantelCard(
-                      icon: Icons.shield_rounded,
-                      title: 'Arqueros',
-                      subtitle: 'Arqueros de $categoriaSeleccionada',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ArquerosScreen(
-                              categoria: widget.categoriaInicial,
-                              temporada: widget.temporada,
-                              institutionId: widget.institutionId,
-                            ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlantelCard(
+                    icon: Icons.shield_rounded,
+                    title: 'Arqueros',
+                    subtitle: 'Arqueros de $categoriaSeleccionada',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ArquerosScreen(
+                            categoria: categoriaSeleccionada,
+                            temporada: widget.temporada,
+                            institutionId: widget.institutionId,
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPlantelCard(
-                      icon: Icons.badge_rounded,
-                      title: 'Cuerpo tecnico',
-                      subtitle: 'Estructura tecnica de $categoriaSeleccionada',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CuerpoTecnicoScreen(
-                              categoria: categoriaSeleccionada,
-                              temporada: widget.temporada,
-                              institutionId: widget.institutionId,
-                            ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlantelCard(
+                    icon: Icons.badge_rounded,
+                    title: 'Cuerpo tecnico',
+                    subtitle: 'Estructura tecnica de $categoriaSeleccionada',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CuerpoTecnicoScreen(
+                            categoria: categoriaSeleccionada,
+                            temporada: widget.temporada,
+                            institutionId: widget.institutionId,
                           ),
-                        );
-                      },
-                    ),
-                  ],
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -19306,50 +19404,19 @@ class _PlantelScreenState extends State<PlantelScreen> {
   Widget _buildEmptyContextState() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1722).withOpacity(0.88),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.04)),
       ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.groups_2_outlined,
-            color: Color(0xFF8FA3BF),
-            size: 36,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'No hay plantel cargado para este contexto',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${widget.temporada} · ${widget.competencia} · ${widget.torneo} · $categoriaSeleccionada',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFAAB4C3),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'La edición de planteles por competencia/torneo se migrará en el próximo paso, sin tocar la convocatoria del partido.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF8FA3BF),
-              fontSize: 12,
-              height: 1.35,
-            ),
-          ),
-        ],
+      child: const Text(
+        'Seleccioná una institución, temporada y categoría desde el inicio.',
+        style: TextStyle(
+          color: Color(0xFFAAB4C3),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
