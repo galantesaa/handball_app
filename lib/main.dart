@@ -5221,63 +5221,192 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   List<Map<String, dynamic>> _buildAperturaBase({required String categoria}) {
-    final equipoPropio = _institutionName;
-    final escudoPropio = _institutionShieldPath;
+  final equipoPropio = _institutionName;
+  final escudoPropio = _institutionShieldPath;
 
-    return [
-      {
-        'fechaNumero': 1,
-        'fecha': '21/03',
-        'hora': '13:00',
-        'local': 'Municipalidad de Vicente Lopez',
-        'visitante': equipoPropio,
-        'equipoPropio': equipoPropio,
-        'escudoPropio': escudoPropio,
-        'torneo': 'Apertura',
-        'categoria': categoria,
-        'institutionId': widget.institutionId,
-      },
-
-      {
-        'fechaNumero': 2,
-        'fecha': '28/03',
-        'hora': '13:00',
-        'local': equipoPropio,
-        'visitante': 'Colegio Ward',
-        'equipoPropio': equipoPropio,
-        'escudoPropio': escudoPropio,
-        'torneo': 'Apertura',
-        'categoria': categoria,
-        'institutionId': widget.institutionId,
-      },
-
-      {
-        'fechaNumero': 3,
-        'fecha': '11/04',
-        'hora': '13:00',
-        'local': 'S.A.G. Villa Ballester',
-        'visitante': equipoPropio,
-        'equipoPropio': equipoPropio,
-        'escudoPropio': escudoPropio,
-        'torneo': 'Apertura',
-        'categoria': categoria,
-        'institutionId': widget.institutionId,
-      },
-
-      {
-        'fechaNumero': 4,
-        'fecha': '18/04',
-        'hora': '13:00',
-        'local': equipoPropio,
-        'visitante': 'Argentinos Juniors',
-        'equipoPropio': equipoPropio,
-        'escudoPropio': escudoPropio,
-        'torneo': 'Apertura',
-        'categoria': categoria,
-        'institutionId': widget.institutionId,
-      },
-    ];
-  }
+  return [
+    {
+      'fechaNumero': 1,
+      'fecha': '21/03',
+      'hora': '13:00',
+      'local': 'Municipalidad de Vicente Lopez',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 2,
+      'fecha': '28/03',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'Colegio Ward',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 3,
+      'fecha': '11/04',
+      'hora': '13:00',
+      'local': 'S.A.G. Villa Ballester',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 4,
+      'fecha': '18/04',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'Argentinos Juniors',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 5,
+      'fecha': '25/04',
+      'hora': '13:00',
+      'local': 'Ferro Carril Oeste',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 6,
+      'fecha': '02/05',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'C.A. Velez Sarsfield',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 7,
+      'fecha': '09/05',
+      'hora': '13:00',
+      'local': 'Campana Boat Club',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 8,
+      'fecha': '16/05',
+      'hora': '13:00',
+      'local': 'S.A.G.A.B.',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 9,
+      'fecha': '23/05',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'C.A. River Plate',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 10,
+      'fecha': '30/05',
+      'hora': '13:00',
+      'local': 'Dorrego Handball',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 11,
+      'fecha': '06/06',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'Estudiantes de La Plata',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 12,
+      'fecha': '20/06',
+      'hora': '13:00',
+      'local': 'S.E.D.A.L.O.',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 13,
+      'fecha': '27/06',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'C.A. Lanus',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 14,
+      'fecha': '04/07',
+      'hora': '13:00',
+      'local': 'Nuestra Senora de Luján',
+      'visitante': equipoPropio,
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+    {
+      'fechaNumero': 15,
+      'fecha': '11/07',
+      'hora': '13:00',
+      'local': equipoPropio,
+      'visitante': 'A.A.C.F. Quilmes',
+      'equipoPropio': equipoPropio,
+      'escudoPropio': escudoPropio,
+      'torneo': 'Apertura',
+      'categoria': categoria,
+      'institutionId': widget.institutionId,
+    },
+  ];
+}
 
   List<Map<String, dynamic>> _buildClausuraBase({required String categoria}) {
     final apertura = _buildAperturaBase(categoria: categoria);
@@ -23102,21 +23231,63 @@ String _rewriteSerializedShieldPaths(
 }) {
   if (restoredShieldPaths.isEmpty) return raw;
 
+  bool isPortableRelativePath(String value) {
+    final normalized = _normalizeFileSystemPath(value).toLowerCase();
+
+    return normalized.startsWith('institution_shields/') ||
+        normalized.startsWith('team_shields/');
+  }
+
+  bool isAbsoluteOrMalformedShieldPath(String value) {
+    final normalized = _normalizeFileSystemPath(value).toLowerCase();
+
+    final containsShieldFolder = normalized.contains('/institution_shields/') ||
+        normalized.contains('/team_shields/');
+
+    if (!containsShieldFolder) return false;
+
+    return normalized.startsWith('/') ||
+        RegExp(r'^[a-z]:/').hasMatch(normalized);
+  }
+
   var result = raw;
 
-  final entries = restoredShieldPaths.entries.toList()
+  final entries = restoredShieldPaths.entries
+      .where((entry) {
+        final key = _normalizeFileSystemPath(entry.key);
+        final value = _normalizeFileSystemPath(entry.value);
+
+        if (key.isEmpty || value.isEmpty) return false;
+        if (key == value) return false;
+
+        return isPortableRelativePath(key) ||
+            isAbsoluteOrMalformedShieldPath(key);
+      })
+      .toList()
     ..sort((a, b) => b.key.length.compareTo(a.key.length));
 
   for (final entry in entries) {
     final from = _normalizeFileSystemPath(entry.key);
     final to = _normalizeFileSystemPath(entry.value);
 
-    if (from.isEmpty || to.isEmpty) continue;
+    if (isAbsoluteOrMalformedShieldPath(from)) {
+      result = result.replaceAll(from, to);
 
-    result = result.replaceAll(from, to);
+      final escapedFrom = from.replaceAll('/', r'\/');
+      final escapedTo = to.replaceAll('/', r'\/');
 
-    final escapedFrom = from.replaceAll('/', r'\/');
-    result = result.replaceAll(escapedFrom, to.replaceAll('/', r'\/'));
+      result = result.replaceAll(escapedFrom, escapedTo);
+      continue;
+    }
+
+    if (isPortableRelativePath(from)) {
+      result = result.replaceAll('"$from"', '"$to"');
+
+      final escapedFrom = from.replaceAll('/', r'\/');
+      final escapedTo = to.replaceAll('/', r'\/');
+
+      result = result.replaceAll('"$escapedFrom"', '"$escapedTo"');
+    }
   }
 
   return result;
@@ -23271,8 +23442,43 @@ Map<String, dynamic> _readBackupManifestFromArchive(Archive archive) {
 Future<Map<String, String>> _restoreShieldFilesFromArchive(
   Archive archive,
 ) async {
+  String ownerPrefixFromFileName(String fileName) {
+    final normalized = fileName.trim().toLowerCase();
+
+    final withoutExtension = normalized.replaceAll(
+      RegExp(r'\.(png|jpg|jpeg|webp)$', caseSensitive: false),
+      '',
+    );
+
+    return withoutExtension.replaceAll(RegExp(r'_\d+$'), '');
+  }
+
+  String? aliasKeyForPath(String path) {
+    final archivePath = _archivePathForShieldFile(path);
+    final resolvedPath = archivePath ?? _normalizeArchivePath(path);
+
+    final directoryName =
+        _portableDirectoryFromArchivePath(resolvedPath) ??
+        _portableDirectoryNameFromPath(resolvedPath);
+
+    if (directoryName == null) return null;
+
+    final fileName = _fileNameFromPath(resolvedPath);
+
+    if (!_isSafeBackupImageFileName(fileName)) return null;
+
+    final ownerPrefix = ownerPrefixFromFileName(fileName);
+
+    if (ownerPrefix.isEmpty) return null;
+
+    return '$directoryName/$ownerPrefix';
+  }
+
   final appDirectory = await getApplicationDocumentsDirectory();
+
   final restoredPaths = <String, String>{};
+  final restoredByAlias = <String, String>{};
+  final restoredByArchivePath = <String, String>{};
 
   for (final file in archive.files) {
     if (!file.isFile) continue;
@@ -23302,8 +23508,17 @@ Future<Map<String, String>> _restoreShieldFilesFromArchive(
 
     final restoredAbsolutePath = _normalizeFileSystemPath(targetFile.path);
 
+    restoredByArchivePath[archivePath] = restoredAbsolutePath;
+
+    // Solo sirve para valores JSON relativos completos.
+    // _rewriteSerializedShieldPaths ahora evita reemplazar este tramo dentro
+    // de un path absoluto viejo.
     restoredPaths[archivePath] = restoredAbsolutePath;
-    restoredPaths[fileName] = restoredAbsolutePath;
+
+    final aliasKey = aliasKeyForPath(archivePath);
+    if (aliasKey != null && !restoredByAlias.containsKey(aliasKey)) {
+      restoredByAlias[aliasKey] = restoredAbsolutePath;
+    }
   }
 
   final manifest = _readBackupManifestFromArchive(archive);
@@ -23314,11 +23529,12 @@ Future<Map<String, String>> _restoreShieldFilesFromArchive(
       if (item is! Map) continue;
 
       final map = Map<String, dynamic>.from(item);
+
       final archivePath = _normalizeArchivePath(
         (map['archivePath'] ?? '').toString(),
       );
 
-      final restoredAbsolutePath = restoredPaths[archivePath];
+      final restoredAbsolutePath = restoredByArchivePath[archivePath];
 
       if (restoredAbsolutePath == null || restoredAbsolutePath.isEmpty) {
         continue;
@@ -23334,6 +23550,48 @@ Future<Map<String, String>> _restoreShieldFilesFromArchive(
 
           restoredPaths[cleanOriginal] = restoredAbsolutePath;
         }
+      }
+
+      final aliasKey = aliasKeyForPath(archivePath);
+      if (aliasKey != null && !restoredByAlias.containsKey(aliasKey)) {
+        restoredByAlias[aliasKey] = restoredAbsolutePath;
+      }
+    }
+  }
+
+  final missingFiles = manifest['missingFiles'];
+
+  if (missingFiles is List) {
+    for (final item in missingFiles) {
+      if (item is! Map) continue;
+
+      final map = Map<String, dynamic>.from(item);
+
+      final missingPath = _normalizeFileSystemPath(
+        (map['path'] ?? '').toString(),
+      );
+
+      final missingArchivePath = _normalizeArchivePath(
+        (map['archivePath'] ?? '').toString(),
+      );
+
+      final aliasFromPath = aliasKeyForPath(missingPath);
+      final aliasFromArchivePath = aliasKeyForPath(missingArchivePath);
+
+      final fallbackPath =
+          (aliasFromPath == null ? null : restoredByAlias[aliasFromPath]) ??
+          (aliasFromArchivePath == null
+              ? null
+              : restoredByAlias[aliasFromArchivePath]);
+
+      if (fallbackPath == null || fallbackPath.isEmpty) continue;
+
+      if (missingPath.isNotEmpty) {
+        restoredPaths[missingPath] = fallbackPath;
+      }
+
+      if (missingArchivePath.isNotEmpty) {
+        restoredPaths[missingArchivePath] = fallbackPath;
       }
     }
   }
