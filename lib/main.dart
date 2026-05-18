@@ -18170,6 +18170,38 @@ class _HistorialScreenState extends State<HistorialScreen> {
     return rivalShieldAssetGlobal(rival);
   }
 
+String? _cleanNullableString(dynamic value) {
+  final text = (value ?? '').toString().trim();
+
+  if (text.isEmpty || text.toLowerCase() == 'null') {
+    return null;
+  }
+
+  return text;
+}
+
+String? _resolveRivalShieldForHistorial({
+  required Map<String, dynamic> partido,
+  required String rival,
+  required bool somosLocales,
+}) {
+  final directRival = _cleanNullableString(partido['escudoRival']);
+  if (directRival != null) return directRival;
+
+  final escudoLocal = _cleanNullableString(partido['escudoLocal']);
+  final escudoVisitante = _cleanNullableString(partido['escudoVisitante']);
+
+  final bySide = somosLocales ? escudoVisitante : escudoLocal;
+  if (bySide != null) return bySide;
+
+  return _rivalShieldAsset(rival);
+}
+
+String? _resolveOwnShieldForHistorial(Map<String, dynamic> partido) {
+  return _cleanNullableString(widget.institutionShieldPath) ??
+      _cleanNullableString(partido['escudoPropio']);
+}
+
   Widget _buildContextPathLabel() {
     final path = [
       widget.temporada,
@@ -18279,56 +18311,57 @@ class _HistorialScreenState extends State<HistorialScreen> {
                           itemCount: _filtrados.length,
                           itemBuilder: (context, index) {
                             final partido = _filtrados[index];
-                            final rival = fixTextoRoto(
-                              partido['rival'] ?? 'Rival',
-                            );
-                            final escudo = _rivalShieldAsset(rival);
 
-                            final condicion = (partido['condicion'] ?? '')
-                                .toString()
-                                .trim();
-                            final somosLocales =
-                                condicion.toLowerCase() == 'local';
+final rival = fixTextoRoto(
+  partido['rival'] ?? 'Rival',
+);
 
-                            final equipoPropio =
-                                widget.institutionName.trim().isEmpty
-                                ? (partido['equipoPropio'] ?? 'Institución')
-                                      .toString()
-                                : widget.institutionName.trim();
+final condicion = (partido['condicion'] ?? '').toString().trim();
+final somosLocales = condicion.toLowerCase() == 'local';
 
-                            final escudoPropio =
-                                widget.institutionShieldPath ??
-                                partido['escudoPropio']?.toString();
+final equipoPropio = widget.institutionName.trim().isEmpty
+    ? (partido['equipoPropio'] ?? 'Institución').toString()
+    : widget.institutionName.trim();
 
-                            final match = MatchModel.fromMap(
-                              {
-                                ...partido,
-                                'institutionId':
-                                    partido['institutionId'] ??
-                                    widget.institutionId,
-                                'equipoPropio': equipoPropio,
-                                'escudoPropio': escudoPropio,
-                                'equipoLocal': somosLocales
-                                    ? equipoPropio
-                                    : rival,
-                                'equipoVisitante': somosLocales
-                                    ? rival
-                                    : equipoPropio,
-                                'escudoLocal': somosLocales
-                                    ? escudoPropio
-                                    : escudo,
-                                'escudoVisitante': somosLocales
-                                    ? escudo
-                                    : escudoPropio,
-                                'rival': rival,
-                                'escudoRival': escudo,
-                                'estado': 'Finalizado',
-                                'estadoPartido': 'finalizado',
-                                'finalizado': true,
-                              },
-                              finalizadoOverride: true,
-                              escudoRivalOverride: escudo,
-                            );
+final escudoPropio = _resolveOwnShieldForHistorial(partido);
+
+final escudoRival = _resolveRivalShieldForHistorial(
+  partido: partido,
+  rival: rival,
+  somosLocales: somosLocales,
+);
+
+final equipoLocal = _cleanNullableString(partido['equipoLocal']) ??
+    (somosLocales ? equipoPropio : rival);
+
+final equipoVisitante = _cleanNullableString(partido['equipoVisitante']) ??
+    (somosLocales ? rival : equipoPropio);
+
+final escudoLocal = _cleanNullableString(partido['escudoLocal']) ??
+    (somosLocales ? escudoPropio : escudoRival);
+
+final escudoVisitante = _cleanNullableString(partido['escudoVisitante']) ??
+    (somosLocales ? escudoRival : escudoPropio);
+
+final match = MatchModel.fromMap(
+  {
+    ...partido,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+    'equipoPropio': equipoPropio,
+    'escudoPropio': escudoPropio,
+    'equipoLocal': equipoLocal,
+    'equipoVisitante': equipoVisitante,
+    'escudoLocal': escudoLocal,
+    'escudoVisitante': escudoVisitante,
+    'rival': rival,
+    'escudoRival': escudoRival,
+    'estado': 'Finalizado',
+    'estadoPartido': 'finalizado',
+    'finalizado': true,
+  },
+  finalizadoOverride: true,
+  escudoRivalOverride: escudoRival,
+);
 
                             return MatchCardPro(
                               match: match,
