@@ -5822,19 +5822,183 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _eliminarPartidosDePrueba() async {
-    // Método legacy desactivado.
-    // No debe escribir proximo_partido_*, siguientes_* ni finalizados_*.
-    await _loadEstadoRealV2();
-    await _loadFixtureState();
+  final prefs = await SharedPreferences.getInstance();
 
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Limpieza legacy desactivada. No se modificaron datos.'),
-      ),
-    );
+  String normalizeInstitution(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
   }
+
+  bool isSanFernandoOrLegacyInstitution(dynamic value) {
+    final id = normalizeInstitution(value);
+
+    return id.isEmpty ||
+        id == 'legacy_institution' ||
+        id == 'san_fernando' ||
+        id == 'san_fernando_handball';
+  }
+
+  bool isRealMatch(Map<String, dynamic> map) {
+    final partidoInterno = Map<String, dynamic>.from(
+      (map['partido'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{},
+    );
+
+    return map['isReal'] == true ||
+        map['esPartidoReal'] == true ||
+        partidoInterno['isReal'] == true ||
+        partidoInterno['esPartidoReal'] == true;
+  }
+
+  bool belongsToActiveInstitution(Map<String, dynamic> map) {
+    final activeInstitutionId = normalizeInstitution(widget.institutionId);
+
+    // Seguridad: si no hay institución activa, no se elimina nada.
+    if (activeInstitutionId.isEmpty) return false;
+
+    final partidoInterno = Map<String, dynamic>.from(
+      (map['partido'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{},
+    );
+
+    final outerInstitutionId = normalizeInstitution(map['institutionId']);
+    final innerInstitutionId = normalizeInstitution(
+      partidoInterno['institutionId'],
+    );
+
+    final candidates = <String>{
+      if (outerInstitutionId.isNotEmpty) outerInstitutionId,
+      if (innerInstitutionId.isNotEmpty) innerInstitutionId,
+    };
+
+    final activeIsSanFernando =
+        activeInstitutionId == 'san_fernando' ||
+        activeInstitutionId == 'san_fernando_handball' ||
+        activeInstitutionId == 'legacy_institution';
+
+    if (activeIsSanFernando) {
+      if (candidates.isEmpty) return true;
+
+      return candidates.any(isSanFernandoOrLegacyInstitution);
+    }
+
+    // Institución nueva: exige match exacto.
+    // Legacy vacío nunca entra acá.
+    return candidates.contains(activeInstitutionId);
+  }
+
+  int eliminados = 0;
+  int conservadosOtraInstitucion = 0;
+  int conservadosRealesInstitucionActiva = 0;
+
+  final rawFinished = prefs.getString(_finishedMatchesStorageKey);
+
+  if (rawFinished != null &&
+      rawFinished.trim().isNotEmpty &&
+      rawFinished.trim() != 'null') {
+    final decodedRaw = jsonDecode(rawFinished);
+
+    if (decodedRaw is List) {
+      final updatedHistory = <dynamic>[];
+
+      for (final item in decodedRaw) {
+        if (item is! Map) {
+          updatedHistory.add(item);
+          continue;
+        }
+
+        final map = Map<String, dynamic>.from(item);
+
+        final belongsToActive = belongsToActiveInstitution(map);
+        final real = isRealMatch(map);
+
+        if (!belongsToActive) {
+          updatedHistory.add(map);
+          conservadosOtraInstitucion++;
+          continue;
+        }
+
+        if (real) {
+          updatedHistory.add(map);
+          conservadosRealesInstitucionActiva++;
+          continue;
+        }
+
+        eliminados++;
+      }
+
+      await prefs.setString(
+        _finishedMatchesStorageKey,
+        jsonEncode(updatedHistory),
+      );
+    }
+  }
+
+  await prefs.remove(_partidosFinalizadosStorageKey);
+
+  if (!mounted) return;
+
+  await _loadEstadoRealV2();
+  await _loadFixtureState();
+
+  if (!mounted) return;
+
+  setState(() {
+    _recalcularProximoYSiguientesDesdeBase();
+  });
+
+  if (hayPartido && proximoPartido.isNotEmpty) {
+    await prefs.setString(
+      _proximoPartidoStorageKey,
+      jsonEncode(proximoPartido),
+    );
+  } else {
+    await prefs.remove(_proximoPartidoStorageKey);
+  }
+
+  await prefs.setString(
+    _siguientesPartidosStorageKey,
+    jsonEncode(siguientesPartidos),
+  );
+
+  await prefs.setString(
+    _partidosFinalizadosStorageKey,
+    jsonEncode(partidosFinalizados),
+  );
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        eliminados == 1
+            ? 'Se eliminó 1 partido de prueba de $_institutionTitle'
+            : 'Se eliminaron $eliminados partidos de prueba de $_institutionTitle',
+      ),
+    ),
+  );
+
+  debugPrint('==============================');
+  debugPrint('LIMPIEZA PARTIDOS DE PRUEBA');
+  debugPrint('Institución activa: ${widget.institutionId}');
+  debugPrint('Eliminados institución activa: $eliminados');
+  debugPrint(
+    'Conservados reales institución activa: $conservadosRealesInstitucionActiva',
+  );
+  debugPrint('Conservados de otras instituciones: $conservadosOtraInstitucion');
+  debugPrint('==============================');
+}
 
   Future<void> _confirmarEliminarPartidosDePrueba() async {
     final confirmar = await showDialog<bool>(
@@ -5845,10 +6009,11 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
           'Eliminar partidos de prueba',
           style: TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'Se van a borrar solo los partidos que no esten marcados como reales. Los partidos finalizados reales se conservarán.',
-          style: TextStyle(color: Colors.white70),
-        ),
+        content: Text(
+  'Se van a borrar solo los partidos de prueba de $_institutionTitle. '
+  'Los partidos reales y los partidos de otras instituciones se conservarán.',
+  style: const TextStyle(color: Colors.white70),
+),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -6150,83 +6315,159 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   if (!mounted) return;
 
-  final creadoMap = result.toMap();
+  final repositoryFixtures = await _fixtureRepository.readFixturesFlexible(
+    temporada: widget.temporada,
+    competencia: widget.competencia,
+    torneo: widget.torneo,
+    categoria: widget.categoria,
+    institutionId: widget.institutionId,
+  );
+
+  if (!mounted) return;
+
+  final createdIdentity = FixtureRepositoryV2.buildStableFixtureIdentity(
+    result,
+  );
+
+  PartidoModel? persistedCreated;
+
+  for (final item in repositoryFixtures) {
+    if (FixtureRepositoryV2.buildStableFixtureIdentity(item) ==
+        createdIdentity) {
+      persistedCreated = item;
+      break;
+    }
+  }
+
+  final createdMap = Map<String, dynamic>.from(
+    (persistedCreated ?? result).toMap(),
+  );
 
   final partidoCreadoVisible = <String, dynamic>{
-    ...creadoMap,
-    'temporada': creadoMap['temporada'] ?? widget.temporada,
-    'competencia': creadoMap['competencia'] ?? widget.competencia,
-    'torneo': creadoMap['torneo'] ?? widget.torneo,
-    'categoria': creadoMap['categoria'] ?? widget.categoria,
-    'institutionId': creadoMap['institutionId'] ?? widget.institutionId,
-    'equipoPropio': creadoMap['equipoPropio'] ?? _institutionName,
-    'escudoPropio': creadoMap['escudoPropio'] ?? _institutionShieldPath,
+    ...createdMap,
+    'temporada': createdMap['temporada'] ?? widget.temporada,
+    'competencia': createdMap['competencia'] ?? widget.competencia,
+    'torneo': createdMap['torneo'] ?? widget.torneo,
+    'categoria': createdMap['categoria'] ?? widget.categoria,
+    'institutionId': createdMap['institutionId'] ?? widget.institutionId,
+    'equipoPropio': createdMap['equipoPropio'] ?? _institutionName,
+    'escudoPropio': createdMap['escudoPropio'] ?? _institutionShieldPath,
     'estado': 'Pendiente',
     'estadoPartido': 'no_iniciado',
   };
 
-  if (_matchesCurrentContext(partidoCreadoVisible) &&
-      _esPartidoValido(partidoCreadoVisible) &&
-      !_estaFinalizadoGlobal(partidoCreadoVisible)) {
-    setState(() {
-      if (_esPartidoValido(proximoPartido)) {
-        final alreadyInNext = siguientesPartidos.any((p) {
-          return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-                ...p,
-                'institutionId': p['institutionId'] ?? widget.institutionId,
-                'temporada': p['temporada'] ?? widget.temporada,
-                'competencia': p['competencia'] ?? widget.competencia,
-                'torneo': p['torneo'] ?? widget.torneo,
-                'categoria': p['categoria'] ?? widget.categoria,
-              }) ==
-              FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-                ...proximoPartido,
-                'institutionId':
-                    proximoPartido['institutionId'] ?? widget.institutionId,
-                'temporada': proximoPartido['temporada'] ?? widget.temporada,
-                'competencia':
-                    proximoPartido['competencia'] ?? widget.competencia,
-                'torneo': proximoPartido['torneo'] ?? widget.torneo,
-                'categoria': proximoPartido['categoria'] ?? widget.categoria,
-              });
-        });
-
-        if (!alreadyInNext) {
-          siguientesPartidos.insert(0, Map<String, dynamic>.from(proximoPartido));
-        }
-      }
-
-      proximoPartido = Map<String, dynamic>.from(partidoCreadoVisible);
-
-      siguientesPartidos = siguientesPartidos.where((p) {
-        final idA = FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-          ...p,
-          'institutionId': p['institutionId'] ?? widget.institutionId,
-          'temporada': p['temporada'] ?? widget.temporada,
-          'competencia': p['competencia'] ?? widget.competencia,
-          'torneo': p['torneo'] ?? widget.torneo,
-          'categoria': p['categoria'] ?? widget.categoria,
-        });
-
-        final idB = FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-          ...partidoCreadoVisible,
-          'institutionId':
-              partidoCreadoVisible['institutionId'] ?? widget.institutionId,
-          'temporada': partidoCreadoVisible['temporada'] ?? widget.temporada,
-          'competencia':
-              partidoCreadoVisible['competencia'] ?? widget.competencia,
-          'torneo': partidoCreadoVisible['torneo'] ?? widget.torneo,
-          'categoria': partidoCreadoVisible['categoria'] ?? widget.categoria,
-        });
-
-        return idA != idB;
-      }).map((p) {
-        return Map<String, dynamic>.from(p);
-      }).toList();
-
-      hayPartido = true;
-    });
+  if (!_matchesCurrentContext(partidoCreadoVisible) ||
+      !_esPartidoValido(partidoCreadoVisible)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'El partido se guardó, pero no coincide con el contexto actual.',
+        ),
+      ),
+    );
+    return;
   }
+
+  final createdMapIdentity = FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+    partidoCreadoVisible,
+  );
+
+  int fechaNumeroOf(Map<String, dynamic> source) {
+    final raw = source['fechaNumero'];
+
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+
+    return int.tryParse((raw ?? '').toString()) ?? 999999;
+  }
+
+  int compareNaturalFixtureOrder(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    final byFechaNumero = fechaNumeroOf(a).compareTo(fechaNumeroOf(b));
+    if (byFechaNumero != 0) return byFechaNumero;
+
+    final byFecha = (a['fecha'] ?? '').toString().compareTo(
+          (b['fecha'] ?? '').toString(),
+        );
+    if (byFecha != 0) return byFecha;
+
+    final byHora = (a['hora'] ?? '').toString().compareTo(
+          (b['hora'] ?? '').toString(),
+        );
+    if (byHora != 0) return byHora;
+
+    return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+          (b['rival'] ?? '').toString().toLowerCase(),
+        );
+  }
+
+  setState(() {
+    final candidates = <Map<String, dynamic>>[];
+
+    if (_esPartidoValido(proximoPartido)) {
+      candidates.add(Map<String, dynamic>.from(proximoPartido));
+    }
+
+    for (final item in siguientesPartidos) {
+      if (_esPartidoValido(item)) {
+        candidates.add(Map<String, dynamic>.from(item));
+      }
+    }
+
+    for (final fixture in repositoryFixtures) {
+      final map = <String, dynamic>{
+        ...fixture.toMap(),
+        'temporada': fixture.temporada,
+        'competencia': fixture.competencia,
+        'torneo': fixture.torneo,
+        'categoria': fixture.categoria,
+        'institutionId': fixture.institutionId ?? widget.institutionId,
+        'equipoPropio': fixture.equipoPropio ?? _institutionName,
+        'escudoPropio': fixture.escudoPropio ?? _institutionShieldPath,
+        'estado': fixture.estado,
+        'estadoPartido': fixture.estadoPartido,
+      };
+
+      if (_matchesCurrentContext(map) &&
+          _esPartidoValido(map) &&
+          !_estaFinalizadoGlobal(map)) {
+        candidates.add(map);
+      }
+    }
+
+    final uniqueByIdentity = <String, Map<String, dynamic>>{};
+
+    for (final candidate in candidates) {
+      final identity = FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+        ...candidate,
+        'temporada': candidate['temporada'] ?? widget.temporada,
+        'competencia': candidate['competencia'] ?? widget.competencia,
+        'torneo': candidate['torneo'] ?? widget.torneo,
+        'categoria': candidate['categoria'] ?? widget.categoria,
+        'institutionId': candidate['institutionId'] ?? widget.institutionId,
+      }).trim();
+
+      if (identity.isEmpty || identity == 'null') continue;
+      if (identity == createdMapIdentity) continue;
+
+      uniqueByIdentity[identity] = Map<String, dynamic>.from(candidate);
+    }
+
+    final orderedRemaining = uniqueByIdentity.values
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList()
+      ..sort(compareNaturalFixtureOrder);
+
+    proximoPartido = Map<String, dynamic>.from(partidoCreadoVisible);
+    siguientesPartidos = orderedRemaining;
+    hayPartido = true;
+  });
+
+  await _persistFixtureState();
+
+  if (!mounted) return;
 
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(content: Text('Partido creado correctamente.')),
@@ -6817,82 +7058,184 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Widget _buildUpcomingItem(Map<String, dynamic> partido) {
-    final String? escudoRival = partido['escudoRival'] as String?;
+  final String? escudoRival = partido['escudoRival'] as String?;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          final nuevosSiguientes = siguientesPartidos
-              .where((p) => p != partido)
-              .toList();
+  Map<String, dynamic> normalizeUpcomingMap(Map<String, dynamic> source) {
+    final rival = (source['rival'] ?? 'Rival').toString();
 
-          if (_esPartidoValido(proximoPartido)) {
-            final partidoActualAnterior = {
-              'rival': proximoPartido['rival'].toString(),
-              'fecha': proximoPartido['fecha'].toString(),
-              'hora': proximoPartido['hora'].toString(),
-              'condicion': proximoPartido['condicion'].toString(),
-              'torneo': proximoPartido['torneo'].toString(),
-              'categoria': proximoPartido['categoria'].toString(),
-              'fechaNumero': proximoPartido['fechaNumero'],
-              'escudoRival': proximoPartido['escudoRival'],
-            };
-            nuevosSiguientes.add(partidoActualAnterior);
-          }
-
-          proximoPartido = _crearPartidoBaseDesdeSiguiente(partido);
-
-          siguientesPartidos = nuevosSiguientes
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-        });
-
-        _persistFixtureState();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F1A2B).withOpacity(0.6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.all(6),
-              child: Center(child: _buildShieldImage(escudoRival, size: 18)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                (partido['rival'] ?? '').toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            Text(
-              '${partido['fecha']} • ${partido['hora']}',
-              style: const TextStyle(color: Color(0xFFAAB4C3), fontSize: 12),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              (partido['condicion'] ?? '').toString(),
-              style: const TextStyle(color: Color(0xFF4DA3FF), fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
+    return {
+      ...source,
+      'temporada': (source['temporada'] ?? widget.temporada).toString(),
+      'competencia': (source['competencia'] ?? widget.competencia).toString(),
+      'institutionId': source['institutionId'] ?? widget.institutionId,
+      'equipoPropio': source['equipoPropio'] ?? _institutionName,
+      'escudoPropio': source['escudoPropio'] ?? _institutionShieldPath,
+      'rival': rival,
+      'fechaNumero': source['fechaNumero'],
+      'fecha': (source['fecha'] ?? '').toString(),
+      'hora': (source['hora'] ?? '').toString(),
+      'condicion': (source['condicion'] ?? 'Local').toString(),
+      'torneo': (source['torneo'] ?? widget.torneo).toString(),
+      'categoria': (source['categoria'] ?? widget.categoria).toString(),
+      'estado': source['estado'] ?? 'Pendiente',
+      'estadoPartido': source['estadoPartido'] ?? 'no_iniciado',
+      'escudoRival': source['escudoRival'] ?? _rivalShieldAssetByName(rival),
+      'equipoLocal': source['equipoLocal'],
+      'equipoVisitante': source['equipoVisitante'],
+      'escudoLocal': source['escudoLocal'],
+      'escudoVisitante': source['escudoVisitante'],
+    };
   }
+
+  String stableIdentity(Map<String, dynamic> source) {
+    final normalized = normalizeUpcomingMap(source);
+
+    final id = FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+      normalized,
+    ).trim();
+
+    if (id.isNotEmpty && id != 'null') return id;
+
+    return [
+      normalized['institutionId'] ?? widget.institutionId ?? '',
+      normalized['temporada'] ?? widget.temporada,
+      normalized['competencia'] ?? widget.competencia,
+      normalized['torneo'] ?? widget.torneo,
+      normalized['categoria'] ?? widget.categoria,
+      normalized['fecha'] ?? '',
+      normalized['hora'] ?? '',
+      normalized['rival'] ?? '',
+      normalized['condicion'] ?? '',
+    ].map((e) => e.toString().trim().toLowerCase()).join('|');
+  }
+
+  int fechaNumeroOf(Map<String, dynamic> source) {
+    final raw = source['fechaNumero'];
+
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+
+    return int.tryParse((raw ?? '').toString()) ?? 999999;
+  }
+
+  int compareNaturalFixtureOrder(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    final byFechaNumero = fechaNumeroOf(a).compareTo(fechaNumeroOf(b));
+    if (byFechaNumero != 0) return byFechaNumero;
+
+    final byFecha = (a['fecha'] ?? '').toString().compareTo(
+          (b['fecha'] ?? '').toString(),
+        );
+    if (byFecha != 0) return byFecha;
+
+    final byHora = (a['hora'] ?? '').toString().compareTo(
+          (b['hora'] ?? '').toString(),
+        );
+    if (byHora != 0) return byHora;
+
+    return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+          (b['rival'] ?? '').toString().toLowerCase(),
+        );
+  }
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        final selected = normalizeUpcomingMap(
+          Map<String, dynamic>.from(partido),
+        );
+
+        final selectedId = stableIdentity(selected);
+
+        final allCandidates = <Map<String, dynamic>>[];
+
+        if (_esPartidoValido(proximoPartido)) {
+          allCandidates.add(
+            normalizeUpcomingMap(Map<String, dynamic>.from(proximoPartido)),
+          );
+        }
+
+        for (final item in siguientesPartidos) {
+          if (!_esPartidoValido(item)) continue;
+
+          allCandidates.add(
+            normalizeUpcomingMap(Map<String, dynamic>.from(item)),
+          );
+        }
+
+        final uniqueById = <String, Map<String, dynamic>>{};
+
+        for (final item in allCandidates) {
+          final id = stableIdentity(item);
+
+          if (id.isEmpty || id == 'null') continue;
+
+          uniqueById[id] = item;
+        }
+
+        uniqueById[selectedId] = selected;
+
+        final remaining = uniqueById.entries
+            .where((entry) => entry.key != selectedId)
+            .map((entry) => Map<String, dynamic>.from(entry.value))
+            .where((item) => _esPartidoValido(item))
+            .toList()
+          ..sort(compareNaturalFixtureOrder);
+
+        proximoPartido = _crearPartidoBaseDesdeSiguiente(selected);
+        siguientesPartidos = remaining;
+        hayPartido = _esPartidoValido(proximoPartido);
+      });
+
+      _persistFixtureState();
+    },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A2B).withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            padding: const EdgeInsets.all(6),
+            child: Center(child: _buildShieldImage(escudoRival, size: 18)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              (partido['rival'] ?? 'Rival').toString(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFDCE4EF),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            '${partido['fecha'] ?? '-'} · ${partido['hora'] ?? '-'}',
+            style: const TextStyle(
+              color: Color(0xFF8FA3BF),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildTeamBadge({String? assetPath}) {
     return Container(

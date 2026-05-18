@@ -44,16 +44,38 @@ class FixtureRepositoryV2 {
   }
 
   static String buildStableFixtureIdentity(PartidoModel partido) {
+  final competition = normalize(partido.competencia);
+  final tournament = normalize(partido.torneo);
+
+  final bool isLooseMatch =
+      isLooseStageAlias(competition, tournament) ||
+      isLooseStageAlias(tournament, 'partidos sueltos') ||
+      isLooseStageAlias(competition, 'amistoso');
+
+  if (isLooseMatch) {
     return [
       normalize(partido.institutionId ?? 'legacy_institution'),
       normalize(partido.temporada),
       normalize(partido.competencia),
       normalize(partido.torneo),
       normalize(partido.categoria),
+      normalize(partido.fecha),
+      normalize(partido.hora),
       normalize(partido.rival),
       normalize(partido.condicion),
     ].join('|');
   }
+
+  return [
+    normalize(partido.institutionId ?? 'legacy_institution'),
+    normalize(partido.temporada),
+    normalize(partido.competencia),
+    normalize(partido.torneo),
+    normalize(partido.categoria),
+    normalize(partido.rival),
+    normalize(partido.condicion),
+  ].join('|');
+}
 
   static String buildLegacyStableFixtureIdentityFromMap(
     Map<String, dynamic> partido,
@@ -69,6 +91,28 @@ class FixtureRepositoryV2 {
   }
 
   static String buildStableFixtureIdentityFromMap(Map<String, dynamic> partido) {
+  final competition = normalize(partido['competencia']);
+  final tournament = normalize(partido['torneo']);
+
+  final bool isLooseMatch =
+      isLooseStageAlias(competition, tournament) ||
+      isLooseStageAlias(tournament, 'partidos sueltos') ||
+      isLooseStageAlias(competition, 'amistoso');
+
+  if (isLooseMatch) {
+    return [
+      normalize(partido['institutionId'] ?? 'legacy_institution'),
+      normalize(partido['temporada']),
+      normalize(partido['competencia']),
+      normalize(partido['torneo']),
+      normalize(partido['categoria']),
+      normalize(partido['fecha']),
+      normalize(partido['hora']),
+      normalize(partido['rival']),
+      normalize(partido['condicion']),
+    ].join('|');
+  }
+
   return [
     normalize(partido['institutionId'] ?? 'legacy_institution'),
     normalize(partido['temporada']),
@@ -79,7 +123,7 @@ class FixtureRepositoryV2 {
     normalize(partido['condicion']),
   ].join('|');
 }
-  
+
   Future<List<PartidoModel>> readFixtures() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(AppStorageKeys.fixtures);
