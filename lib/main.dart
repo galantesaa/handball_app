@@ -22,6 +22,7 @@ import 'features/settings/data/settings_repository.dart';
 import 'features/matches/data/repositories/fixture_repository_v2.dart';
 import 'features/matches/presentation/screens/match_editor_screen.dart';
 import 'features/institutions/data/institution_repository.dart';
+import 'package:archive/archive_io.dart';
 
 /// ===============================
 /// PUNTO DE ENTRADA
@@ -5541,123 +5542,134 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _loadFixtureState() async {
-    final repositoryFixtures = await _fixtureRepository.readFixturesFlexible(
-      temporada: widget.temporada,
-      competencia: widget.competencia,
-      torneo: widget.torneo,
+  final repositoryFixtures = await _fixtureRepository.readFixturesFlexible(
+    temporada: widget.temporada,
+    competencia: widget.competencia,
+    torneo: widget.torneo,
+    categoria: widget.categoria,
+    institutionId: widget.institutionId,
+  );
+
+  final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
+
+  final baseMaps = <Map<String, dynamic>>[];
+
+  final normalizedCompetition = FixtureRepositoryV2.normalize(
+    widget.competencia,
+  );
+
+  final bool shouldUseLocalBaseFixture =
+      normalizedCompetition == 'local' &&
+      FixtureRepositoryV2.normalize(widget.institutionId) == 'san_fernando_handball';
+
+  if (shouldUseLocalBaseFixture) {
+    final apertura = _buildAperturaBase(
       categoria: widget.categoria,
-      institutionId: widget.institutionId,
+    ).map(_convertirAFixturePartido).toList();
+
+    final clausura = _buildClausuraBase(
+      categoria: widget.categoria,
+    ).map(_convertirAFixturePartido).toList();
+
+    baseMaps.addAll(apertura);
+    baseMaps.addAll(clausura);
+  }
+
+  final legacyUpcomingMaps =
+      customMaps.isEmpty && baseMaps.isEmpty ? await _readLegacyUpcomingMaps() : <Map<String, dynamic>>[];
+
+  final sourceMaps = <Map<String, dynamic>>[
+    ...baseMaps,
+    ...customMaps,
+    ...legacyUpcomingMaps,
+  ];
+
+  final mergedByIdentity = <String, Map<String, dynamic>>{};
+
+  for (final item in sourceMaps) {
+    final normalized = <String, dynamic>{
+      ...item,
+      'temporada': item['temporada'] ?? widget.temporada,
+      'competencia': item['competencia'] ?? widget.competencia,
+      'torneo': item['torneo'] ?? widget.torneo,
+      'categoria': item['categoria'] ?? widget.categoria,
+      'institutionId': item['institutionId'] ?? widget.institutionId,
+      'equipoPropio': item['equipoPropio'] ?? _institutionName,
+      'escudoPropio': item['escudoPropio'] ?? _institutionShieldPath,
+      'estado': item['estado'] ?? 'Pendiente',
+      'estadoPartido': item['estadoPartido'] ?? 'no_iniciado',
+    };
+
+    if (!_matchesCurrentContext(normalized)) continue;
+
+    final identity = FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+      normalized,
     );
 
-    final customMaps = repositoryFixtures.map((e) => e.toMap()).toList();
+    if (identity.trim().isEmpty || identity.trim() == 'null') continue;
 
-    final baseMaps = <Map<String, dynamic>>[];
+    mergedByIdentity[identity] = normalized;
+  }
 
-    if (customMaps.isEmpty &&
-        FixtureRepositoryV2.normalize(widget.competencia) == 'local') {
-      final apertura = _buildAperturaBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
+  final todos = mergedByIdentity.values.toList();
 
-      final clausura = _buildClausuraBase(
-        categoria: widget.categoria,
-      ).map(_convertirAFixturePartido).toList();
+  todos.sort((a, b) {
+    final fa = (a['fechaNumero'] as int?) ?? 999999;
+    final fb = (b['fechaNumero'] as int?) ?? 999999;
 
-      baseMaps.addAll(apertura);
-      baseMaps.addAll(clausura);
+    final byFecha = fa.compareTo(fb);
+    if (byFecha != 0) return byFecha;
+
+    return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+          (b['rival'] ?? '').toString().toLowerCase(),
+        );
+  });
+
+  final pendientes = todos.where((p) {
+    return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
+  }).toList();
+
+  if (!mounted) return;
+
+  setState(() {
+    _customFixturesV2 = repositoryFixtures;
+
+    if (pendientes.isEmpty) {
+      proximoPartido = {};
+      siguientesPartidos = [];
+      hayPartido = false;
+      return;
     }
 
-    final legacyUpcomingMaps = customMaps.isEmpty
-        ? await _readLegacyUpcomingMaps()
-        : <Map<String, dynamic>>[];
+    proximoPartido = Map<String, dynamic>.from(pendientes.first);
 
-    final sourceMaps = customMaps.isNotEmpty
-        ? customMaps
-        : <Map<String, dynamic>>[...baseMaps, ...legacyUpcomingMaps];
-
-    final mergedByIdentity = <String, Map<String, dynamic>>{};
-
-    for (final item in sourceMaps) {
-      if (!_matchesCurrentContext(item)) continue;
-
-      final normalized = <String, dynamic>{
-        ...item,
-        'temporada': item['temporada'] ?? widget.temporada,
-        'competencia': item['competencia'] ?? widget.competencia,
-        'torneo': item['torneo'] ?? widget.torneo,
-        'categoria': item['categoria'] ?? widget.categoria,
-        'institutionId': item['institutionId'] ?? widget.institutionId,
-        'equipoPropio': item['equipoPropio'] ?? _institutionName,
-        'escudoPropio': item['escudoPropio'] ?? _institutionShieldPath,
-        'estado': item['estado'] ?? 'Pendiente',
-        'estadoPartido': item['estadoPartido'] ?? 'no_iniciado',
+    siguientesPartidos = pendientes.skip(1).map((p) {
+      return {
+        'temporada': p['temporada'],
+        'competencia': p['competencia'],
+        'rival': p['rival'],
+        'institutionId': p['institutionId'] ?? widget.institutionId,
+        'equipoPropio': p['equipoPropio'] ?? _institutionName,
+        'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
+        'fechaNumero': p['fechaNumero'],
+        'fecha': p['fecha'],
+        'hora': p['hora'],
+        'condicion': p['condicion'],
+        'torneo': p['torneo'],
+        'categoria': p['categoria'],
+        'escudoRival': p['escudoRival'],
+        'estado': p['estado'],
+        'estadoPartido': p['estadoPartido'],
+        'equipoLocal': p['equipoLocal'],
+        'equipoVisitante': p['equipoVisitante'],
+        'escudoLocal': p['escudoLocal'],
+        'escudoVisitante': p['escudoVisitante'],
       };
-
-      mergedByIdentity[FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
-            normalized,
-          )] =
-          normalized;
-    }
-
-    final todos = mergedByIdentity.values.toList();
-
-    todos.sort((a, b) {
-      final fa = (a['fechaNumero'] as int?) ?? 999999;
-      final fb = (b['fechaNumero'] as int?) ?? 999999;
-
-      final byFecha = fa.compareTo(fb);
-      if (byFecha != 0) return byFecha;
-
-      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
-        (b['rival'] ?? '').toString().toLowerCase(),
-      );
-    });
-
-    final pendientes = todos.where((p) {
-      return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
     }).toList();
 
-    if (!mounted) return;
-
-    setState(() {
-      _customFixturesV2 = repositoryFixtures;
-
-      if (pendientes.isEmpty) {
-        proximoPartido = {};
-        siguientesPartidos = [];
-        hayPartido = false;
-        return;
-      }
-
-      proximoPartido = Map<String, dynamic>.from(pendientes.first);
-
-      siguientesPartidos = pendientes.skip(1).map((p) {
-        return {
-          'temporada': p['temporada'],
-          'competencia': p['competencia'],
-          'rival': p['rival'],
-          'institutionId': p['institutionId'] ?? widget.institutionId,
-          'equipoPropio': p['equipoPropio'] ?? _institutionName,
-          'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
-          'fechaNumero': p['fechaNumero'],
-          'fecha': p['fecha'],
-          'hora': p['hora'],
-          'condicion': p['condicion'],
-          'torneo': p['torneo'],
-          'categoria': p['categoria'],
-          'escudoRival': p['escudoRival'],
-          'estado': p['estado'],
-          'estadoPartido': p['estadoPartido'],
-          'equipoLocal': p['equipoLocal'],
-          'equipoVisitante': p['equipoVisitante'],
-          'escudoLocal': p['escudoLocal'],
-          'escudoVisitante': p['escudoVisitante'],
-        };
-      }).toList();
-
-      hayPartido = true;
-    });
-  }
+    hayPartido = true;
+  });
+}
 
   Future<void> _persistFixtureState() async {
     // Fuente única actual:
@@ -22816,8 +22828,17 @@ class _CuerpoTecnicoScreenState extends State<CuerpoTecnicoScreen> {
 
 /// ===============================
 /// BACKUP TOTAL APP
-/// Exporta historial + planteles.
+/// Exporta historial + planteles + escudos.
 /// ===============================
+
+const String _backupJsonFileName = 'backup.json';
+const String _backupManifestFileName = 'backup_manifest.json';
+
+const List<String> _portableBackupDirectories = <String>[
+  'institution_shields',
+  'team_shields',
+];
+
 Future<String> generarBackupCompleto() async {
   final prefs = await SharedPreferences.getInstance();
 
@@ -22825,16 +22846,15 @@ Future<String> generarBackupCompleto() async {
 
   for (final key in prefs.getKeys()) {
     final value = prefs.get(key);
-
     if (value == null) continue;
-
     allPrefs[key] = value;
   }
 
   final backup = <String, dynamic>{
     'createdAt': DateTime.now().toIso8601String(),
     'app': 'Handball SGS',
-    'version': 2,
+    'version': 3,
+    'format': 'portable_zip_supported',
     'sharedPreferences': allPrefs,
   };
 
@@ -22849,12 +22869,505 @@ String sanitizeImportedJsonText(dynamic value) {
   return fixTextoRoto(value);
 }
 
+String _normalizeArchivePath(String value) {
+  return value.trim().replaceAll('\\', '/');
+}
+
+String _normalizeFileSystemPath(String value) {
+  return value.trim().replaceAll('\\', '/');
+}
+
+String _fileNameFromPath(String path) {
+  final normalized = _normalizeArchivePath(path);
+  final parts = normalized.split('/').where((e) => e.trim().isNotEmpty);
+
+  if (parts.isEmpty) return '';
+
+  return parts.last.trim();
+}
+
+String? _portableDirectoryNameFromPath(String path) {
+  final normalized = _normalizeArchivePath(path).toLowerCase();
+
+  for (final dir in _portableBackupDirectories) {
+    if (normalized.contains('/$dir/')) return dir;
+    if (normalized.startsWith('$dir/')) return dir;
+  }
+
+  return null;
+}
+
+bool _isSafeBackupImageFileName(String fileName) {
+  final clean = fileName.trim().toLowerCase();
+
+  if (clean.isEmpty) return false;
+  if (clean.contains('..')) return false;
+  if (clean.contains('/')) return false;
+  if (clean.contains('\\')) return false;
+
+  return clean.endsWith('.png') ||
+      clean.endsWith('.jpg') ||
+      clean.endsWith('.jpeg') ||
+      clean.endsWith('.webp');
+}
+
+bool _isAllowedPortableArchivePath(String archivePath) {
+  final normalized = _normalizeArchivePath(archivePath);
+
+  if (normalized.contains('..')) return false;
+
+  final dir = _portableDirectoryFromArchivePath(normalized);
+  if (dir == null) return false;
+
+  final fileName = _fileNameFromPath(normalized);
+  return _isSafeBackupImageFileName(fileName);
+}
+
+String? _portableDirectoryFromArchivePath(String archivePath) {
+  final normalized = _normalizeArchivePath(archivePath);
+
+  for (final directoryName in _portableBackupDirectories) {
+    if (normalized.startsWith('$directoryName/')) {
+      return directoryName;
+    }
+  }
+
+  return null;
+}
+
+Set<String> _collectReferencedShieldFilePaths(String backupJson) {
+  final result = <String>{};
+
+  final decodedPattern = RegExp(
+    r'((?:[A-Za-z]:)?[/\\][^"\r\n]*[/\\](?:institution_shields|team_shields)[/\\][^"\r\n]+\.(?:png|jpg|jpeg|webp))',
+    caseSensitive: false,
+  );
+
+  for (final match in decodedPattern.allMatches(backupJson)) {
+    final value = match.group(1);
+    if (value == null) continue;
+
+    final clean = _normalizeFileSystemPath(value);
+    final fileName = _fileNameFromPath(clean);
+
+    if (_isSafeBackupImageFileName(fileName)) {
+      result.add(clean);
+    }
+  }
+
+  return result;
+}
+
+String? _archivePathForShieldFile(String absolutePath) {
+  final directoryName = _portableDirectoryNameFromPath(absolutePath);
+  if (directoryName == null) return null;
+
+  final fileName = _fileNameFromPath(absolutePath);
+  if (!_isSafeBackupImageFileName(fileName)) return null;
+
+  return '$directoryName/$fileName';
+}
+
+Future<void> _addShieldFileToArchive({
+  required Archive archive,
+  required File file,
+  required String archivePath,
+  required Map<String, Map<String, dynamic>> includedFiles,
+  required List<Map<String, dynamic>> missingFiles,
+  String? originalPath,
+}) async {
+  final normalizedArchivePath = _normalizeArchivePath(archivePath);
+  final normalizedOriginalPath = _normalizeFileSystemPath(
+    originalPath ?? file.path,
+  );
+
+  if (!_isAllowedPortableArchivePath(normalizedArchivePath)) {
+    missingFiles.add({
+      'path': normalizedOriginalPath,
+      'reason': 'archive_path_no_permitido',
+    });
+    return;
+  }
+
+  final exists = await file.exists();
+
+  if (!exists) {
+    missingFiles.add({
+      'path': normalizedOriginalPath,
+      'archivePath': normalizedArchivePath,
+      'reason': 'archivo_no_existe',
+    });
+    return;
+  }
+
+  final bytes = await file.readAsBytes();
+
+  if (bytes.isEmpty) {
+    missingFiles.add({
+      'path': normalizedOriginalPath,
+      'archivePath': normalizedArchivePath,
+      'reason': 'archivo_vacio',
+    });
+    return;
+  }
+
+  if (!includedFiles.containsKey(normalizedArchivePath)) {
+    archive.addFile(
+      ArchiveFile.bytes(
+        normalizedArchivePath,
+        bytes,
+      ),
+    );
+
+    includedFiles[normalizedArchivePath] = {
+      'archivePath': normalizedArchivePath,
+      'originalPaths': <String>[normalizedOriginalPath],
+      'sizeBytes': bytes.length,
+    };
+
+    return;
+  }
+
+  final rawOriginalPaths = includedFiles[normalizedArchivePath]?['originalPaths'];
+
+  if (rawOriginalPaths is List) {
+    if (!rawOriginalPaths.contains(normalizedOriginalPath)) {
+      rawOriginalPaths.add(normalizedOriginalPath);
+    }
+  }
+}
+
+Future<void> _addShieldDirectoryToArchive({
+  required Archive archive,
+  required Directory appDirectory,
+  required String directoryName,
+  required Map<String, Map<String, dynamic>> includedFiles,
+  required List<Map<String, dynamic>> missingFiles,
+}) async {
+  final directory = Directory('${appDirectory.path}/$directoryName');
+
+  if (!await directory.exists()) return;
+
+  await for (final entity in directory.list(recursive: false)) {
+    if (entity is! File) continue;
+
+    final fileName = _fileNameFromPath(entity.path);
+
+    if (!_isSafeBackupImageFileName(fileName)) continue;
+
+    await _addShieldFileToArchive(
+      archive: archive,
+      file: entity,
+      archivePath: '$directoryName/$fileName',
+      includedFiles: includedFiles,
+      missingFiles: missingFiles,
+      originalPath: entity.path,
+    );
+  }
+}
+
+Future<void> _addReferencedShieldFilesToArchive({
+  required Archive archive,
+  required String backupJson,
+  required Map<String, Map<String, dynamic>> includedFiles,
+  required List<Map<String, dynamic>> missingFiles,
+}) async {
+  final referencedPaths = _collectReferencedShieldFilePaths(backupJson);
+
+  for (final path in referencedPaths) {
+    final archivePath = _archivePathForShieldFile(path);
+
+    if (archivePath == null) {
+      missingFiles.add({
+        'path': path,
+        'reason': 'no_se_pudo_resolver_archive_path',
+      });
+      continue;
+    }
+
+    await _addShieldFileToArchive(
+      archive: archive,
+      file: File(path),
+      archivePath: archivePath,
+      includedFiles: includedFiles,
+      missingFiles: missingFiles,
+      originalPath: path,
+    );
+  }
+}
+
+String _rewriteSerializedShieldPaths(
+  String raw, {
+  required Map<String, String> restoredShieldPaths,
+}) {
+  if (restoredShieldPaths.isEmpty) return raw;
+
+  var result = raw;
+
+  final entries = restoredShieldPaths.entries.toList()
+    ..sort((a, b) => b.key.length.compareTo(a.key.length));
+
+  for (final entry in entries) {
+    final from = _normalizeFileSystemPath(entry.key);
+    final to = _normalizeFileSystemPath(entry.value);
+
+    if (from.isEmpty || to.isEmpty) continue;
+
+    result = result.replaceAll(from, to);
+
+    final escapedFrom = from.replaceAll('/', r'\/');
+    result = result.replaceAll(escapedFrom, to.replaceAll('/', r'\/'));
+  }
+
+  return result;
+}
+
+String _sanitizeAndRewriteImportedText(
+  dynamic value, {
+  required Map<String, String> restoredShieldPaths,
+}) {
+  final sanitized = sanitizeImportedJsonText(value);
+
+  return _rewriteSerializedShieldPaths(
+    sanitized,
+    restoredShieldPaths: restoredShieldPaths,
+  );
+}
+
+Future<void> _restorePreferencesFromMap(
+  Map<String, dynamic> restoredPrefs, {
+  required Map<String, String> restoredShieldPaths,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.clear();
+
+  for (final entry in restoredPrefs.entries) {
+    final key = entry.key;
+    final value = entry.value;
+
+    if (value is String) {
+      await prefs.setString(
+        key,
+        _sanitizeAndRewriteImportedText(
+          value,
+          restoredShieldPaths: restoredShieldPaths,
+        ),
+      );
+    } else if (value is bool) {
+      await prefs.setBool(key, value);
+    } else if (value is int) {
+      await prefs.setInt(key, value);
+    } else if (value is double) {
+      await prefs.setDouble(key, value);
+    } else if (value is List) {
+      await prefs.setStringList(
+        key,
+        value
+            .map(
+              (e) => _sanitizeAndRewriteImportedText(
+                e,
+                restoredShieldPaths: restoredShieldPaths,
+              ),
+            )
+            .toList(),
+      );
+    }
+  }
+}
+
+Future<File> generarBackupZipPortable() async {
+  final backupJson = await generarBackupCompleto();
+  final appDirectory = await getApplicationDocumentsDirectory();
+
+  final archive = Archive();
+  final includedFiles = <String, Map<String, dynamic>>{};
+  final missingFiles = <Map<String, dynamic>>[];
+
+  archive.addFile(
+    ArchiveFile.bytes(
+      _backupJsonFileName,
+      utf8.encode(backupJson),
+    ),
+  );
+
+  for (final directoryName in _portableBackupDirectories) {
+    await _addShieldDirectoryToArchive(
+      archive: archive,
+      appDirectory: appDirectory,
+      directoryName: directoryName,
+      includedFiles: includedFiles,
+      missingFiles: missingFiles,
+    );
+  }
+
+  await _addReferencedShieldFilesToArchive(
+    archive: archive,
+    backupJson: backupJson,
+    includedFiles: includedFiles,
+    missingFiles: missingFiles,
+  );
+
+  final manifest = <String, dynamic>{
+    'createdAt': DateTime.now().toIso8601String(),
+    'version': 1,
+    'includedFiles': includedFiles.values.toList(),
+    'missingFiles': missingFiles,
+  };
+
+  archive.addFile(
+    ArchiveFile.bytes(
+      _backupManifestFileName,
+      utf8.encode(const JsonEncoder.withIndent('  ').convert(manifest)),
+    ),
+  );
+
+  final zipBytes = ZipEncoder().encode(archive);
+
+  if (zipBytes == null || zipBytes.isEmpty) {
+    throw StateError('No se pudo generar el archivo ZIP del backup.');
+  }
+
+  final tempDirectory = await getTemporaryDirectory();
+
+  final fecha = DateTime.now()
+      .toIso8601String()
+      .replaceAll(':', '-')
+      .replaceAll('.', '-');
+
+  final file = File('${tempDirectory.path}/backup_handball_sgs_$fecha.zip');
+
+  await file.writeAsBytes(zipBytes, flush: true);
+
+  return file;
+}
+
+Map<String, dynamic> _readBackupManifestFromArchive(Archive archive) {
+  final manifestFile = archive.findFile(_backupManifestFileName);
+
+  if (manifestFile == null || !manifestFile.isFile) {
+    return const <String, dynamic>{};
+  }
+
+  final bytes = manifestFile.readBytes();
+
+  if (bytes == null || bytes.isEmpty) {
+    return const <String, dynamic>{};
+  }
+
+  try {
+    final decoded = jsonDecode(utf8.decode(bytes));
+
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+
+    return const <String, dynamic>{};
+  } catch (_) {
+    return const <String, dynamic>{};
+  }
+}
+
+Future<Map<String, String>> _restoreShieldFilesFromArchive(
+  Archive archive,
+) async {
+  final appDirectory = await getApplicationDocumentsDirectory();
+  final restoredPaths = <String, String>{};
+
+  for (final file in archive.files) {
+    if (!file.isFile) continue;
+
+    final archivePath = _normalizeArchivePath(file.name);
+
+    if (!_isAllowedPortableArchivePath(archivePath)) continue;
+
+    final directoryName = _portableDirectoryFromArchivePath(archivePath);
+    if (directoryName == null) continue;
+
+    final fileName = _fileNameFromPath(archivePath);
+    if (!_isSafeBackupImageFileName(fileName)) continue;
+
+    final bytes = file.readBytes();
+    if (bytes == null || bytes.isEmpty) continue;
+
+    final targetDirectory = Directory('${appDirectory.path}/$directoryName');
+
+    if (!await targetDirectory.exists()) {
+      await targetDirectory.create(recursive: true);
+    }
+
+    final targetFile = File('${targetDirectory.path}/$fileName');
+
+    await targetFile.writeAsBytes(bytes, flush: true);
+
+    final restoredAbsolutePath = _normalizeFileSystemPath(targetFile.path);
+
+    restoredPaths[archivePath] = restoredAbsolutePath;
+    restoredPaths[fileName] = restoredAbsolutePath;
+  }
+
+  final manifest = _readBackupManifestFromArchive(archive);
+  final includedFiles = manifest['includedFiles'];
+
+  if (includedFiles is List) {
+    for (final item in includedFiles) {
+      if (item is! Map) continue;
+
+      final map = Map<String, dynamic>.from(item);
+      final archivePath = _normalizeArchivePath(
+        (map['archivePath'] ?? '').toString(),
+      );
+
+      final restoredAbsolutePath = restoredPaths[archivePath];
+
+      if (restoredAbsolutePath == null || restoredAbsolutePath.isEmpty) {
+        continue;
+      }
+
+      final originalPaths = map['originalPaths'];
+
+      if (originalPaths is List) {
+        for (final original in originalPaths) {
+          final cleanOriginal = _normalizeFileSystemPath(original.toString());
+
+          if (cleanOriginal.isEmpty) continue;
+
+          restoredPaths[cleanOriginal] = restoredAbsolutePath;
+        }
+      }
+    }
+  }
+
+  return restoredPaths;
+}
+
+ArchiveFile? _findBackupJsonInArchive(Archive archive) {
+  final direct = archive.findFile(_backupJsonFileName);
+
+  if (direct != null && direct.isFile) return direct;
+
+  for (final file in archive.files) {
+    if (!file.isFile) continue;
+
+    final normalized = _normalizeArchivePath(file.name).toLowerCase();
+
+    if (normalized.endsWith('/$_backupJsonFileName')) {
+      return file;
+    }
+  }
+
+  return null;
+}
+
 /// ===============================
 /// RESTAURAR BACKUP APP
 /// Restaura historial + planteles desde JSON.
-/// Guarda todo saneado para evitar acentos rotos.
+/// También reescribe paths de escudos restaurados desde ZIP.
 /// ===============================
-Future<void> restaurarBackupCompleto(String backupJson) async {
+Future<void> restaurarBackupCompleto(
+  String backupJson, {
+  Map<String, String> restoredShieldPaths = const <String, String>{},
+}) async {
   final prefs = await SharedPreferences.getInstance();
 
   final jsonLimpio = sanitizeImportedJsonText(backupJson);
@@ -22865,27 +23378,10 @@ Future<void> restaurarBackupCompleto(String backupJson) async {
   if (rawPrefs is Map) {
     final restoredPrefs = Map<String, dynamic>.from(rawPrefs);
 
-    await prefs.clear();
-
-    for (final entry in restoredPrefs.entries) {
-      final key = entry.key;
-      final value = entry.value;
-
-      if (value is String) {
-        await prefs.setString(key, sanitizeImportedJsonText(value));
-      } else if (value is bool) {
-        await prefs.setBool(key, value);
-      } else if (value is int) {
-        await prefs.setInt(key, value);
-      } else if (value is double) {
-        await prefs.setDouble(key, value);
-      } else if (value is List) {
-        await prefs.setStringList(
-          key,
-          value.map((e) => sanitizeImportedJsonText(e)).toList(),
-        );
-      }
-    }
+    await _restorePreferencesFromMap(
+      restoredPrefs,
+      restoredShieldPaths: restoredShieldPaths,
+    );
 
     return;
   }
@@ -22894,7 +23390,10 @@ Future<void> restaurarBackupCompleto(String backupJson) async {
   if (data['historial'] != null) {
     await prefs.setString(
       'finished_matches_history_v1',
-      sanitizeImportedJsonText(data['historial']),
+      _sanitizeAndRewriteImportedText(
+        data['historial'],
+        restoredShieldPaths: restoredShieldPaths,
+      ),
     );
   }
 
@@ -22903,7 +23402,10 @@ Future<void> restaurarBackupCompleto(String backupJson) async {
       data['liveMatch'].toString().trim() != 'null') {
     await prefs.setString(
       'live_match_current_v1',
-      sanitizeImportedJsonText(data['liveMatch']),
+      _sanitizeAndRewriteImportedText(
+        data['liveMatch'],
+        restoredShieldPaths: restoredShieldPaths,
+      ),
     );
   } else {
     await prefs.remove('live_match_current_v1');
@@ -22911,53 +23413,114 @@ Future<void> restaurarBackupCompleto(String backupJson) async {
 
   for (final entry in data.entries) {
     if (entry.key.startsWith('roster_') && entry.value != null) {
-      await prefs.setString(entry.key, sanitizeImportedJsonText(entry.value));
+      await prefs.setString(
+        entry.key,
+        _sanitizeAndRewriteImportedText(
+          entry.value,
+          restoredShieldPaths: restoredShieldPaths,
+        ),
+      );
     }
   }
 }
 
+Future<void> restaurarBackupDesdeZip(String zipPath) async {
+  final file = File(zipPath);
+
+  if (!await file.exists()) {
+    throw StateError('El archivo ZIP seleccionado no existe.');
+  }
+
+  final bytes = await file.readAsBytes();
+
+  if (bytes.isEmpty) {
+    throw StateError('El archivo ZIP seleccionado está vacío.');
+  }
+
+  final archive = ZipDecoder().decodeBytes(bytes);
+
+  final backupFile = _findBackupJsonInArchive(archive);
+
+  if (backupFile == null) {
+    throw StateError('El ZIP no contiene backup.json.');
+  }
+
+  final backupBytes = backupFile.readBytes();
+
+  if (backupBytes == null || backupBytes.isEmpty) {
+    throw StateError('backup.json está vacío o no se pudo leer.');
+  }
+
+  final restoredShieldPaths = await _restoreShieldFilesFromArchive(archive);
+
+  final backupJson = utf8.decode(backupBytes);
+
+  await restaurarBackupCompleto(
+    backupJson,
+    restoredShieldPaths: restoredShieldPaths,
+  );
+}
+
 /// ===============================
 /// EXPORTAR BACKUP A ARCHIVO
-/// Genera un .json UTF-8 y abre compartir.
+/// Genera un .zip portable con backup.json + escudos.
 /// ===============================
 Future<void> exportarBackupComoArchivo() async {
-  final backup = await generarBackupCompleto();
+  final file = await generarBackupZipPortable();
 
-  final dir = await getTemporaryDirectory();
-
-  final fecha = DateTime.now()
-      .toIso8601String()
-      .replaceAll(':', '-')
-      .replaceAll('.', '-');
-
-  final file = File('${dir.path}/backup_handball_sgs_$fecha.json');
-
-  await file.writeAsBytes(utf8.encode(backup), flush: true);
-
-  await Share.shareXFiles([XFile(file.path)], text: 'Backup Handball SGS');
+  await Share.shareXFiles(
+    [XFile(file.path)],
+    text: 'Backup completo Handball SGS',
+  );
 }
 
 /// ===============================
 /// IMPORTAR BACKUP DESDE ARCHIVO
-/// Lee bytes UTF-8 desde archivo/Drive.
+/// Acepta .zip portable y mantiene compatibilidad con .json viejo.
 /// ===============================
 Future<void> importarBackupDesdeArchivo(BuildContext context) async {
   try {
     const typeGroup = XTypeGroup(
-      label: 'Backup JSON',
-      extensions: ['json'],
-      mimeTypes: ['application/json'],
+      label: 'Backup Handball SGS',
+      extensions: <String>['zip', 'json'],
     );
 
-    final XFile? pickedFile = await openFile(acceptedTypeGroups: [typeGroup]);
+    final file = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[typeGroup],
+    );
 
-    if (pickedFile == null) return;
+    if (file == null) {
+      if (!context.mounted) return;
 
-    final file = File(pickedFile.path);
-    final bytes = await file.readAsBytes();
-    final backupJson = utf8.decode(bytes);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se seleccionó ningún backup')),
+      );
 
-    await restaurarBackupCompleto(backupJson);
+      return;
+    }
+
+    final path = file.path.trim();
+
+    if (path.isEmpty) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo leer la ruta del backup')),
+      );
+
+      return;
+    }
+
+    final normalizedPath = path.toLowerCase();
+
+    if (normalizedPath.endsWith('.zip')) {
+      await restaurarBackupDesdeZip(path);
+    } else if (normalizedPath.endsWith('.json')) {
+      final json = await File(path).readAsString();
+      await restaurarBackupCompleto(json);
+    } else {
+      throw StateError('Formato de backup no soportado. Usá .zip o .json.');
+    }
 
     if (!context.mounted) return;
 
@@ -22972,6 +23535,7 @@ Future<void> importarBackupDesdeArchivo(BuildContext context) async {
     ).showSnackBar(SnackBar(content: Text('Error al importar backup: $e')));
   }
 }
+
 
 /// ===============================
 /// TEXTO SEGURO / NORMALIZACIÓN GLOBAL

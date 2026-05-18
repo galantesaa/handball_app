@@ -37,6 +37,7 @@ dependencies:
   share_plus: ^13.1.0
   path_provider: ^2.1.5
   file_selector: ^1.1.0
+  archive: ^4.0.9
 
 dev_dependencies:
   flutter_test:
