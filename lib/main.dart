@@ -6116,44 +6116,122 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _crearPartidoManual() async {
-    final result = await Navigator.push<PartidoModel>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MatchEditorScreen(
-          temporada: widget.temporada,
-          competencia: widget.competencia,
-          torneo: widget.torneo,
-          categoria: widget.categoria,
-          institutionId: widget.institutionId,
-          equipoPropio: _institutionName,
-          escudoPropio: _institutionShieldPath,
-        ),
+  final result = await Navigator.push<PartidoModel>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => MatchEditorScreen(
+        temporada: widget.temporada,
+        competencia: widget.competencia,
+        torneo: widget.torneo,
+        categoria: widget.categoria,
+        institutionId: widget.institutionId,
+        equipoPropio: _institutionName,
+        escudoPropio: _institutionShieldPath,
+      ),
+    ),
+  );
+
+  if (!mounted || result == null) return;
+
+  final saved = await _fixtureRepository.upsertFixture(result);
+
+  if (!mounted) return;
+
+  if (!saved) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se pudo guardar el partido en fixtures_v1.'),
       ),
     );
-
-    if (!mounted || result == null) return;
-
-    final saved = await _fixtureRepository.upsertFixture(result);
-
-    if (!mounted) return;
-
-    if (!saved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo guardar el partido en fixtures_v1.'),
-        ),
-      );
-      return;
-    }
-
-    await _loadFixtureState();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Partido creado correctamente.')),
-    );
+    return;
   }
+
+  await _loadFixtureState();
+
+  if (!mounted) return;
+
+  final creadoMap = result.toMap();
+
+  final partidoCreadoVisible = <String, dynamic>{
+    ...creadoMap,
+    'temporada': creadoMap['temporada'] ?? widget.temporada,
+    'competencia': creadoMap['competencia'] ?? widget.competencia,
+    'torneo': creadoMap['torneo'] ?? widget.torneo,
+    'categoria': creadoMap['categoria'] ?? widget.categoria,
+    'institutionId': creadoMap['institutionId'] ?? widget.institutionId,
+    'equipoPropio': creadoMap['equipoPropio'] ?? _institutionName,
+    'escudoPropio': creadoMap['escudoPropio'] ?? _institutionShieldPath,
+    'estado': 'Pendiente',
+    'estadoPartido': 'no_iniciado',
+  };
+
+  if (_matchesCurrentContext(partidoCreadoVisible) &&
+      _esPartidoValido(partidoCreadoVisible) &&
+      !_estaFinalizadoGlobal(partidoCreadoVisible)) {
+    setState(() {
+      if (_esPartidoValido(proximoPartido)) {
+        final alreadyInNext = siguientesPartidos.any((p) {
+          return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+                ...p,
+                'institutionId': p['institutionId'] ?? widget.institutionId,
+                'temporada': p['temporada'] ?? widget.temporada,
+                'competencia': p['competencia'] ?? widget.competencia,
+                'torneo': p['torneo'] ?? widget.torneo,
+                'categoria': p['categoria'] ?? widget.categoria,
+              }) ==
+              FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+                ...proximoPartido,
+                'institutionId':
+                    proximoPartido['institutionId'] ?? widget.institutionId,
+                'temporada': proximoPartido['temporada'] ?? widget.temporada,
+                'competencia':
+                    proximoPartido['competencia'] ?? widget.competencia,
+                'torneo': proximoPartido['torneo'] ?? widget.torneo,
+                'categoria': proximoPartido['categoria'] ?? widget.categoria,
+              });
+        });
+
+        if (!alreadyInNext) {
+          siguientesPartidos.insert(0, Map<String, dynamic>.from(proximoPartido));
+        }
+      }
+
+      proximoPartido = Map<String, dynamic>.from(partidoCreadoVisible);
+
+      siguientesPartidos = siguientesPartidos.where((p) {
+        final idA = FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+          ...p,
+          'institutionId': p['institutionId'] ?? widget.institutionId,
+          'temporada': p['temporada'] ?? widget.temporada,
+          'competencia': p['competencia'] ?? widget.competencia,
+          'torneo': p['torneo'] ?? widget.torneo,
+          'categoria': p['categoria'] ?? widget.categoria,
+        });
+
+        final idB = FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+          ...partidoCreadoVisible,
+          'institutionId':
+              partidoCreadoVisible['institutionId'] ?? widget.institutionId,
+          'temporada': partidoCreadoVisible['temporada'] ?? widget.temporada,
+          'competencia':
+              partidoCreadoVisible['competencia'] ?? widget.competencia,
+          'torneo': partidoCreadoVisible['torneo'] ?? widget.torneo,
+          'categoria': partidoCreadoVisible['categoria'] ?? widget.categoria,
+        });
+
+        return idA != idB;
+      }).map((p) {
+        return Map<String, dynamic>.from(p);
+      }).toList();
+
+      hayPartido = true;
+    });
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Partido creado correctamente.')),
+  );
+}
 
   Future<void> _editarProximoPartido() async {
     if (!_esPartidoValido(proximoPartido)) {
@@ -7027,6 +7105,340 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 /// RESUMEN DEL PARTIDO FINALIZADO
 /// ===============================
 /// ===============================
+
+class _ResumenPartidoRealSwitchCard extends StatefulWidget {
+  final Map<String, dynamic> partido;
+
+  const _ResumenPartidoRealSwitchCard({
+    required this.partido,
+  });
+
+  @override
+  State<_ResumenPartidoRealSwitchCard> createState() =>
+      _ResumenPartidoRealSwitchCardState();
+}
+
+class _ResumenPartidoRealSwitchCardState
+    extends State<_ResumenPartidoRealSwitchCard> {
+  late bool _isReal;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isReal = _readRealFlag(widget.partido);
+  }
+
+  bool _readRealFlag(Map<String, dynamic> source) {
+    final nestedRaw = source['partido'];
+    final nested = nestedRaw is Map
+        ? Map<String, dynamic>.from(nestedRaw)
+        : <String, dynamic>{};
+
+    return source['isReal'] == true ||
+        source['esPartidoReal'] == true ||
+        nested['isReal'] == true ||
+        nested['esPartidoReal'] == true;
+  }
+
+  String _cleanIdentityValue(dynamic value) {
+    return fixTextoRoto(value)
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _shortLegacyIdentity(Map<String, dynamic> map) {
+    return [
+      _cleanIdentityValue(map['torneo']),
+      _cleanIdentityValue(map['categoria']),
+      _cleanIdentityValue(map['fecha']),
+      _cleanIdentityValue(map['rival']),
+      _cleanIdentityValue(map['condicion']),
+    ].join('|');
+  }
+
+  Set<String> _identityKeysForMap(Map<String, dynamic> source) {
+    final keys = <String>{};
+
+    void add(dynamic value) {
+      final key = _cleanIdentityValue(value);
+      if (key.isNotEmpty && key != 'null') {
+        keys.add(key);
+      }
+    }
+
+    add(source['matchIdentity']);
+    add(PartidoRepositoryV2.buildMatchIdentityFromMap(source));
+    add(PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(source));
+    add(_shortLegacyIdentity(source));
+
+    final nestedRaw = source['partido'];
+
+    if (nestedRaw is Map) {
+      final nested = Map<String, dynamic>.from(nestedRaw);
+
+      add(nested['matchIdentity']);
+      add(PartidoRepositoryV2.buildMatchIdentityFromMap(nested));
+      add(PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(nested));
+      add(_shortLegacyIdentity(nested));
+    }
+
+    return keys;
+  }
+
+  void _applyRealFlagToVisibleMap(bool value) {
+    widget.partido['isReal'] = value;
+    widget.partido['esPartidoReal'] = value;
+    widget.partido['finalizado'] = true;
+    widget.partido['estado'] = 'Finalizado';
+    widget.partido['estadoPartido'] = 'finalizado';
+
+    final nestedRaw = widget.partido['partido'];
+
+    if (nestedRaw is Map) {
+      final nested = Map<String, dynamic>.from(nestedRaw);
+
+      nested['isReal'] = value;
+      nested['esPartidoReal'] = value;
+      nested['finalizado'] = true;
+      nested['estado'] = 'Finalizado';
+      nested['estadoPartido'] = 'finalizado';
+
+      widget.partido['partido'] = nested;
+    }
+  }
+
+  Future<bool> _persistRealFlag(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('finished_matches_history_v1');
+
+    if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay historial finalizado guardado')),
+      );
+
+      return false;
+    }
+
+    final List<dynamic> history;
+
+    try {
+      final decoded = jsonDecode(raw);
+
+      if (decoded is! List) {
+        if (!mounted) return false;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El historial finalizado está corrupto'),
+          ),
+        );
+
+        return false;
+      }
+
+      history = decoded;
+    } catch (_) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo leer el historial finalizado'),
+        ),
+      );
+
+      return false;
+    }
+
+    final targetKeys = _identityKeysForMap(widget.partido);
+
+    if (targetKeys.isEmpty) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo identificar este partido finalizado'),
+        ),
+      );
+
+      return false;
+    }
+
+    bool updated = false;
+
+    final updatedHistory = history.map((item) {
+      if (item is! Map) return item;
+
+      final map = Map<String, dynamic>.from(item);
+
+      if (updated) return map;
+
+      final itemKeys = _identityKeysForMap(map);
+      final matches = targetKeys.any(itemKeys.contains);
+
+      if (!matches) return map;
+
+      map['isReal'] = value;
+      map['esPartidoReal'] = value;
+      map['finalizado'] = true;
+      map['estadoPartido'] = 'finalizado';
+
+      final nestedRaw = map['partido'];
+      final nested = nestedRaw is Map
+          ? Map<String, dynamic>.from(nestedRaw)
+          : <String, dynamic>{};
+
+      nested['isReal'] = value;
+      nested['esPartidoReal'] = value;
+      nested['finalizado'] = true;
+      nested['estado'] = 'Finalizado';
+      nested['estadoPartido'] = 'finalizado';
+
+      map['partido'] = nested;
+
+      updated = true;
+      return map;
+    }).toList();
+
+    if (!updated) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No encontré este partido en el historial finalizado'),
+        ),
+      );
+
+      return false;
+    }
+
+    await prefs.setString(
+      'finished_matches_history_v1',
+      jsonEncode(updatedHistory),
+    );
+
+    _applyRealFlagToVisibleMap(value);
+
+    return true;
+  }
+
+  Future<void> _onChanged(bool value) async {
+    if (_saving) return;
+
+    final previousValue = _isReal;
+
+    setState(() {
+      _isReal = value;
+      _saving = true;
+    });
+
+    final updated = await _persistRealFlag(value);
+
+    if (!mounted) return;
+
+    setState(() {
+      _saving = false;
+      if (!updated) {
+        _isReal = previousValue;
+      }
+    });
+
+    if (!updated) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          value
+              ? 'Partido marcado como real'
+              : 'Partido marcado como prueba',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1722).withOpacity(0.90),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: _isReal
+                  ? const Color(0xFF22C55E).withOpacity(0.18)
+                  : const Color(0xFF182338).withOpacity(0.90),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              _isReal ? Icons.verified_rounded : Icons.science_rounded,
+              color: _isReal
+                  ? const Color(0xFF22C55E)
+                  : const Color(0xFFAAB4C3),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Partido real',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _isReal
+                      ? 'Este partido se conserva como dato real.'
+                      : 'Este partido queda marcado como prueba.',
+                  style: const TextStyle(
+                    color: Color(0xFFAAB4C3),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_saving)
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Switch(
+              value: _isReal,
+              onChanged: _onChanged,
+              activeColor: const Color(0xFF1E7D4F),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   final Map<String, dynamic> partido;
@@ -10245,11 +10657,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInAppMatchOverviewCard(context),
-                  const SizedBox(height: 16),
-                  _buildInAppGoalkeepersOverviewCard(
-                    context,
-                    estadisticasPorArquero,
-                  ),
+const SizedBox(height: 16),
+_buildInAppGoalkeepersOverviewCard(
+  context,
+  estadisticasPorArquero,
+),
                   const SizedBox(height: 16),
                   _buildContraAnalysisCard(),
                   const SizedBox(height: 16),
@@ -10305,14 +10717,11 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                                     vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF182338,
-                                    ).withOpacity(0.75),
+                                    color: const Color(0xFF182338).withOpacity(0.75),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         _tituloEvento(e),
@@ -10337,6 +10746,9 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                             }).toList(),
                           ),
                   ),
+                  const SizedBox(height: 16),
+                  _ResumenPartidoRealSwitchCard(partido: partido),
+                
                 ],
               ),
             ),
@@ -13598,25 +14010,41 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
                         ),
                       ),
                       Switch(
-                        value: widget.partido['esPartidoReal'] == true,
-                        onChanged: (value) {
-                          setState(() {
-                            widget.partido['esPartidoReal'] = value;
-                          });
-                        },
-                        activeColor: const Color(0xFF1E7D4F),
-                      ),
+  value: widget.partido['esPartidoReal'] == true ||
+      widget.partido['isReal'] == true,
+  onChanged: (value) async {
+    final previousValue = widget.partido['esPartidoReal'] == true ||
+        widget.partido['isReal'] == true;
+
+    setState(() {
+      widget.partido['esPartidoReal'] = value;
+      widget.partido['isReal'] = value;
+    });
+
+    if (!_partidoFinalizado) return;
+
+    final updated = await _actualizarEsteFinalizadoComoReal(value);
+
+    if (!mounted) return;
+
+    if (!updated) {
+      setState(() {
+        widget.partido['esPartidoReal'] = previousValue;
+        widget.partido['isReal'] = previousValue;
+      });
+    }
+  },
+  activeColor: const Color(0xFF1E7D4F),
+),
                     ],
                   ),
                   TextButton(
-                    onPressed: _debugPrintHistorial,
-                    child: const Text('DEBUG historial'),
-                  ),
+  onPressed: _debugPrintHistorial,
+  child: const Text('DEBUG historial'),
+),
 
-                  /*TextButton(
-                    onPressed: _marcarEsteFinalizadoComoReal,
-                    child: const Text('Marcar finalizado como real'),
-                  ),*/
+if (_partidoFinalizado)
+  
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -13688,75 +14116,172 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// Busca este partido en el historial finalizado
   /// y le agrega isReal: true sin borrar datos.
   /// ===============================
-  Future<void> _marcarEsteFinalizadoComoReal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('finished_matches_history_v1');
+  Set<String> _realFlagIdentityKeysForMap(Map<String, dynamic> source) {
+  String clean(dynamic value) {
+    return fixTextoRoto(value)
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
 
-    if (raw == null || raw.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay historial finalizado guardado')),
-      );
-      return;
+  String shortLegacyIdentity(Map<String, dynamic> map) {
+    return [
+      clean(map['torneo']),
+      clean(map['categoria']),
+      clean(map['fecha']),
+      clean(map['rival']),
+      clean(map['condicion']),
+    ].join('|');
+  }
+
+  final keys = <String>{};
+
+  void add(dynamic value) {
+    final key = clean(value);
+    if (key.isNotEmpty && key != 'null') {
+      keys.add(key);
     }
+  }
 
-    final history = jsonDecode(raw) as List<dynamic>;
+  add(source['matchIdentity']);
+  add(PartidoRepositoryV2.buildMatchIdentityFromMap(source));
+  add(PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(source));
+  add(shortLegacyIdentity(source));
 
-    final identity = PartidoRepositoryV2.buildMatchIdentityFromMap(
-      widget.partido,
-    );
+  final nestedRaw = source['partido'];
 
-    bool actualizado = false;
+  if (nestedRaw is Map) {
+    final nested = Map<String, dynamic>.from(nestedRaw);
 
-    final nuevoHistory = history.map((item) {
-      if (item is! Map) return item;
+    add(nested['matchIdentity']);
+    add(PartidoRepositoryV2.buildMatchIdentityFromMap(nested));
+    add(PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(nested));
+    add(shortLegacyIdentity(nested));
+  }
 
-      final map = Map<String, dynamic>.from(item);
+  return keys;
+}
 
-      if ((map['matchIdentity'] ?? '').toString() == identity) {
-        map['isReal'] = true;
-        map['finalizado'] = true;
-        map['estadoPartido'] = 'finalizado';
+Future<bool> _actualizarEsteFinalizadoComoReal(bool isReal) async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString('finished_matches_history_v1');
 
-        final partidoInterno = Map<String, dynamic>.from(
-          (map['partido'] as Map?)?.cast<String, dynamic>() ??
-              <String, dynamic>{},
-        );
-
-        partidoInterno['estado'] = 'Finalizado';
-        partidoInterno['estadoPartido'] = 'finalizado';
-        partidoInterno['esPartidoReal'] = true;
-
-        map['partido'] = partidoInterno;
-        actualizado = true;
-      }
-
-      return map;
-    }).toList();
-
-    if (!actualizado) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No encontre este partido en el historial finalizado'),
-        ),
-      );
-      return;
-    }
-
-    await prefs.setString(
-      'finished_matches_history_v1',
-      jsonEncode(nuevoHistory),
-    );
-
-    setState(() {
-      widget.partido['esPartidoReal'] = true;
-      widget.partido['estado'] = 'Finalizado';
-      widget.partido['estadoPartido'] = 'finalizado';
-    });
+  if (raw == null || raw.trim().isEmpty || raw.trim() == 'null') {
+    if (!mounted) return false;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Partido marcado como REAL')),
+      const SnackBar(content: Text('No hay historial finalizado guardado')),
     );
+
+    return false;
   }
+
+  final List<dynamic> history;
+
+  try {
+    final decoded = jsonDecode(raw);
+
+    if (decoded is! List) {
+      if (!mounted) return false;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El historial finalizado está corrupto')),
+      );
+
+      return false;
+    }
+
+    history = decoded;
+  } catch (_) {
+    if (!mounted) return false;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No se pudo leer el historial finalizado')),
+    );
+
+    return false;
+  }
+
+  final targetKeys = _realFlagIdentityKeysForMap(widget.partido);
+
+  bool actualizado = false;
+
+  final nuevoHistory = history.map((item) {
+    if (item is! Map) return item;
+
+    final map = Map<String, dynamic>.from(item);
+    final itemKeys = _realFlagIdentityKeysForMap(map);
+
+    final matches = targetKeys.any(itemKeys.contains);
+
+    if (!matches) return map;
+
+    map['isReal'] = isReal;
+    map['esPartidoReal'] = isReal;
+    map['finalizado'] = true;
+    map['estadoPartido'] = 'finalizado';
+
+    final partidoInterno = Map<String, dynamic>.from(
+      (map['partido'] as Map?)?.cast<String, dynamic>() ??
+          <String, dynamic>{},
+    );
+
+    partidoInterno['estado'] = 'Finalizado';
+    partidoInterno['estadoPartido'] = 'finalizado';
+    partidoInterno['isReal'] = isReal;
+    partidoInterno['esPartidoReal'] = isReal;
+
+    map['partido'] = partidoInterno;
+    actualizado = true;
+
+    return map;
+  }).toList();
+
+  if (!actualizado) {
+    if (!mounted) return false;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No encontré este partido en el historial finalizado'),
+      ),
+    );
+
+    return false;
+  }
+
+  await prefs.setString(
+    'finished_matches_history_v1',
+    jsonEncode(nuevoHistory),
+  );
+
+  if (!mounted) return true;
+
+  setState(() {
+    widget.partido['isReal'] = isReal;
+    widget.partido['esPartidoReal'] = isReal;
+    widget.partido['estado'] = 'Finalizado';
+    widget.partido['estadoPartido'] = 'finalizado';
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        isReal
+            ? 'Partido marcado como real'
+            : 'Partido marcado como prueba',
+      ),
+    ),
+  );
+
+  return true;
+}
 
   /// ===============================
   ///   /// HEADER DEL CENTRO DE CONTROL
