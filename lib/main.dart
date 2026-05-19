@@ -74,6 +74,98 @@ Widget buildShieldAvatar(String? path, {double size = 58, double padding = 8}) {
   );
 }
 
+Map<String, dynamic> _unwrapPartidoVisualMap(Map<String, dynamic> source) {
+  final nestedRaw = source['partido'];
+
+  final nested = nestedRaw is Map
+      ? Map<String, dynamic>.from(nestedRaw)
+      : <String, dynamic>{};
+
+  final merged = <String, dynamic>{...nested};
+
+  source.forEach((key, value) {
+    if (key == 'partido') return;
+    if (value == null) return;
+    merged[key.toString()] = value;
+  });
+
+  return merged;
+}
+
+String _cleanVisualText(dynamic value) {
+  final text = (value ?? '').toString().trim().replaceAll(RegExp(r'\s+'), ' ');
+
+  if (text.isEmpty || text.toLowerCase() == 'null') {
+    return '';
+  }
+
+  return text;
+}
+
+String matchInstanceLabelFromMap(Map<String, dynamic> partido) {
+  final merged = _unwrapPartidoVisualMap(partido);
+
+  final fase = _cleanVisualText(merged['fasePartido']);
+  final grupo = _cleanVisualText(merged['grupoPartido']);
+  final ronda = _cleanVisualText(merged['rondaPartido']);
+
+  final parts = <String>[];
+
+  if (fase.isNotEmpty) parts.add(fase);
+  if (grupo.isNotEmpty) parts.add(grupo);
+  if (ronda.isNotEmpty) parts.add(ronda);
+
+  return parts.join(' · ');
+}
+
+class _MatchInstanceChip extends StatelessWidget {
+  final String label;
+
+  const _MatchInstanceChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final clean = label.trim();
+
+    if (clean.isEmpty) return const SizedBox.shrink();
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4F8CFF).withOpacity(0.14),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF4F8CFF).withOpacity(0.32)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.account_tree_rounded,
+              size: 14,
+              color: Color(0xFF7DB7FF),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                clean,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFDCEBFF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -6478,16 +6570,28 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
     final String rival = (siguiente['rival'] ?? 'Rival').toString();
 
     return {
+      ...siguiente,
       'temporada': (siguiente['temporada'] ?? widget.temporada).toString(),
       'competencia': (siguiente['competencia'] ?? widget.competencia)
           .toString(),
+      'institutionId': siguiente['institutionId'] ?? widget.institutionId,
+      'matchInstanceId': siguiente['matchInstanceId'],
+      'fasePartido': siguiente['fasePartido'],
+      'grupoPartido': siguiente['grupoPartido'],
+      'rondaPartido': siguiente['rondaPartido'],
+      'equipoPropio': siguiente['equipoPropio'] ?? _institutionName,
+      'escudoPropio': siguiente['escudoPropio'] ?? _institutionShieldPath,
       'rival': rival,
       'fechaNumero': siguiente['fechaNumero'],
       'fecha': (siguiente['fecha'] ?? '').toString(),
       'hora': (siguiente['hora'] ?? '').toString(),
       'condicion': (siguiente['condicion'] ?? 'Local').toString(),
-      'torneo': (siguiente['torneo'] ?? 'Apertura').toString(),
-      'categoria': (siguiente['categoria'] ?? 'Cadetes').toString(),
+      'torneo': (siguiente['torneo'] ?? widget.torneo).toString(),
+      'categoria': (siguiente['categoria'] ?? widget.categoria).toString(),
+      'equipoLocal': siguiente['equipoLocal'],
+      'equipoVisitante': siguiente['equipoVisitante'],
+      'escudoLocal': siguiente['escudoLocal'],
+      'escudoVisitante': siguiente['escudoVisitante'],
       'estado': 'Pendiente',
       'estadoPartido': 'no_iniciado',
       'golesSanFernando': 0,
@@ -7238,6 +7342,8 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         ? 'Finalizado'
         : (proximoPartido['estado'] ?? 'Pendiente').toString();
 
+    final instanciaLabel = matchInstanceLabelFromMap(proximoPartido);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -7257,6 +7363,10 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildStatusChip(estadoVisual),
+          if (instanciaLabel.isNotEmpty) ...[
+            const SizedBox(height: 9),
+            _MatchInstanceChip(label: instanciaLabel),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [
@@ -7415,6 +7525,7 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
 
   Widget _buildUpcomingItem(Map<String, dynamic> partido) {
     final String? escudoRival = partido['escudoRival'] as String?;
+    final instanciaLabel = matchInstanceLabelFromMap(partido);
 
     Map<String, dynamic> normalizeUpcomingMap(Map<String, dynamic> source) {
       final rival = (source['rival'] ?? 'Rival').toString();
@@ -7569,15 +7680,33 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                (partido['rival'] ?? 'Rival').toString(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFFDCE4EF),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (partido['rival'] ?? 'Rival').toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFDCE4EF),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (instanciaLabel.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      instanciaLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF7DB7FF),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Text(
@@ -11318,6 +11447,8 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final eventosImportantes = _eventosImportantes();
     final estadisticasPorArquero = _estadisticasPorArquero();
+    final instanciaLabel = matchInstanceLabelFromMap(partido);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -11353,6 +11484,13 @@ class ResumenPartidoFinalizadoScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInAppMatchOverviewCard(context),
+                  if (instanciaLabel.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _MatchInstanceChip(label: instanciaLabel),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _buildInAppGoalkeepersOverviewCard(
                     context,
@@ -14054,6 +14192,7 @@ class _FixtureScreenState extends State<FixtureScreen> {
 
     return MatchCardPro(
       match: match,
+      instanceLabel: matchInstanceLabelFromMap(partidoVisual),
       actionText: estaFinalizadoV2 ? 'Ver resumen' : 'Abrir partido',
       onPressed: abrir,
       showFechaChip: true,
@@ -19609,6 +19748,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
                             return MatchCardPro(
                               match: match,
+                              instanceLabel: matchInstanceLabelFromMap(partido),
                               actionText: 'Ver resumen',
                               showFechaChip: false,
                               showEstadoChip: false,

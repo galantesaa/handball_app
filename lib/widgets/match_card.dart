@@ -9,6 +9,7 @@ class MatchCardPro extends StatelessWidget {
   final bool showFechaChip;
   final bool showEstadoChip;
   final bool compact;
+  final String? instanceLabel;
 
   const MatchCardPro({
     super.key,
@@ -18,6 +19,7 @@ class MatchCardPro extends StatelessWidget {
     this.showFechaChip = true,
     this.showEstadoChip = true,
     this.compact = false,
+    this.instanceLabel,
   });
 
   @override
@@ -78,7 +80,7 @@ class MatchCardPro extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            _MetaLine(match: match),
+            _MetaLine(match: match, instanceLabel: instanceLabel),
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
@@ -300,16 +302,20 @@ class _Shield extends StatelessWidget {
 
 class _MetaLine extends StatelessWidget {
   final MatchModel match;
+  final String? instanceLabel;
 
-  const _MetaLine({required this.match});
+  const _MetaLine({required this.match, this.instanceLabel});
 
   @override
   Widget build(BuildContext context) {
     final estado = match.finalizado ? 'Finalizado' : 'Pendiente';
 
+    final cleanInstanceLabel = (instanceLabel ?? '').trim();
+
     final items = <String>[
       match.categoria,
       match.torneo,
+      if (cleanInstanceLabel.isNotEmpty) cleanInstanceLabel,
       match.condicionVisible,
       estado,
     ].where((e) => e.trim().isNotEmpty && e != '-').toList();
@@ -321,19 +327,27 @@ class _MetaLine extends StatelessWidget {
         runSpacing: 7,
         children: items.map((text) {
           final bool isEstado = text == 'Finalizado' || text == 'Pendiente';
+          final bool isInstance =
+              cleanInstanceLabel.isNotEmpty && text == cleanInstanceLabel;
+
           final Color color = text == 'Finalizado'
               ? const Color(0xFFFF6B6B)
               : text == 'Pendiente'
               ? const Color(0xFF4F8CFF)
+              : isInstance
+              ? const Color(0xFF7DB7FF)
               : const Color(0xFFAAB4C3);
 
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
             decoration: BoxDecoration(
-              color: isEstado
+              color: isEstado || isInstance
                   ? color.withOpacity(0.15)
                   : Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
+              border: isInstance
+                  ? Border.all(color: color.withOpacity(0.25))
+                  : null,
             ),
             child: Text(
               text,
