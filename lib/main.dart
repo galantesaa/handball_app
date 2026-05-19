@@ -109,14 +109,194 @@ String matchInstanceLabelFromMap(Map<String, dynamic> partido) {
   final grupo = _cleanVisualText(merged['grupoPartido']);
   final ronda = _cleanVisualText(merged['rondaPartido']);
 
-  final parts = <String>[];
+  String normalize(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
 
-  if (fase.isNotEmpty) parts.add(fase);
-  if (grupo.isNotEmpty) parts.add(grupo);
-  if (ronda.isNotEmpty) parts.add(ronda);
+  final faseNorm = normalize(fase);
+
+  if (fase.isEmpty) return '';
+
+  if (faseNorm == 'clasificacion') {
+    final parts = <String>[fase];
+
+    if (grupo.isNotEmpty) {
+      parts.add(grupo);
+    }
+
+    return parts.join(' · ');
+  }
+
+  final parts = <String>[fase];
+
+  if (ronda.isNotEmpty) {
+    parts.add(ronda);
+  }
 
   return parts.join(' · ');
 }
+
+String _normalizeInstitutionScope(dynamic value) {
+  return AppContextKey.normalizeId(value);
+}
+
+bool _isLegacyOrSanFernandoScope(dynamic value) {
+  final id = _normalizeInstitutionScope(value);
+
+  return id.isEmpty ||
+      id == 'legacy_institution' ||
+      id == 'san_fernando' ||
+      id == 'san_fernando_handball';
+}
+
+bool _sameScopedInstitution({
+  required dynamic dataInstitutionId,
+  required String? contextInstitutionId,
+}) {
+  final dataId = _normalizeInstitutionScope(dataInstitutionId);
+  final contextId = _normalizeInstitutionScope(contextInstitutionId);
+
+  final contextIsLegacyOrSanFernando =
+      _isLegacyOrSanFernandoScope(contextId);
+
+  final dataIsLegacyOrSanFernando = _isLegacyOrSanFernandoScope(dataId);
+
+  if (contextId.isEmpty || contextId == 'legacy_institution') {
+    return dataIsLegacyOrSanFernando;
+  }
+
+  if (contextIsLegacyOrSanFernando) {
+    return dataIsLegacyOrSanFernando;
+  }
+
+  if (dataId.isEmpty || dataId == 'legacy_institution') {
+    return false;
+  }
+
+  return dataId == contextId;
+}
+
+String? _cleanNullableVisualValue(dynamic value) {
+  final text = (value ?? '').toString().trim();
+
+  if (text.isEmpty || text.toLowerCase() == 'null') {
+    return null;
+  }
+
+  return text;
+}
+
+Map<String, dynamic> _normalizeMatchForActiveInstitution({
+  required Map<String, dynamic> partido,
+  required String? institutionId,
+  required String institutionName,
+  required String? institutionShieldPath,
+}) {
+  final map = Map<String, dynamic>.from(partido);
+
+  final ownTeamName = institutionName.trim().isEmpty
+      ? 'Institución'
+      : institutionName.trim();
+
+  final ownShield = _cleanNullableVisualValue(institutionShieldPath);
+  final rival = _cleanNullableVisualValue(map['rival']) ?? 'Rival';
+  final condicion = _cleanNullableVisualValue(map['condicion']) ?? 'Local';
+  final somosLocales = condicion.trim().toLowerCase() == 'local';
+
+  final rivalShield = _cleanNullableVisualValue(map['escudoRival']);
+
+  return {
+    ...map,
+    'institutionId': institutionId,
+    'equipoPropio': ownTeamName,
+    'escudoPropio': ownShield,
+    'rival': rival,
+    'condicion': condicion,
+    'equipoLocal': somosLocales ? ownTeamName : rival,
+    'equipoVisitante': somosLocales ? rival : ownTeamName,
+    'escudoLocal': somosLocales
+        ? ownShield
+        : rivalShield ?? _cleanNullableVisualValue(map['escudoLocal']),
+    'escudoVisitante': somosLocales
+        ? rivalShield ?? _cleanNullableVisualValue(map['escudoVisitante'])
+        : ownShield,
+  };
+}
+
+Map<String, dynamic> _materializeMatchVisualIdentity(
+  Map<String, dynamic> partido,
+) {
+  final map = Map<String, dynamic>.from(partido);
+
+  String? clean(dynamic value) {
+    final text = (value ?? '').toString().trim();
+
+    if (text.isEmpty || text.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return text;
+  }
+
+  final rival = clean(map['rival']) ?? 'Rival';
+  final condicion = clean(map['condicion']) ?? 'Local';
+  final somosLocales = condicion.trim().toLowerCase() == 'local';
+
+  final equipoPropio = clean(map['equipoPropio']) ?? 'Institución';
+
+  final equipoLocal = clean(map['equipoLocal']) ??
+      (somosLocales ? equipoPropio : rival);
+
+  final equipoVisitante = clean(map['equipoVisitante']) ??
+      (somosLocales ? rival : equipoPropio);
+
+  final escudoPropio = clean(map['escudoPropio']);
+  final escudoLocal = clean(map['escudoLocal']);
+  final escudoVisitante = clean(map['escudoVisitante']);
+  final escudoRivalDirecto = clean(map['escudoRival']);
+
+  final escudoRivalPorLado = somosLocales ? escudoVisitante : escudoLocal;
+
+  final escudoRival =
+      escudoRivalDirecto ??
+      escudoRivalPorLado ??
+      rivalShieldAssetGlobal(rival);
+
+  final escudoPropioPorLado = somosLocales ? escudoLocal : escudoVisitante;
+
+  final resolvedEscudoPropio = escudoPropio ?? escudoPropioPorLado;
+
+  final resolvedEscudoLocal =
+      escudoLocal ?? (somosLocales ? resolvedEscudoPropio : escudoRival);
+
+  final resolvedEscudoVisitante =
+      escudoVisitante ?? (somosLocales ? escudoRival : resolvedEscudoPropio);
+
+  return {
+    ...map,
+    'rival': rival,
+    'condicion': condicion,
+    'equipoPropio': equipoPropio,
+    'equipoLocal': equipoLocal,
+    'equipoVisitante': equipoVisitante,
+    'escudoPropio': resolvedEscudoPropio,
+    'escudoLocal': resolvedEscudoLocal,
+    'escudoVisitante': resolvedEscudoVisitante,
+    'escudoRival': escudoRival,
+  };
+}
+
 
 class _MatchInstanceChip extends StatelessWidget {
   final String label;
@@ -5309,74 +5489,78 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Set<String> _identityKeysForPartidoMap(Map<String, dynamic> partido) {
-    final merged = _flattenFinishedLikeMap(partido);
-    final keys = <String>{};
+  final merged = _flattenFinishedLikeMap(partido);
+  final keys = <String>{};
 
-    void addKey(dynamic value) {
-      final key = _finishedKey(value);
+  void addKey(dynamic value) {
+    final key = _finishedKey(value);
 
-      if (key.isNotEmpty && key != 'null') {
-        keys.add(key);
-      }
+    if (key.isNotEmpty && key != 'null') {
+      keys.add(key);
     }
+  }
 
-    final isLooseMatch = _isLooseMatchIdentityMap(merged);
-    final matchInstanceId = _cleanMatchInstanceId(merged['matchInstanceId']);
+  final isLooseMatch = _isLooseMatchIdentityMap(merged);
+  final matchInstanceId = _cleanMatchInstanceId(merged['matchInstanceId']);
 
-    final normalizedForStableIdentity = {
-      ...merged,
-      'institutionId': merged['institutionId'] ?? widget.institutionId,
-      'temporada': merged['temporada'] ?? widget.temporada,
-      'competencia': merged['competencia'] ?? widget.competencia,
-      'torneo': merged['torneo'] ?? widget.torneo,
-      'categoria': merged['categoria'] ?? widget.categoria,
-    };
+  final normalizedForStableIdentity = {
+    ...merged,
+    'institutionId': merged['institutionId'] ?? widget.institutionId,
+    'temporada': merged['temporada'] ?? widget.temporada,
+    'competencia': merged['competencia'] ?? widget.competencia,
+    'torneo': merged['torneo'] ?? widget.torneo,
+    'categoria': merged['categoria'] ?? widget.categoria,
+  };
 
+  addKey(
+    FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+      normalizedForStableIdentity,
+    ),
+  );
+
+  addKey(
+    PartidoRepositoryV2.buildMatchIdentityFromMap(
+      normalizedForStableIdentity,
+    ),
+  );
+
+  if (matchInstanceId != null) {
+    addKey(_looseInstanceIdentityForMap(normalizedForStableIdentity));
+
+    // Si hay matchInstanceId, NO agregamos identidades legacy.
+    // Esto evita que Nacional / Único pise Clasificación, Cuartos, Semi o Final
+    // cuando se repite el mismo rival.
+    return keys;
+  }
+
+  if (isLooseMatch) {
+    addKey(_fullLooseIdentityForMap(normalizedForStableIdentity));
     addKey(
-      FixtureRepositoryV2.buildStableFixtureIdentityFromMap(
+      _legacyCoreMatchIdentity(
         normalizedForStableIdentity,
+        includeHora: true,
       ),
-    );
-
-    if (isLooseMatch && matchInstanceId != null) {
-      addKey(_looseInstanceIdentityForMap(normalizedForStableIdentity));
-
-      // Importante:
-      // Si hay matchInstanceId, NO agregamos identidades legacy por fecha/rival.
-      // Eso evita que un amistoso nuevo herede el resumen de otro partido viejo.
-      return keys;
-    }
-
-    if (isLooseMatch) {
-      addKey(_fullLooseIdentityForMap(normalizedForStableIdentity));
-      addKey(
-        _legacyCoreMatchIdentity(
-          normalizedForStableIdentity,
-          includeHora: true,
-        ),
-      );
-
-      return keys;
-    }
-
-    addKey(
-      PartidoRepositoryV2.buildMatchIdentityFromMap(
-        normalizedForStableIdentity,
-      ),
-    );
-    addKey(
-      PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(
-        normalizedForStableIdentity,
-      ),
-    );
-    addKey(_identityFromMap(normalizedForStableIdentity));
-    addKey(_legacyCoreMatchIdentity(normalizedForStableIdentity));
-    addKey(
-      _legacyCoreMatchIdentity(normalizedForStableIdentity, includeHora: true),
     );
 
     return keys;
   }
+
+  addKey(
+    PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(
+      normalizedForStableIdentity,
+    ),
+  );
+  addKey(_identityFromMap(normalizedForStableIdentity));
+  addKey(_legacyCoreMatchIdentity(normalizedForStableIdentity));
+  addKey(
+    _legacyCoreMatchIdentity(
+      normalizedForStableIdentity,
+      includeHora: true,
+    ),
+  );
+
+  return keys;
+}
 
   Future<Set<String>> _readFinishedIdentityKeys() async {
     final prefs = await SharedPreferences.getInstance();
@@ -5548,61 +5732,80 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   /// ===============================
 
   void _recalcularProximoYSiguientesDesdeBase() {
-    final todos = _buildFixtureCompleto(
-      categoria: widget.categoria,
-    ).where(_matchesCurrentContext).toList();
+  final todos = _buildFixtureCompleto(
+    categoria: widget.categoria,
+  )
+      .where(_matchesCurrentContext)
+      .map((p) {
+        return _normalizeMatchForActiveInstitution(
+          partido: Map<String, dynamic>.from(p),
+          institutionId: widget.institutionId,
+          institutionName: _institutionName,
+          institutionShieldPath: _institutionShieldPath,
+        );
+      })
+      .toList();
 
-    final pendientes = todos.where((p) {
-      return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
-    }).toList();
+  final pendientes = todos.where((p) {
+    return _esPartidoValido(p) && !_estaFinalizadoGlobal(p);
+  }).toList();
 
-    pendientes.sort((a, b) {
-      final fa = (a['fechaNumero'] as int?) ?? 999999;
-      final fb = (b['fechaNumero'] as int?) ?? 999999;
+  pendientes.sort((a, b) {
+    final fa = (a['fechaNumero'] as int?) ?? 999999;
+    final fb = (b['fechaNumero'] as int?) ?? 999999;
 
-      final byFecha = fa.compareTo(fb);
-      if (byFecha != 0) return byFecha;
+    final byFecha = fa.compareTo(fb);
+    if (byFecha != 0) return byFecha;
 
-      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
-        (b['rival'] ?? '').toString().toLowerCase(),
-      );
-    });
+    final byHora = (a['hora'] ?? '').toString().compareTo(
+          (b['hora'] ?? '').toString(),
+        );
+    if (byHora != 0) return byHora;
 
-    if (pendientes.isEmpty) {
-      proximoPartido = {};
-      siguientesPartidos = [];
-      hayPartido = false;
-      return;
-    }
+    return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+          (b['rival'] ?? '').toString().toLowerCase(),
+        );
+  });
 
-    proximoPartido = Map<String, dynamic>.from(pendientes.first);
-
-    siguientesPartidos = pendientes.skip(1).map((p) {
-      return {
-        'temporada': p['temporada'],
-        'competencia': p['competencia'],
-        'rival': p['rival'],
-        'institutionId': p['institutionId'] ?? widget.institutionId,
-        'equipoPropio': p['equipoPropio'] ?? _institutionName,
-        'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
-        'fechaNumero': p['fechaNumero'],
-        'fecha': p['fecha'],
-        'hora': p['hora'],
-        'condicion': p['condicion'],
-        'torneo': p['torneo'],
-        'categoria': p['categoria'],
-        'escudoRival': p['escudoRival'],
-        'estado': p['estado'],
-        'estadoPartido': p['estadoPartido'],
-        'equipoLocal': p['equipoLocal'],
-        'equipoVisitante': p['equipoVisitante'],
-        'escudoLocal': p['escudoLocal'],
-        'escudoVisitante': p['escudoVisitante'],
-      };
-    }).toList();
-
-    hayPartido = true;
+  if (pendientes.isEmpty) {
+    proximoPartido = {};
+    siguientesPartidos = [];
+    hayPartido = false;
+    return;
   }
+
+  proximoPartido = Map<String, dynamic>.from(pendientes.first);
+
+  siguientesPartidos = pendientes.skip(1).map((p) {
+    return {
+      'temporada': p['temporada'],
+      'competencia': p['competencia'],
+      'rival': p['rival'],
+      'institutionId': p['institutionId'] ?? widget.institutionId,
+      'matchInstanceId': p['matchInstanceId'],
+      'fasePartido': p['fasePartido'],
+      'grupoPartido': p['grupoPartido'],
+      'rondaPartido': p['rondaPartido'],
+      'equipoPropio': p['equipoPropio'] ?? _institutionName,
+      'escudoPropio': p['escudoPropio'] ?? _institutionShieldPath,
+      'fechaNumero': p['fechaNumero'],
+      'fecha': p['fecha'],
+      'hora': p['hora'],
+      'condicion': p['condicion'],
+      'torneo': p['torneo'],
+      'categoria': p['categoria'],
+      'escudoRival': p['escudoRival'],
+      'estado': p['estado'],
+      'estadoPartido': p['estadoPartido'],
+      'equipoLocal': p['equipoLocal'],
+      'equipoVisitante': p['equipoVisitante'],
+      'escudoLocal': p['escudoLocal'],
+      'escudoVisitante': p['escudoVisitante'],
+    };
+  }).toList();
+
+  hayPartido = true;
+}
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
     final sameBase =
@@ -6011,15 +6214,15 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
-    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-      ...partido,
-      'institutionId': partido['institutionId'] ?? widget.institutionId,
-      'temporada': partido['temporada'] ?? widget.temporada,
-      'competencia': partido['competencia'] ?? widget.competencia,
-      'torneo': partido['torneo'] ?? widget.torneo,
-      'categoria': partido['categoria'] ?? widget.categoria,
-    });
-  }
+  return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+    ...partido,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+    'temporada': partido['temporada'] ?? widget.temporada,
+    'competencia': partido['competencia'] ?? widget.competencia,
+    'torneo': partido['torneo'] ?? widget.torneo,
+    'categoria': partido['categoria'] ?? widget.categoria,
+  });
+}
 
   List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
     List<Map<String, dynamic>> base,
@@ -6647,44 +6850,47 @@ class _ProximoPartidoScreenState extends State<ProximoPartidoScreen> {
   }
 
   Future<void> _abrirCentroDeControl() async {
-    if (!hayPartido || proximoPartido.isEmpty) return;
+  if (!hayPartido || proximoPartido.isEmpty) return;
 
-    final rival = fixTextoRoto(proximoPartido['rival'] ?? 'Rival');
-    if (rival.isEmpty) {
-      setState(() {
-        _recalcularProximoYSiguientesDesdeBase();
-      });
-      await _persistFixtureState();
-      return;
-    }
-
-    proximoPartido['esPartidoReal'] ??= false;
-
-    final ownTeamName = widget.institutionName.trim().isEmpty
-        ? 'Institución'
-        : widget.institutionName.trim();
-
-    proximoPartido['institutionId'] = widget.institutionId;
-    proximoPartido['equipoPropio'] = ownTeamName;
-    proximoPartido['escudoPropio'] = _institutionShieldPath;
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
-      ),
-    );
-
-    if (!mounted) return;
-
+  final rival = fixTextoRoto(proximoPartido['rival'] ?? 'Rival');
+  if (rival.isEmpty) {
     setState(() {
-      if (_partidoEstaFinalizado(proximoPartido)) {
-        _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
-      }
+      _recalcularProximoYSiguientesDesdeBase();
     });
-
     await _persistFixtureState();
+    return;
   }
+
+  final normalized = _normalizeMatchForActiveInstitution(
+    partido: Map<String, dynamic>.from(proximoPartido),
+    institutionId: widget.institutionId,
+    institutionName: _institutionName,
+    institutionShieldPath: _institutionShieldPath,
+  );
+
+  normalized['esPartidoReal'] ??= false;
+
+  proximoPartido
+    ..clear()
+    ..addAll(normalized);
+
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => PartidoEnJuegoScreen(partido: proximoPartido),
+    ),
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    if (_partidoEstaFinalizado(proximoPartido)) {
+      _promoverSiguienteSiActualEstaFinalizado(saveAfter: false);
+    }
+  });
+
+  await _persistFixtureState();
+}
 
   void _abrirResumenUltimoFinalizado() {
     if (partidosFinalizados.isEmpty) return;
@@ -13410,76 +13616,64 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   bool _customFixtureMatchesCurrentContext(PartidoModel partido) {
-    final sameBase =
-        _normalizeContextText(partido.temporada) ==
-            _normalizeContextText(widget.temporada) &&
-        _normalizeContextText(partido.competencia) ==
-            _normalizeContextText(widget.competencia) &&
-        _normalizeContextText(partido.categoria) ==
-            _normalizeContextText(widget.categoria);
-
-    if (!sameBase) return false;
-
-    final torneo = _normalizeContextText(partido.torneo);
-    final currentTorneo = _normalizeContextText(widget.torneo);
-
-    return torneo == currentTorneo || _sameLooseStage(torneo, currentTorneo);
+  if (!_sameScopedInstitution(
+    dataInstitutionId: partido.institutionId,
+    contextInstitutionId: widget.institutionId,
+  )) {
+    return false;
   }
 
-  Future<void> _loadCustomFixturesV2() async {
-    final allFixtures = await _fixtureRepository.readFixtures();
-
-    final filtered = allFixtures.where((partido) {
-      final sameSeason =
-          _normalizeContextText(partido.temporada) ==
-          _normalizeContextText(widget.temporada);
-
-      final sameCompetition =
-          _normalizeContextText(partido.competencia) ==
-          _normalizeContextText(widget.competencia);
-
-      final sameCategory =
-          _normalizeContextText(partido.categoria) ==
+  final sameBase =
+      _normalizeContextText(partido.temporada) ==
+          _normalizeContextText(widget.temporada) &&
+      _normalizeContextText(partido.competencia) ==
+          _normalizeContextText(widget.competencia) &&
+      _normalizeContextText(partido.categoria) ==
           _normalizeContextText(widget.categoria);
 
-      if (!sameSeason || !sameCompetition || !sameCategory) {
-        return false;
-      }
+  if (!sameBase) return false;
 
-      final partidoTorneo = _normalizeContextText(partido.torneo);
-      final widgetTorneo = _normalizeContextText(widget.torneo);
+  final torneo = _normalizeContextText(partido.torneo);
+  final currentTorneo = _normalizeContextText(widget.torneo);
 
-      if (partidoTorneo == widgetTorneo) return true;
+  return torneo == currentTorneo || _sameLooseStage(torneo, currentTorneo);
+}
 
-      return _sameLooseStage(partidoTorneo, widgetTorneo);
-    }).toList();
+  Future<void> _loadCustomFixturesV2() async {
+  final allFixtures = await _fixtureRepository.readFixtures();
 
-    filtered.sort((a, b) {
-      final byFecha = (a.fechaNumero ?? 999999).compareTo(
-        b.fechaNumero ?? 999999,
-      );
+  final filtered = allFixtures.where(_customFixtureMatchesCurrentContext).toList();
 
-      if (byFecha != 0) return byFecha;
+  filtered.sort((a, b) {
+    final byFecha = (a.fechaNumero ?? 999999).compareTo(
+      b.fechaNumero ?? 999999,
+    );
 
-      return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
-    });
+    if (byFecha != 0) return byFecha;
 
-    if (!mounted) return;
+    final byHora = a.hora.compareTo(b.hora);
+    if (byHora != 0) return byHora;
 
-    setState(() {
-      _customFixturesV2 = filtered;
-    });
-  }
+    return a.rival.toLowerCase().compareTo(b.rival.toLowerCase());
+  });
+
+  if (!mounted) return;
+
+  setState(() {
+    _customFixturesV2 = filtered;
+  });
+}
 
   String _stableFixtureIdentity(Map<String, dynamic> partido) {
-    return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
-      ...partido,
-      'temporada': partido['temporada'] ?? widget.temporada,
-      'competencia': partido['competencia'] ?? widget.competencia,
-      'torneo': partido['torneo'] ?? widget.torneo,
-      'categoria': partido['categoria'] ?? widget.categoria,
-    });
-  }
+  return FixtureRepositoryV2.buildStableFixtureIdentityFromMap({
+    ...partido,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+    'temporada': partido['temporada'] ?? widget.temporada,
+    'competencia': partido['competencia'] ?? widget.competencia,
+    'torneo': partido['torneo'] ?? widget.torneo,
+    'categoria': partido['categoria'] ?? widget.categoria,
+  });
+}
 
   List<Map<String, dynamic>> _mergeBaseWithCustomFixtures(
     List<Map<String, dynamic>> base,
@@ -13514,25 +13708,40 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   List<Map<String, dynamic>> _buildFixtureCompleto({
-    required String categoria,
-  }) {
-    final base = <Map<String, dynamic>>[];
+  required String categoria,
+}) {
+  final base = <Map<String, dynamic>>[];
 
-    if (_normalizeContextText(widget.competencia) == 'local') {
-      final apertura = _buildAperturaBase(
-        categoria: categoria,
-      ).map(_convertirAFixturePartido).toList();
+  final activeInstitutionId = _normalizeInstitutionScope(widget.institutionId);
 
-      final clausura = _buildClausuraBase(
-        categoria: categoria,
-      ).map(_convertirAFixturePartido).toList();
+  final isSanFernandoContext =
+      activeInstitutionId == 'san_fernando_handball' ||
+      activeInstitutionId == 'san_fernando' ||
+      activeInstitutionId == 'legacy_institution' ||
+      activeInstitutionId.isEmpty;
 
-      base.addAll(apertura);
-      base.addAll(clausura);
-    }
+  final isLocalCompetition = _normalizeContextText(widget.competencia) == 'local';
 
-    return _mergeBaseWithCustomFixtures(base);
+  if (isLocalCompetition && isSanFernandoContext) {
+    final apertura = _buildAperturaBase(
+      categoria: categoria,
+    ).map(_convertirAFixturePartido).toList();
+
+    final clausura = _buildClausuraBase(
+      categoria: categoria,
+    ).map(_convertirAFixturePartido).toList();
+
+    base.addAll(apertura);
+    base.addAll(clausura);
   }
+
+  return _mergeBaseWithCustomFixtures(base).where((partido) {
+    return _sameScopedInstitution(
+      dataInstitutionId: partido['institutionId'],
+      contextInstitutionId: widget.institutionId,
+    );
+  }).toList();
+}
 
   List<DateTime> _generarSabadosDesde({
     required DateTime inicio,
@@ -13759,14 +13968,15 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   String _matchIdentityForPartido(Map<String, dynamic> partido) {
-    return [
-      _normalizeValue(partido['torneo']),
-      _normalizeValue(partido['categoria']),
-      _normalizeValue(partido['fecha']),
-      _normalizeValue(partido['rival']),
-      _normalizeValue(partido['condicion']),
-    ].join('|');
-  }
+  return PartidoRepositoryV2.buildMatchIdentityFromMap({
+    ...partido,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+    'temporada': partido['temporada'] ?? widget.temporada,
+    'competencia': partido['competencia'] ?? widget.competencia,
+    'torneo': partido['torneo'] ?? widget.torneo,
+    'categoria': partido['categoria'] ?? widget.categoria,
+  });
+}
 
   Map<String, dynamic> _mergePersistedStateIntoPartido(
     Map<String, dynamic> base,
@@ -13950,58 +14160,85 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   List<Map<String, dynamic>> _obtenerFixturePorCategoriaYTorneo() {
-    final torneoActual = _normalizeContextText(widget.torneo);
-    final categoriaActual = _normalizeContextText(widget.categoria);
+  final torneoActual = _normalizeContextText(widget.torneo);
+  final categoriaActual = _normalizeContextText(widget.categoria);
 
-    final partidos = _buildFixtureCompleto(categoria: widget.categoria).where((
-      partido,
-    ) {
-      final torneo = _normalizeContextText(partido['torneo']);
-      final categoria = _normalizeContextText(partido['categoria']);
+  final partidos = _buildFixtureCompleto(categoria: widget.categoria).where((
+    partido,
+  ) {
+    if (!_sameScopedInstitution(
+      dataInstitutionId: partido['institutionId'],
+      contextInstitutionId: widget.institutionId,
+    )) {
+      return false;
+    }
 
-      final sameCategory = categoria == categoriaActual;
-      final sameTournament =
-          torneo == torneoActual || _sameLooseStage(torneo, torneoActual);
+    final torneo = _normalizeContextText(partido['torneo']);
+    final categoria = _normalizeContextText(partido['categoria']);
 
-      return sameCategory && sameTournament;
-    }).toList();
+    final sameCategory = categoria == categoriaActual;
+    final sameTournament =
+        torneo == torneoActual || _sameLooseStage(torneo, torneoActual);
 
-    partidos.sort((a, b) {
-      final fa = (a['fechaNumero'] as int?) ?? 999999;
-      final fb = (b['fechaNumero'] as int?) ?? 999999;
+    return sameCategory && sameTournament;
+  }).map((partido) {
+    return _normalizeMatchForActiveInstitution(
+      partido: Map<String, dynamic>.from(partido),
+      institutionId: widget.institutionId,
+      institutionName: _institutionName,
+      institutionShieldPath: _institutionShieldPath,
+    );
+  }).toList();
 
-      final byFecha = fa.compareTo(fb);
-      if (byFecha != 0) return byFecha;
+  partidos.sort((a, b) {
+    final fa = (a['fechaNumero'] as int?) ?? 999999;
+    final fb = (b['fechaNumero'] as int?) ?? 999999;
 
-      return (a['rival'] ?? '').toString().toLowerCase().compareTo(
-        (b['rival'] ?? '').toString().toLowerCase(),
-      );
-    });
+    final byFecha = fa.compareTo(fb);
+    if (byFecha != 0) return byFecha;
 
-    return partidos;
-  }
+    final byHora = (a['hora'] ?? '').toString().compareTo(
+          (b['hora'] ?? '').toString(),
+        );
+    if (byHora != 0) return byHora;
+
+    return (a['rival'] ?? '').toString().toLowerCase().compareTo(
+          (b['rival'] ?? '').toString().toLowerCase(),
+        );
+  });
+
+  return partidos;
+}
 
   Future<void> _abrirPartido(
-    BuildContext context,
-    Map<String, dynamic> partido,
-  ) async {
-    final partidoReal = await _resolverPartidoConEstadoReal(
-      Map<String, dynamic>.from(partido),
-    );
+  BuildContext context,
+  Map<String, dynamic> partido,
+) async {
+  final normalizedInput = _normalizeMatchForActiveInstitution(
+    partido: Map<String, dynamic>.from(partido),
+    institutionId: widget.institutionId,
+    institutionName: _institutionName,
+    institutionShieldPath: _institutionShieldPath,
+  );
 
-    partidoReal['institutionId'] = widget.institutionId;
-    partidoReal['equipoPropio'] = _institutionName;
-    partidoReal['escudoPropio'] = _institutionShieldPath;
+  final partidoRealRaw = await _resolverPartidoConEstadoReal(normalizedInput);
 
-    if (!context.mounted) return;
+  final partidoReal = _normalizeMatchForActiveInstitution(
+    partido: Map<String, dynamic>.from(partidoRealRaw),
+    institutionId: widget.institutionId,
+    institutionName: _institutionName,
+    institutionShieldPath: _institutionShieldPath,
+  );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PartidoEnJuegoScreen(partido: partidoReal),
-      ),
-    );
-  }
+  if (!context.mounted) return;
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => PartidoEnJuegoScreen(partido: partidoReal),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -14060,145 +14297,218 @@ class _FixtureScreenState extends State<FixtureScreen> {
   }
 
   Widget _buildFixtureCard(BuildContext context, Map<String, dynamic> partido) {
-    String? clean(dynamic value) {
-      final text = (value ?? '').toString().trim();
-      if (text.isEmpty || text.toLowerCase() == 'null') return null;
-      return text;
-    }
+  String? clean(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
+  }
 
-    Set<String> identityKeysForMap(Map<String, dynamic> map) {
-      return <String>{
-        PartidoRepositoryV2.buildMatchIdentityFromMap(map),
-        PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(map),
-        FixtureRepositoryV2.buildStableFixtureIdentityFromMap(map),
-        FixtureRepositoryV2.buildLegacyStableFixtureIdentityFromMap(map),
-      }.where((e) => e.trim().isNotEmpty && e.trim() != 'null').toSet();
-    }
+  String? cleanInstanceIdFromMap(Map<String, dynamic> map) {
+    final merged = _unwrapPartidoVisualMap(map);
+    final value = FixtureRepositoryV2.normalize(merged['matchInstanceId']);
 
-    Set<String> identityKeysForModel(PartidoModel model) {
-      final map = model.toMap();
+    if (value.isEmpty || value == 'null') return null;
 
-      return <String>{
-        PartidoRepositoryV2.buildMatchIdentityFromModel(model),
-        PartidoRepositoryV2.buildLegacyMatchIdentityFromModel(model),
-        FixtureRepositoryV2.buildStableFixtureIdentity(model),
-        FixtureRepositoryV2.buildLegacyStableFixtureIdentity(model),
-        ...identityKeysForMap(map),
-      }.where((e) => e.trim().isNotEmpty && e.trim() != 'null').toSet();
-    }
+    return value;
+  }
 
-    final normalizedPartido = <String, dynamic>{
-      ...partido,
-      'temporada': partido['temporada'] ?? widget.temporada,
-      'competencia': partido['competencia'] ?? widget.competencia,
-      'torneo': partido['torneo'] ?? widget.torneo,
-      'categoria': partido['categoria'] ?? widget.categoria,
-      'institutionId': partido['institutionId'] ?? widget.institutionId,
+  Map<String, dynamic> normalizeForIdentity(Map<String, dynamic> map) {
+    final merged = _unwrapPartidoVisualMap(map);
+
+    return {
+      ...merged,
+      'institutionId': merged['institutionId'] ?? widget.institutionId,
+      'temporada': merged['temporada'] ?? widget.temporada,
+      'competencia': merged['competencia'] ?? widget.competencia,
+      'torneo': merged['torneo'] ?? widget.torneo,
+      'categoria': merged['categoria'] ?? widget.categoria,
+    };
+  }
+
+  String instanceIdentityForMap(Map<String, dynamic> map) {
+    final normalized = normalizeForIdentity(map);
+
+    return [
+      FixtureRepositoryV2.normalize(
+        normalized['institutionId'] ?? widget.institutionId,
+      ),
+      FixtureRepositoryV2.normalize(
+        normalized['temporada'] ?? widget.temporada,
+      ),
+      FixtureRepositoryV2.normalize(
+        normalized['competencia'] ?? widget.competencia,
+      ),
+      FixtureRepositoryV2.normalize(
+        normalized['torneo'] ?? widget.torneo,
+      ),
+      FixtureRepositoryV2.normalize(
+        normalized['categoria'] ?? widget.categoria,
+      ),
+      FixtureRepositoryV2.normalize(normalized['matchInstanceId']),
+    ].join('|');
+  }
+
+  Set<String> identityKeysForMap(Map<String, dynamic> map) {
+    final normalized = normalizeForIdentity(map);
+    final matchInstanceId = cleanInstanceIdFromMap(normalized);
+
+    final keys = <String>{
+      FixtureRepositoryV2.buildStableFixtureIdentityFromMap(normalized),
+      PartidoRepositoryV2.buildMatchIdentityFromMap(normalized),
     };
 
-    final currentKeys = identityKeysForMap(normalizedPartido);
+    if (matchInstanceId != null) {
+      keys.add(instanceIdentityForMap(normalized));
 
-    PartidoModel? finalizadoV2;
-
-    for (final item in _finalizadosV2) {
-      final finishedKeys = identityKeysForModel(item);
-
-      if (currentKeys.any(finishedKeys.contains)) {
-        finalizadoV2 = item;
-        break;
-      }
+      // Si hay matchInstanceId, NO agregamos legacy.
+      // Este es el blindaje contra partidos repetidos por rival dentro de Único.
+      return keys
+          .where((e) => e.trim().isNotEmpty && e.trim() != 'null')
+          .toSet();
     }
 
-    final bool estaFinalizadoV2 = finalizadoV2 != null;
-    final finalizadoMap = finalizadoV2?.toMap() ?? <String, dynamic>{};
+    keys.addAll({
+      PartidoRepositoryV2.buildLegacyMatchIdentityFromMap(normalized),
+      FixtureRepositoryV2.buildLegacyStableFixtureIdentityFromMap(normalized),
+    });
 
-    final Map<String, dynamic> partidoVisual = estaFinalizadoV2
-        ? {
-            ...normalizedPartido,
-            ...finalizadoMap,
-
-            'fechaNumero': normalizedPartido['fechaNumero'],
-            'fecha': normalizedPartido['fecha'],
-            'hora': normalizedPartido['hora'],
-            'rival': normalizedPartido['rival'],
-            'condicion': normalizedPartido['condicion'],
-
-            'equipoPropio':
-                clean(finalizadoMap['equipoPropio']) ??
-                clean(normalizedPartido['equipoPropio']) ??
-                _institutionName,
-
-            'escudoPropio':
-                clean(finalizadoMap['escudoPropio']) ??
-                clean(normalizedPartido['escudoPropio']) ??
-                _institutionShieldPath,
-
-            'equipoLocal':
-                clean(finalizadoMap['equipoLocal']) ??
-                clean(normalizedPartido['equipoLocal']),
-
-            'equipoVisitante':
-                clean(finalizadoMap['equipoVisitante']) ??
-                clean(normalizedPartido['equipoVisitante']),
-
-            'escudoLocal':
-                clean(finalizadoMap['escudoLocal']) ??
-                clean(normalizedPartido['escudoLocal']),
-
-            'escudoVisitante':
-                clean(finalizadoMap['escudoVisitante']) ??
-                clean(normalizedPartido['escudoVisitante']),
-
-            'escudoRival':
-                clean(finalizadoMap['escudoRival']) ??
-                clean(normalizedPartido['escudoRival']),
-
-            'estado': 'Finalizado',
-            'estadoPartido': 'finalizado',
-            'finalizado': true,
-          }
-        : normalizedPartido;
-
-    final String rival = fixTextoRoto(partidoVisual['rival'] ?? 'Rival');
-
-    final String? escudoRival =
-        clean(partidoVisual['escudoRival']) ?? _rivalShieldAssetByName(rival);
-
-    final match = MatchModel.fromMap(
-      {...partidoVisual, 'rival': rival, 'escudoRival': escudoRival},
-      finalizadoOverride: estaFinalizadoV2,
-      escudoRivalOverride: escudoRival,
-    );
-
-    Future<void> abrir() async {
-      if (estaFinalizadoV2) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ResumenPartidoFinalizadoScreen(
-              partido: {
-                ...partidoVisual,
-                'rival': rival,
-                'escudoRival': escudoRival,
-              },
-            ),
-          ),
-        );
-        return;
-      }
-
-      await _abrirPartido(context, normalizedPartido);
-    }
-
-    return MatchCardPro(
-      match: match,
-      instanceLabel: matchInstanceLabelFromMap(partidoVisual),
-      actionText: estaFinalizadoV2 ? 'Ver resumen' : 'Abrir partido',
-      onPressed: abrir,
-      showFechaChip: true,
-      showEstadoChip: true,
-    );
+    return keys
+        .where((e) => e.trim().isNotEmpty && e.trim() != 'null')
+        .toSet();
   }
+
+  Set<String> identityKeysForModel(PartidoModel model) {
+    return identityKeysForMap(model.toMap());
+  }
+
+  final normalizedPartido = <String, dynamic>{
+    ...partido,
+    'temporada': partido['temporada'] ?? widget.temporada,
+    'competencia': partido['competencia'] ?? widget.competencia,
+    'torneo': partido['torneo'] ?? widget.torneo,
+    'categoria': partido['categoria'] ?? widget.categoria,
+    'institutionId': partido['institutionId'] ?? widget.institutionId,
+  };
+
+  final currentKeys = identityKeysForMap(normalizedPartido);
+
+  PartidoModel? finalizadoV2;
+
+  for (final item in _finalizadosV2) {
+    final finishedKeys = identityKeysForModel(item);
+
+    if (currentKeys.any(finishedKeys.contains)) {
+      finalizadoV2 = item;
+      break;
+    }
+  }
+
+  final bool estaFinalizadoV2 = finalizadoV2 != null;
+  final finalizadoMap = finalizadoV2?.toMap() ?? <String, dynamic>{};
+
+  final Map<String, dynamic> partidoVisual = estaFinalizadoV2
+      ? {
+          ...normalizedPartido,
+          ...finalizadoMap,
+
+          'matchInstanceId':
+              normalizedPartido['matchInstanceId'] ??
+              finalizadoMap['matchInstanceId'],
+          'fasePartido':
+              normalizedPartido['fasePartido'] ?? finalizadoMap['fasePartido'],
+          'grupoPartido':
+              normalizedPartido['grupoPartido'] ??
+              finalizadoMap['grupoPartido'],
+          'rondaPartido':
+              normalizedPartido['rondaPartido'] ??
+              finalizadoMap['rondaPartido'],
+
+          'fechaNumero': normalizedPartido['fechaNumero'],
+          'fecha': normalizedPartido['fecha'],
+          'hora': normalizedPartido['hora'],
+          'rival': normalizedPartido['rival'],
+          'condicion': normalizedPartido['condicion'],
+
+          'equipoPropio':
+              clean(finalizadoMap['equipoPropio']) ??
+              clean(normalizedPartido['equipoPropio']) ??
+              _institutionName,
+
+          'escudoPropio':
+              clean(finalizadoMap['escudoPropio']) ??
+              clean(normalizedPartido['escudoPropio']) ??
+              _institutionShieldPath,
+
+          'equipoLocal':
+              clean(finalizadoMap['equipoLocal']) ??
+              clean(normalizedPartido['equipoLocal']),
+
+          'equipoVisitante':
+              clean(finalizadoMap['equipoVisitante']) ??
+              clean(normalizedPartido['equipoVisitante']),
+
+          'escudoLocal':
+              clean(finalizadoMap['escudoLocal']) ??
+              clean(normalizedPartido['escudoLocal']),
+
+          'escudoVisitante':
+              clean(finalizadoMap['escudoVisitante']) ??
+              clean(normalizedPartido['escudoVisitante']),
+
+          'escudoRival':
+              clean(finalizadoMap['escudoRival']) ??
+              clean(normalizedPartido['escudoRival']),
+
+          'estado': 'Finalizado',
+          'estadoPartido': 'finalizado',
+          'finalizado': true,
+        }
+      : normalizedPartido;
+
+  final String rival = fixTextoRoto(partidoVisual['rival'] ?? 'Rival');
+
+  final String? escudoRival =
+      clean(partidoVisual['escudoRival']) ?? _rivalShieldAssetByName(rival);
+
+  final match = MatchModel.fromMap(
+    {
+      ...partidoVisual,
+      'rival': rival,
+      'escudoRival': escudoRival,
+    },
+    finalizadoOverride: estaFinalizadoV2,
+    escudoRivalOverride: escudoRival,
+  );
+
+  Future<void> abrir() async {
+    if (estaFinalizadoV2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResumenPartidoFinalizadoScreen(
+            partido: {
+              ...partidoVisual,
+              'rival': rival,
+              'escudoRival': escudoRival,
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    await _abrirPartido(context, normalizedPartido);
+  }
+
+  return MatchCardPro(
+    match: match,
+    instanceLabel: matchInstanceLabelFromMap(partidoVisual),
+    actionText: estaFinalizadoV2 ? 'Ver resumen' : 'Abrir partido',
+    onPressed: abrir,
+    showFechaChip: true,
+    showEstadoChip: true,
+  );
+}
 
   /// CHIP DE ESTADO (CON COLOR DINÁMICO)
   /// ===============================
@@ -14537,73 +14847,102 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   }
 
   Future<void> _irAPartidoEnVivo() async {
-    await _asegurarConvocatoriaDefaultSoloArqueros();
-    final resultado = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PartidoEnVivoScreen(
-          partido: widget.partido,
-          estadoInicial: estadoPartido,
-          golesSanFernandoInicial: golesSanFernando,
-          golesRivalInicial: golesRival,
-          atajadasInicial: atajadas,
-          penalesInicial: penales,
-          exclusiones2MinInicial: exclusiones2Min,
-          amarillasInicial: amarillas,
-          rojasInicial: rojas,
-          perdidasInicial: perdidas,
-          recuperacionesInicial: recuperaciones,
-          penalesConvertidosSanFernandoInicial: penalesConvertidosSanFernando,
-          penalesConvertidosRivalInicial: penalesConvertidosRival,
-          eventosIniciales: eventos,
-          modoInicial: modoActual,
-          modoInicioPrimerTiempo: modoInicioPrimerTiempo,
-          modoInicioPrimerTiempoAlargue: modoInicioPrimerTiempoAlargue,
-        ),
+  await _asegurarConvocatoriaDefaultSoloArqueros();
+
+  final resultado = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => PartidoEnVivoScreen(
+        partido: widget.partido,
+        estadoInicial: estadoPartido,
+        golesSanFernandoInicial: golesSanFernando,
+        golesRivalInicial: golesRival,
+        atajadasInicial: atajadas,
+        penalesInicial: penales,
+        exclusiones2MinInicial: exclusiones2Min,
+        amarillasInicial: amarillas,
+        rojasInicial: rojas,
+        perdidasInicial: perdidas,
+        recuperacionesInicial: recuperaciones,
+        penalesConvertidosSanFernandoInicial: penalesConvertidosSanFernando,
+        penalesConvertidosRivalInicial: penalesConvertidosRival,
+        eventosIniciales: eventos,
+        modoInicial: modoActual,
+        modoInicioPrimerTiempo: modoInicioPrimerTiempo,
+        modoInicioPrimerTiempoAlargue: modoInicioPrimerTiempoAlargue,
       ),
-    );
+    ),
+  );
 
-    if (resultado != null && mounted) {
-      setState(() {
-        estadoPartido = (resultado['estadoPartido'] ?? estadoPartido) as String;
-        golesSanFernando =
-            (resultado['golesSanFernando'] ?? golesSanFernando) as int;
-        golesRival = (resultado['golesRival'] ?? golesRival) as int;
-        golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
+  if (resultado != null && mounted) {
+    setState(() {
+      final partidoResult = resultado['partido'];
 
-        atajadas = (resultado['atajadas'] ?? atajadas) as int;
-        penales = (resultado['penales'] ?? penales) as int;
-        exclusiones2Min =
-            (resultado['exclusiones2Min'] ?? exclusiones2Min) as int;
-        amarillas = (resultado['amarillas'] ?? amarillas) as int;
-        rojas = (resultado['rojas'] ?? rojas) as int;
-        perdidas = (resultado['perdidas'] ?? perdidas) as int;
-        recuperaciones = (resultado['recuperaciones'] ?? recuperaciones) as int;
+      if (partidoResult is Map) {
+        widget.partido
+          ..clear()
+          ..addAll(Map<String, dynamic>.from(partidoResult));
+      }
 
-        penalesConvertidosSanFernando =
-            (resultado['penalesConvertidosSanFernando'] ??
-                    penalesConvertidosSanFernando)
-                as int;
-        penalesConvertidosRival =
-            (resultado['penalesConvertidosRival'] ?? penalesConvertidosRival)
-                as int;
+      estadoPartido = (resultado['estadoPartido'] ?? estadoPartido) as String;
+      golesSanFernando =
+          (resultado['golesSanFernando'] ?? golesSanFernando) as int;
+      golesRival = (resultado['golesRival'] ?? golesRival) as int;
+      golesRecibidos = (resultado['golesRecibidos'] ?? golesRecibidos) as int;
 
-        modoActual = resultado['modoActual'] as String?;
-        modoInicioPrimerTiempo = resultado['modoInicioPrimerTiempo'] as String?;
-        modoInicioPrimerTiempoAlargue =
-            resultado['modoInicioPrimerTiempoAlargue'] as String?;
+      atajadas = (resultado['atajadas'] ?? atajadas) as int;
+      penales = (resultado['penales'] ?? penales) as int;
+      exclusiones2Min =
+          (resultado['exclusiones2Min'] ?? exclusiones2Min) as int;
+      amarillas = (resultado['amarillas'] ?? amarillas) as int;
+      rojas = (resultado['rojas'] ?? rojas) as int;
+      perdidas = (resultado['perdidas'] ?? perdidas) as int;
+      recuperaciones = (resultado['recuperaciones'] ?? recuperaciones) as int;
 
-        final dynamic eventosResult = resultado['eventos'];
-        if (eventosResult is List) {
-          eventos = eventosResult
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-        }
+      penalesConvertidosSanFernando =
+          (resultado['penalesConvertidosSanFernando'] ??
+                  penalesConvertidosSanFernando)
+              as int;
+      penalesConvertidosRival =
+          (resultado['penalesConvertidosRival'] ?? penalesConvertidosRival)
+              as int;
 
-        _syncStateToPartido();
-      });
-    }
+      modoActual = resultado['modoActual'] as String?;
+      modoInicioPrimerTiempo = resultado['modoInicioPrimerTiempo'] as String?;
+      modoInicioPrimerTiempoAlargue =
+          resultado['modoInicioPrimerTiempoAlargue'] as String?;
+
+      final dynamic eventosResult = resultado['eventos'];
+      if (eventosResult is List) {
+        eventos = eventosResult
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+
+      widget.partido['equipoPropio'] =
+          resultado['equipoPropio'] ?? widget.partido['equipoPropio'];
+      widget.partido['escudoPropio'] =
+          resultado['escudoPropio'] ?? widget.partido['escudoPropio'];
+      widget.partido['equipoLocal'] =
+          resultado['equipoLocal'] ?? widget.partido['equipoLocal'];
+      widget.partido['equipoVisitante'] =
+          resultado['equipoVisitante'] ?? widget.partido['equipoVisitante'];
+      widget.partido['escudoLocal'] =
+          resultado['escudoLocal'] ?? widget.partido['escudoLocal'];
+      widget.partido['escudoVisitante'] =
+          resultado['escudoVisitante'] ?? widget.partido['escudoVisitante'];
+      widget.partido['escudoRival'] =
+          resultado['escudoRival'] ?? widget.partido['escudoRival'];
+
+      _syncStateToPartido();
+
+      final visual = _materializeMatchVisualIdentity(widget.partido);
+      widget.partido
+        ..clear()
+        ..addAll(visual);
+    });
   }
+}
 
   Future<void> _abrirPlantel() async {
     final resultado = await Navigator.push<Map<String, dynamic>>(
@@ -14636,44 +14975,61 @@ class _PartidoEnJuegoScreenState extends State<PartidoEnJuegoScreen> {
   /// y luego lo convierte a Map para no romper la pantalla actual.
   /// ===============================
   void _abrirResumen() {
-    if (!_partidoFinalizado) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'El resumen completo se habilita al finalizar el partido',
-          ),
+  if (!_partidoFinalizado) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'El resumen completo se habilita al finalizar el partido',
         ),
-      );
-      return;
-    }
-
-    final PartidoModel partidoResumenV2 = partidoV2.copyWith(
-      estado: 'Finalizado',
-      estadoPartido: 'finalizado',
-      golesSanFernando: golesSanFernando,
-      golesRival: golesRival,
-      golesRecibidos: golesRecibidos,
-      atajadas: atajadas,
-      penales: penales,
-      exclusiones2Min: exclusiones2Min,
-      amarillas: amarillas,
-      rojas: rojas,
-      perdidas: perdidas,
-      recuperaciones: recuperaciones,
-      penalesConvertidosSanFernando: penalesConvertidosSanFernando,
-      penalesConvertidosRival: penalesConvertidosRival,
-      eventos: eventos.map((e) => EventoModel.fromMap(e)).toList(),
-    );
-
-    final Map<String, dynamic> partidoResumen = partidoResumenV2.toMap();
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ResumenPartidoFinalizadoScreen(partido: partidoResumen),
       ),
     );
+    return;
   }
+
+  final PartidoModel partidoResumenV2 = partidoV2.copyWith(
+    estado: 'Finalizado',
+    estadoPartido: 'finalizado',
+    golesSanFernando: golesSanFernando,
+    golesRival: golesRival,
+    golesRecibidos: golesRecibidos,
+    atajadas: atajadas,
+    penales: penales,
+    exclusiones2Min: exclusiones2Min,
+    amarillas: amarillas,
+    rojas: rojas,
+    perdidas: perdidas,
+    recuperaciones: recuperaciones,
+    penalesConvertidosSanFernando: penalesConvertidosSanFernando,
+    penalesConvertidosRival: penalesConvertidosRival,
+    eventos: eventos.map((e) => EventoModel.fromMap(e)).toList(),
+  );
+
+  final Map<String, dynamic> partidoResumen = _materializeMatchVisualIdentity({
+    ...widget.partido,
+    ...partidoResumenV2.toMap(),
+    'equipoPropio':
+        widget.partido['equipoPropio'] ?? partidoResumenV2.equipoPropio,
+    'escudoPropio':
+        widget.partido['escudoPropio'] ?? partidoResumenV2.escudoPropio,
+    'equipoLocal':
+        widget.partido['equipoLocal'] ?? partidoResumenV2.equipoLocal,
+    'equipoVisitante':
+        widget.partido['equipoVisitante'] ?? partidoResumenV2.equipoVisitante,
+    'escudoLocal':
+        widget.partido['escudoLocal'] ?? partidoResumenV2.escudoLocal,
+    'escudoVisitante':
+        widget.partido['escudoVisitante'] ?? partidoResumenV2.escudoVisitante,
+    'escudoRival':
+        widget.partido['escudoRival'] ?? partidoResumenV2.escudoRival,
+  });
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ResumenPartidoFinalizadoScreen(partido: partidoResumen),
+    ),
+  );
+}
 
   @override
   void initState() {
@@ -15839,74 +16195,85 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   Map<String, dynamic> _toPersistedMatchMap() {
-    final partidoPersistido = Map<String, dynamic>.from(widget.partido);
+  final partidoPersistido = Map<String, dynamic>.from(widget.partido);
 
-    partidoPersistido['estado'] = estadoPartido == 'finalizado'
-        ? 'Finalizado'
-        : 'En vivo';
-    partidoPersistido['estadoPartido'] = estadoPartido;
-    partidoPersistido['finalizado'] = estadoPartido == 'finalizado';
+  partidoPersistido['estado'] = estadoPartido == 'finalizado'
+      ? 'Finalizado'
+      : 'En vivo';
+  partidoPersistido['estadoPartido'] = estadoPartido;
+  partidoPersistido['finalizado'] = estadoPartido == 'finalizado';
 
-    partidoPersistido['golesSanFernando'] = golesSanFernando;
-    partidoPersistido['golesRival'] = golesRival;
-    partidoPersistido['golesRecibidos'] = golesRecibidos;
-    partidoPersistido['atajadas'] = atajadas;
-    partidoPersistido['penales'] = penales;
-    partidoPersistido['exclusiones2Min'] = exclusiones2Min;
-    partidoPersistido['amarillas'] = amarillas;
-    partidoPersistido['rojas'] = rojas;
-    partidoPersistido['perdidas'] = perdidas;
-    partidoPersistido['recuperaciones'] = recuperaciones;
-    partidoPersistido['penalesConvertidosSanFernando'] =
-        penalesConvertidosSanFernando;
-    partidoPersistido['penalesConvertidosRival'] = penalesConvertidosRival;
-    partidoPersistido['modoActual'] = modo;
-    partidoPersistido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
-    partidoPersistido['modoInicioPrimerTiempoAlargue'] =
-        modoInicioPrimerTiempoAlargue;
-    partidoPersistido['currentGoalkeeperNumber'] = currentGoalkeeperNumber;
-    partidoPersistido['eventos'] = eventos;
+  partidoPersistido['golesSanFernando'] = golesSanFernando;
+  partidoPersistido['golesRival'] = golesRival;
+  partidoPersistido['golesRecibidos'] = golesRecibidos;
+  partidoPersistido['atajadas'] = atajadas;
+  partidoPersistido['penales'] = penales;
+  partidoPersistido['exclusiones2Min'] = exclusiones2Min;
+  partidoPersistido['amarillas'] = amarillas;
+  partidoPersistido['rojas'] = rojas;
+  partidoPersistido['perdidas'] = perdidas;
+  partidoPersistido['recuperaciones'] = recuperaciones;
+  partidoPersistido['penalesConvertidosSanFernando'] =
+      penalesConvertidosSanFernando;
+  partidoPersistido['penalesConvertidosRival'] = penalesConvertidosRival;
+  partidoPersistido['modoActual'] = modo;
+  partidoPersistido['modoInicioPrimerTiempo'] = modoInicioPrimerTiempo;
+  partidoPersistido['modoInicioPrimerTiempoAlargue'] =
+      modoInicioPrimerTiempoAlargue;
+  partidoPersistido['currentGoalkeeperNumber'] = currentGoalkeeperNumber;
+  partidoPersistido['eventos'] = eventos;
 
-    return {
-      'version': 2,
-      'matchIdentity': _matchIdentity,
-      'matchInstanceId': partidoPersistido['matchInstanceId'],
-      'partido': partidoPersistido,
-      'institutionId': partidoPersistido['institutionId'],
-      'temporada': partidoPersistido['temporada'],
-      'competencia': partidoPersistido['competencia'],
-      'torneo': partidoPersistido['torneo'],
-      'categoria': partidoPersistido['categoria'],
-      'estadoPartido': estadoPartido,
-      'finalizado': estadoPartido == 'finalizado',
-      'golesSanFernando': golesSanFernando,
-      'golesRival': golesRival,
-      'golesRecibidos': golesRecibidos,
-      'atajadas': atajadas,
-      'penales': penales,
-      'exclusiones2Min': exclusiones2Min,
-      'amarillas': amarillas,
-      'rojas': rojas,
-      'perdidas': perdidas,
-      'recuperaciones': recuperaciones,
-      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-      'penalesConvertidosRival': penalesConvertidosRival,
-      'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
-      'penalesIntentadosRival': penalesIntentadosRival,
-      'modo': modo,
-      'zonaTiro': zonaTiro,
-      'zonaArco': zonaArco,
-      'penalEnCurso': penalEnCurso,
-      'actorPenalActual': actorPenalActual,
-      'mostrarContra': mostrarContra,
-      'contraDebeCambiarModo': contraDebeCambiarModo,
-      'origenJugadaActual': origenJugadaActual,
-      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
-      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
-      'currentGoalkeeperNumber': currentGoalkeeperNumber,
-      'eventos': eventos,
-    };
-  }
+  final visualPartido = _materializeMatchVisualIdentity(partidoPersistido);
+
+  return {
+    'version': 2,
+    'matchIdentity': _matchIdentity,
+    'matchInstanceId': visualPartido['matchInstanceId'],
+    'partido': visualPartido,
+    'institutionId': visualPartido['institutionId'],
+    'temporada': visualPartido['temporada'],
+    'competencia': visualPartido['competencia'],
+    'torneo': visualPartido['torneo'],
+    'categoria': visualPartido['categoria'],
+
+    'equipoPropio': visualPartido['equipoPropio'],
+    'escudoPropio': visualPartido['escudoPropio'],
+    'equipoLocal': visualPartido['equipoLocal'],
+    'equipoVisitante': visualPartido['equipoVisitante'],
+    'escudoLocal': visualPartido['escudoLocal'],
+    'escudoVisitante': visualPartido['escudoVisitante'],
+    'escudoRival': visualPartido['escudoRival'],
+
+    'estadoPartido': estadoPartido,
+    'finalizado': estadoPartido == 'finalizado',
+    'golesSanFernando': golesSanFernando,
+    'golesRival': golesRival,
+    'golesRecibidos': golesRecibidos,
+    'atajadas': atajadas,
+    'penales': penales,
+    'exclusiones2Min': exclusiones2Min,
+    'amarillas': amarillas,
+    'rojas': rojas,
+    'perdidas': perdidas,
+    'recuperaciones': recuperaciones,
+    'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+    'penalesConvertidosRival': penalesConvertidosRival,
+    'penalesIntentadosSanFernando': penalesIntentadosSanFernando,
+    'penalesIntentadosRival': penalesIntentadosRival,
+    'modo': modo,
+    'zonaTiro': zonaTiro,
+    'zonaArco': zonaArco,
+    'penalEnCurso': penalEnCurso,
+    'actorPenalActual': actorPenalActual,
+    'mostrarContra': mostrarContra,
+    'contraDebeCambiarModo': contraDebeCambiarModo,
+    'origenJugadaActual': origenJugadaActual,
+    'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+    'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+    'currentGoalkeeperNumber': currentGoalkeeperNumber,
+    'eventos': eventos,
+  };
+}
 
   Future<void> _persistLiveMatch() async {
     if (!mounted) return;
@@ -19045,28 +19412,43 @@ class _PartidoEnVivoScreenState extends State<PartidoEnVivoScreen> {
   }
 
   void _goBack() {
-    Navigator.pop(context, {
-      'estadoPartido': estadoPartido,
-      'golesSanFernando': golesSanFernando,
-      'golesRival': golesRival,
-      'golesRecibidos': golesRecibidos,
-      'atajadas': atajadas,
-      'penales': penales,
-      'exclusiones2Min': exclusiones2Min,
-      'amarillas': amarillas,
-      'rojas': rojas,
-      'perdidas': perdidas,
-      'recuperaciones': recuperaciones,
-      'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
-      'penalesConvertidosRival': penalesConvertidosRival,
-      'eventos': eventos,
-      'modoActual': modo,
-      'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
-      'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
-      'currentGoalkeeperNumber': currentGoalkeeperNumber,
-      'partidoFinalizado': estadoPartido == 'finalizado',
-    });
-  }
+  final persisted = _toPersistedMatchMap();
+  final partidoFinal = Map<String, dynamic>.from(
+    (persisted['partido'] as Map?)?.cast<String, dynamic>() ??
+        <String, dynamic>{},
+  );
+
+  Navigator.pop(context, {
+    'estadoPartido': estadoPartido,
+    'golesSanFernando': golesSanFernando,
+    'golesRival': golesRival,
+    'golesRecibidos': golesRecibidos,
+    'atajadas': atajadas,
+    'penales': penales,
+    'exclusiones2Min': exclusiones2Min,
+    'amarillas': amarillas,
+    'rojas': rojas,
+    'perdidas': perdidas,
+    'recuperaciones': recuperaciones,
+    'penalesConvertidosSanFernando': penalesConvertidosSanFernando,
+    'penalesConvertidosRival': penalesConvertidosRival,
+    'eventos': eventos,
+    'modoActual': modo,
+    'modoInicioPrimerTiempo': modoInicioPrimerTiempo,
+    'modoInicioPrimerTiempoAlargue': modoInicioPrimerTiempoAlargue,
+    'currentGoalkeeperNumber': currentGoalkeeperNumber,
+    'partidoFinalizado': estadoPartido == 'finalizado',
+
+    'partido': partidoFinal,
+    'equipoPropio': partidoFinal['equipoPropio'],
+    'escudoPropio': partidoFinal['escudoPropio'],
+    'equipoLocal': partidoFinal['equipoLocal'],
+    'equipoVisitante': partidoFinal['equipoVisitante'],
+    'escudoLocal': partidoFinal['escudoLocal'],
+    'escudoVisitante': partidoFinal['escudoVisitante'],
+    'escudoRival': partidoFinal['escudoRival'],
+  });
+}
 
   void _confirmarFinalizarPartido() {
     showDialog(
@@ -20239,22 +20621,30 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
   }
 
   bool _matchesCurrentContext(Map<String, dynamic> partido) {
-    final currentInstitutionId = _normalizeStatsText(widget.institutionId);
-    final partidoInstitutionId = _normalizeStatsText(partido['institutionId']);
-
-    if (currentInstitutionId.isNotEmpty) {
-      if (partidoInstitutionId.isEmpty && !_isSanFernandoContext) {
-        return false;
-      }
-
-      if (partidoInstitutionId.isNotEmpty &&
-          partidoInstitutionId != currentInstitutionId) {
-        return false;
-      }
-    }
-
-    return AppContextKey.matchesMap(data: partido, context: _activeContext);
+  if (!_sameScopedInstitution(
+    dataInstitutionId: partido['institutionId'],
+    contextInstitutionId: widget.institutionId,
+  )) {
+    return false;
   }
+
+  final sameBase =
+      FixtureRepositoryV2.normalize(partido['temporada']) ==
+          FixtureRepositoryV2.normalize(widget.temporada) &&
+      FixtureRepositoryV2.normalize(partido['competencia']) ==
+          FixtureRepositoryV2.normalize(widget.competencia) &&
+      FixtureRepositoryV2.normalize(partido['categoria']) ==
+          FixtureRepositoryV2.normalize(widget.categoria);
+
+  if (!sameBase) return false;
+
+  return FixtureRepositoryV2.normalize(partido['torneo']) ==
+          FixtureRepositoryV2.normalize(widget.torneo) ||
+      FixtureRepositoryV2.isLooseStageAlias(
+        partido['torneo'].toString(),
+        widget.torneo,
+      );
+}
 
   Future<List<Map<String, dynamic>>> _loadPartidosReales() async {
     final prefs = await SharedPreferences.getInstance();
