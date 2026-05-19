@@ -41,8 +41,11 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
   late final TextEditingController _fechaController;
   late final TextEditingController _horaController;
   late final TextEditingController _fechaNumeroController;
+  late final TextEditingController _grupoPartidoController;
+  late final TextEditingController _rondaPartidoController;
 
   String _condicion = 'Local';
+  String _fasePartido = 'Clasificación';
   bool _saving = false;
 
   bool get _isEditing => widget.initial != null;
@@ -59,6 +62,19 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     _fechaNumeroController = TextEditingController(
       text: initial?.fechaNumero?.toString() ?? '',
     );
+    _grupoPartidoController = TextEditingController(
+      text: initial?.grupoPartido ?? '',
+    );
+
+    _rondaPartidoController = TextEditingController(
+      text: initial?.rondaPartido ?? '',
+    );
+
+    final faseInicial = _cleanOptionalText(initial?.fasePartido);
+
+    if (faseInicial != null) {
+      _fasePartido = faseInicial;
+    }
 
     final condicionInicial = initial?.condicion.trim();
 
@@ -74,6 +90,8 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     _fechaController.dispose();
     _horaController.dispose();
     _fechaNumeroController.dispose();
+    _grupoPartidoController.dispose();
+    _rondaPartidoController.dispose();
     super.dispose();
   }
 
@@ -83,6 +101,41 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     if (raw.isEmpty) return null;
 
     return int.tryParse(raw);
+  }
+
+  String _normalizeInstanceText(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String? _cleanOptionalText(dynamic value) {
+    final text = (value ?? '').toString().trim().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+
+    if (text.isEmpty || text.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return text;
+  }
+
+  bool get _showInternalInstanceSection {
+    final tournament = _normalizeInstanceText(widget.torneo);
+    final competition = _normalizeInstanceText(widget.competencia);
+
+    return tournament == 'unico' && competition != 'local';
   }
 
   String _generateMatchInstanceId() {
@@ -341,11 +394,26 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
         ? existingMatchInstanceId
         : _generateMatchInstanceId();
 
+    final fasePartido = _showInternalInstanceSection
+        ? _cleanOptionalText(_fasePartido) ?? 'Clasificación'
+        : null;
+
+    final grupoPartido = _showInternalInstanceSection
+        ? _cleanOptionalText(_grupoPartidoController.text)
+        : null;
+
+    final rondaPartido = _showInternalInstanceSection
+        ? _cleanOptionalText(_rondaPartidoController.text)
+        : null;
+
     final partido = PartidoModel(
       temporada: widget.temporada,
       competencia: widget.competencia,
       institutionId: widget.institutionId,
       matchInstanceId: matchInstanceId,
+      fasePartido: fasePartido,
+      grupoPartido: grupoPartido,
+      rondaPartido: rondaPartido,
       equipoPropio: equipoPropio,
       escudoPropio: escudoPropio,
       equipoLocal: equipoLocal,
@@ -448,8 +516,12 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
                       textInputType: TextInputType.datetime,
                     ),
                     const SizedBox(height: 16),
+                    _buildInternalInstanceSection(),
+                    if (_showInternalInstanceSection)
+                      const SizedBox(height: 16),
                     const Text(
                       'Condición',
+
                       style: TextStyle(
                         color: Color(0xFFAAB4C3),
                         fontSize: 13,
@@ -706,6 +778,84 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
           size: 22,
         );
       },
+    );
+  }
+
+  Widget _buildInternalInstanceSection() {
+    if (!_showInternalInstanceSection) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Instancia del partido',
+          style: TextStyle(
+            color: Color(0xFFAAB4C3),
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: ['Clasificación', 'Cuartos', 'Semifinal', 'Final'].map((
+            fase,
+          ) {
+            final selected = _fasePartido == fase;
+
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _fasePartido = fase;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? const Color(0xFF4F8CFF)
+                      : const Color(0xFF182338),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: selected
+                        ? const Color(0xFF7DB7FF)
+                        : Colors.white.withOpacity(0.06),
+                  ),
+                ),
+                child: Text(
+                  fase,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 14),
+        _buildTextField(
+          controller: _grupoPartidoController,
+          label: 'Grupo',
+          hint: 'Ejemplo: Grupo A',
+          textInputType: TextInputType.text,
+        ),
+        const SizedBox(height: 14),
+        _buildTextField(
+          controller: _rondaPartidoController,
+          label: 'Ronda / detalle',
+          hint: 'Ejemplo: Fecha 1, Llave 2',
+          textInputType: TextInputType.text,
+        ),
+      ],
     );
   }
 

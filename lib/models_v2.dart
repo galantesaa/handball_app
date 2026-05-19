@@ -171,6 +171,9 @@ class PartidoModel {
   final String competencia;
   final String? institutionId;
   final String? matchInstanceId;
+  final String? fasePartido;
+  final String? grupoPartido;
+  final String? rondaPartido;
   final String? equipoPropio;
   final String? escudoPropio;
   final String? equipoLocal;
@@ -238,6 +241,9 @@ class PartidoModel {
     this.competencia = 'Local',
     this.institutionId,
     this.matchInstanceId,
+    this.fasePartido,
+    this.grupoPartido,
+    this.rondaPartido,
     this.equipoPropio,
     this.escudoPropio,
     this.equipoLocal,
@@ -254,6 +260,9 @@ class PartidoModel {
       competencia: (map['competencia'] ?? 'Local').toString(),
       institutionId: map['institutionId']?.toString(),
       matchInstanceId: map['matchInstanceId']?.toString(),
+      fasePartido: map['fasePartido']?.toString(),
+      grupoPartido: map['grupoPartido']?.toString(),
+      rondaPartido: map['rondaPartido']?.toString(),
 
       equipoPropio: map['equipoPropio']?.toString(),
       escudoPropio: map['escudoPropio']?.toString(),
@@ -310,6 +319,9 @@ class PartidoModel {
       'competencia': competencia,
       'institutionId': institutionId,
       'matchInstanceId': matchInstanceId,
+      'fasePartido': fasePartido,
+      'grupoPartido': grupoPartido,
+      'rondaPartido': rondaPartido,
       'equipoPropio': equipoPropio,
       'escudoPropio': escudoPropio,
       'equipoLocal': equipoLocal,
@@ -353,6 +365,9 @@ class PartidoModel {
     String? competencia,
     String? institutionId,
     String? matchInstanceId,
+    String? fasePartido,
+    String? grupoPartido,
+    String? rondaPartido,
     String? equipoPropio,
     String? escudoPropio,
     String? equipoLocal,
@@ -394,6 +409,9 @@ class PartidoModel {
       competencia: competencia ?? this.competencia,
       institutionId: institutionId ?? this.institutionId,
       matchInstanceId: matchInstanceId ?? this.matchInstanceId,
+      fasePartido: fasePartido ?? this.fasePartido,
+      grupoPartido: grupoPartido ?? this.grupoPartido,
+      rondaPartido: rondaPartido ?? this.rondaPartido,
       equipoPropio: equipoPropio ?? this.equipoPropio,
       escudoPropio: escudoPropio ?? this.escudoPropio,
       equipoLocal: equipoLocal ?? this.equipoLocal,

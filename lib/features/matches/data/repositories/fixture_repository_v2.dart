@@ -51,9 +51,11 @@ class FixtureRepositoryV2 {
         isLooseStageAlias(tournament, 'partidos sueltos') ||
         isLooseStageAlias(competition, 'amistoso');
 
+    final bool isUniqueTournament = tournament == 'unico';
+
     final matchInstanceId = normalize(partido.matchInstanceId);
 
-    if (isLooseMatch && matchInstanceId.isNotEmpty) {
+    if ((isLooseMatch || isUniqueTournament) && matchInstanceId.isNotEmpty) {
       return [
         normalize(partido.institutionId ?? 'legacy_institution'),
         normalize(partido.temporada),
@@ -113,9 +115,11 @@ class FixtureRepositoryV2 {
         isLooseStageAlias(tournament, 'partidos sueltos') ||
         isLooseStageAlias(competition, 'amistoso');
 
+    final bool isUniqueTournament = tournament == 'unico';
+
     final matchInstanceId = normalize(partido['matchInstanceId']);
 
-    if (isLooseMatch && matchInstanceId.isNotEmpty) {
+    if ((isLooseMatch || isUniqueTournament) && matchInstanceId.isNotEmpty) {
       return [
         normalize(partido['institutionId'] ?? 'legacy_institution'),
         normalize(partido['temporada']),

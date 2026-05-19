@@ -2538,8 +2538,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _selectCategoryFlow(String category) async {
-    final clean = category.trim();
+    final clean = _canonicalCategoryForUi(category);
     if (clean.isEmpty) return;
+
+    final exists = categoriasDinamicas.any(
+      (e) => _normalizeCategoryForUi(e) == _normalizeCategoryForUi(clean),
+    );
+
+    if (!exists) {
+      await _structureRepository.addCategory(
+        clean,
+        institutionId: institucionId,
+      );
+
+      if (!mounted) return;
+
+      await _loadStructureData();
+
+      if (!mounted) return;
+    }
 
     setState(() {
       categoriaSeleccionada = clean;
@@ -2551,7 +2568,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _createOrSelectCategoryFlow() async {
-    final value = _categoryController.text.trim();
+    final value = _canonicalCategoryForUi(_categoryController.text);
 
     if (value.isEmpty) {
       await _showMessage('Ingresá una categoría válida.');
@@ -2559,7 +2576,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final exists = categoriasDinamicas.any(
-      (e) => e.trim().toLowerCase() == value.toLowerCase(),
+      (e) => _normalizeCategoryForUi(e) == _normalizeCategoryForUi(value),
     );
 
     if (!exists) {
@@ -2571,13 +2588,14 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
 
       if (!created) {
-        await _showMessage('La categoría ya existe o no es válida.');
-        return;
+        await _loadStructureData();
+
+        if (!mounted) return;
+      } else {
+        await _loadStructureData();
+
+        if (!mounted) return;
       }
-
-      await _loadStructureData();
-
-      if (!mounted) return;
     }
 
     await _selectCategoryFlow(value);
@@ -3369,6 +3387,94 @@ class _HomeScreenState extends State<HomeScreen> {
     return selected.first.tournaments;
   }
 
+  List<String> get _categoriasCanonicasSugeridas {
+    return const <String>[
+      'Mini',
+      'Infantiles',
+      'Menores',
+      'Cadetes',
+      'Juveniles',
+      'Juniors',
+      'Mayores',
+    ];
+  }
+
+  String _normalizeCategoryForUi(dynamic value) {
+    return (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _canonicalCategoryForUi(String value) {
+    final clean = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final normalized = _normalizeCategoryForUi(clean);
+
+    if (normalized.isEmpty) return '';
+
+    const canonicalByAlias = <String, String>{
+      'mini': 'Mini',
+      'minis': 'Mini',
+
+      'infantil': 'Infantiles',
+      'infantiles': 'Infantiles',
+
+      'menor': 'Menores',
+      'menores': 'Menores',
+
+      'cadete': 'Cadetes',
+      'cadetes': 'Cadetes',
+
+      'juvenil': 'Juveniles',
+      'juveniles': 'Juveniles',
+
+      'junior': 'Juniors',
+      'juniors': 'Juniors',
+
+      'mayor': 'Mayores',
+      'mayores': 'Mayores',
+      'primera': 'Mayores',
+      'liga': 'Mayores',
+    };
+
+    return canonicalByAlias[normalized] ?? clean;
+  }
+
+  List<String> get categoriasDisponiblesCanonicas {
+    final result = <String>[];
+
+    void add(String value) {
+      final clean = _canonicalCategoryForUi(value);
+      if (clean.isEmpty) return;
+
+      final exists = result.any(
+        (e) => _normalizeCategoryForUi(e) == _normalizeCategoryForUi(clean),
+      );
+
+      if (!exists) {
+        result.add(clean);
+      }
+    }
+
+    for (final item in _categoriasCanonicasSugeridas) {
+      add(item);
+    }
+
+    for (final item in categoriasDinamicas) {
+      add(item);
+    }
+
+    return result;
+  }
+
   structure.CompetitionConfig? get competenciaActualConfig {
     final actual = competenciaSeleccionada.trim().toLowerCase();
 
@@ -3861,7 +3967,7 @@ class _HomeScreenState extends State<HomeScreen> {
         options: temporadasDinamicas,
         selectedValue: temporadaSeleccionada,
         controller: _seasonController,
-        hintText: 'Nueva temporada, ejemplo: 2028',
+        hintText: 'Ejemplo: 2027',
         buttonText: 'Crear / seleccionar temporada',
         onSelect: _selectSeasonFlow,
         onCreate: _createOrSelectSeasonFlow,
@@ -3900,10 +4006,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return _buildInlinePickerEditor(
       title: 'Elegí categoría',
-      options: categoriasDinamicas,
+      options: categoriasDisponiblesCanonicas,
       selectedValue: categoriaSeleccionada,
       controller: _categoryController,
-      hintText: 'Nueva categoría, ejemplo: Juniors',
+      hintText: 'Ejemplo: Cadetes, Juveniles, Juniors',
       buttonText: 'Crear / seleccionar categoría',
       onSelect: _selectCategoryFlow,
       onCreate: _createOrSelectCategoryFlow,

@@ -241,7 +241,88 @@ class StructureRepository {
   }
 
   String _normalize(String value) {
-    return _cleanText(value).toLowerCase();
+    return _cleanText(value)
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n');
+  }
+
+  String _canonicalCategoryName(String value) {
+    final clean = _cleanText(value);
+    final normalized = _normalize(clean);
+
+    if (normalized.isEmpty) return '';
+
+    const canonicalByAlias = <String, String>{
+      'mini': 'Mini',
+      'minis': 'Mini',
+
+      'infantil': 'Infantiles',
+      'infantiles': 'Infantiles',
+
+      'menor': 'Menores',
+      'menores': 'Menores',
+
+      'cadete': 'Cadetes',
+      'cadetes': 'Cadetes',
+
+      'juvenil': 'Juveniles',
+      'juveniles': 'Juveniles',
+
+      'junior': 'Juniors',
+      'juniors': 'Juniors',
+
+      'mayor': 'Mayores',
+      'mayores': 'Mayores',
+      'primera': 'Mayores',
+      'liga': 'Mayores',
+    };
+
+    return canonicalByAlias[normalized] ?? clean;
+  }
+
+  List<String> _cleanCategoryList(List<String> values) {
+    final result = <String>[];
+
+    for (final value in values) {
+      final clean = _canonicalCategoryName(value);
+
+      if (clean.isEmpty) continue;
+
+      final exists = result.any((e) => _normalize(e) == _normalize(clean));
+
+      if (!exists) {
+        result.add(clean);
+      }
+    }
+
+    result.sort((a, b) {
+      const order = <String, int>{
+        'Mini': 0,
+        'Infantiles': 1,
+        'Menores': 2,
+        'Cadetes': 3,
+        'Juveniles': 4,
+        'Juniors': 5,
+        'Mayores': 6,
+      };
+
+      final orderA = order[a];
+      final orderB = order[b];
+
+      if (orderA != null && orderB != null) return orderA.compareTo(orderB);
+      if (orderA != null) return -1;
+      if (orderB != null) return 1;
+
+      return a.compareTo(b);
+    });
+
+    return result;
   }
 
   String _safeInstitutionId(String? institutionId) {
@@ -351,7 +432,23 @@ class StructureRepository {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return const [];
 
-      return _cleanStringList(decoded.map((e) => e.toString()).toList());
+      final categories = _cleanCategoryList(
+        decoded.map((e) => e.toString()).toList(),
+      );
+
+      final encoded = jsonEncode(categories);
+
+      if (encoded != raw) {
+        await prefs.setString(
+          _keyFor(
+            baseKey: AppStorageKeys.categories,
+            institutionId: institutionId,
+          ),
+          encoded,
+        );
+      }
+
+      return categories;
     } catch (_) {
       return const [];
     }
@@ -365,15 +462,16 @@ class StructureRepository {
 
     await prefs.setString(
       _keyFor(baseKey: AppStorageKeys.categories, institutionId: institutionId),
-      jsonEncode(_cleanStringList(categories)),
+      jsonEncode(_cleanCategoryList(categories)),
     );
   }
 
   Future<bool> addCategory(String category, {String? institutionId}) async {
-    final clean = _cleanText(category);
+    final clean = _canonicalCategoryName(category);
     if (clean.isEmpty) return false;
 
     final categories = await getCategories(institutionId: institutionId);
+
     final exists = categories.any((e) => _normalize(e) == _normalize(clean));
 
     if (exists) return false;
@@ -452,9 +550,7 @@ class StructureRepository {
     final cleanName = _cleanText(name);
     if (cleanName.isEmpty) return false;
 
-    final competitions = await getCompetitions(
-  institutionId: institutionId,
-);
+    final competitions = await getCompetitions(institutionId: institutionId);
 
     final exists = competitions.any(
       (e) => _normalize(e.name) == _normalize(cleanName),
@@ -507,9 +603,8 @@ class StructureRepository {
           })
         : stages;
 
-    await saveCompetitions(
-  [
-    ...competitions,
+    await saveCompetitions([
+      ...competitions,
       CompetitionConfig(
         name: cleanName,
         type: cleanType,
@@ -520,9 +615,7 @@ class StructureRepository {
         allowKnockoutRounds: resolvedAllowKnockoutRounds,
         stages: resolvedStages,
       ),
-    ],
-    institutionId: institutionId,
-  );
+    ], institutionId: institutionId);
 
     return true;
   }
@@ -537,9 +630,7 @@ class StructureRepository {
 
     if (cleanCompetitionName.isEmpty || cleanTournament.isEmpty) return false;
 
-    final competitions = await getCompetitions(
-  institutionId: institutionId,
-);
+    final competitions = await getCompetitions(institutionId: institutionId);
 
     final index = competitions.indexWhere(
       (e) => _normalize(e.name) == _normalize(cleanCompetitionName),
@@ -581,13 +672,10 @@ class StructureRepository {
     final newList = [...competitions];
     newList[index] = updated;
 
-   await saveCompetitions(
-  newList,
-  institutionId: institutionId,
-);
+    await saveCompetitions(newList, institutionId: institutionId);
 
-return true;
-}
+    return true;
+  }
 
   Future<void> ensureInitialStructureFromActiveContext({
     required String season,
@@ -599,43 +687,37 @@ return true;
     final cleanSeason = _cleanText(season);
     final cleanCompetition = _cleanText(competition);
     final cleanTournament = _cleanText(tournament);
-    final cleanCategory = _cleanText(category);
+    final cleanCategory = _canonicalCategoryName(category);
 
     if (cleanSeason.isNotEmpty) {
-      final seasons = await getSeasons(
-  institutionId: institutionId,
-);
+      final seasons = await getSeasons(institutionId: institutionId);
       final exists = seasons.any(
         (e) => _normalize(e) == _normalize(cleanSeason),
       );
       if (!exists) {
-        await saveSeasons(
-  [...seasons, cleanSeason],
-  institutionId: institutionId,
-);
+        await saveSeasons([
+          ...seasons,
+          cleanSeason,
+        ], institutionId: institutionId);
       }
     }
 
     if (cleanCategory.isNotEmpty) {
-      final categories = await getCategories(
-  institutionId: institutionId,
-);
+      final categories = await getCategories(institutionId: institutionId);
       final exists = categories.any(
         (e) => _normalize(e) == _normalize(cleanCategory),
       );
       if (!exists) {
-  await saveCategories(
-  [...categories, cleanCategory],
-  institutionId: institutionId,
-);
+        await saveCategories([
+          ...categories,
+          cleanCategory,
+        ], institutionId: institutionId);
       }
     }
 
     if (cleanCompetition.isEmpty) return;
 
-    final competitions = await getCompetitions(
-  institutionId: institutionId,
-);
+    final competitions = await getCompetitions(institutionId: institutionId);
     final exists = competitions.any(
       (c) => _normalize(c.name) == _normalize(cleanCompetition),
     );
