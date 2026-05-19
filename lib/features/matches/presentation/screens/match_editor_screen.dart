@@ -85,6 +85,33 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
     return int.tryParse(raw);
   }
 
+  String _generateMatchInstanceId() {
+    String safe(dynamic value) {
+      return (value ?? '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .replaceAll('á', 'a')
+          .replaceAll('é', 'e')
+          .replaceAll('í', 'i')
+          .replaceAll('ó', 'o')
+          .replaceAll('ú', 'u')
+          .replaceAll('ü', 'u')
+          .replaceAll('ñ', 'n')
+          .replaceAll(RegExp(r'\s+'), '_')
+          .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    }
+
+    final institution = safe(widget.institutionId);
+    final season = safe(widget.temporada);
+    final competition = safe(widget.competencia);
+    final tournament = safe(widget.torneo);
+    final category = safe(widget.categoria);
+    final now = DateTime.now().microsecondsSinceEpoch;
+
+    return 'match_${institution}_${season}_${competition}_${tournament}_${category}_$now';
+  }
+
   Future<String?> _resolveRivalShield(String rival) async {
     final existing = await _teamRepository.findByName(rival);
     return existing?.displayShieldPath;
@@ -287,34 +314,44 @@ class _MatchEditorScreenState extends State<MatchEditorScreen> {
 
     final escudoRival = await _resolveRivalShield(rival);
 
-if (!mounted) return;
+    if (!mounted) return;
 
-final equipoPropio = widget.equipoPropio?.trim().isNotEmpty == true
-    ? widget.equipoPropio!.trim()
-    : 'Institución';
+    final equipoPropio = widget.equipoPropio?.trim().isNotEmpty == true
+        ? widget.equipoPropio!.trim()
+        : 'Institución';
 
-final escudoPropio = widget.escudoPropio?.trim().isNotEmpty == true
-    ? widget.escudoPropio!.trim()
-    : null;
+    final escudoPropio = widget.escudoPropio?.trim().isNotEmpty == true
+        ? widget.escudoPropio!.trim()
+        : null;
 
-final somosLocales = _condicion.trim().toLowerCase() == 'local';
+    final somosLocales = _condicion.trim().toLowerCase() == 'local';
 
-final equipoLocal = somosLocales ? equipoPropio : rival;
-final equipoVisitante = somosLocales ? rival : equipoPropio;
+    final equipoLocal = somosLocales ? equipoPropio : rival;
+    final equipoVisitante = somosLocales ? rival : equipoPropio;
 
-final escudoLocal = somosLocales ? escudoPropio : escudoRival;
-final escudoVisitante = somosLocales ? escudoRival : escudoPropio;
+    final escudoLocal = somosLocales ? escudoPropio : escudoRival;
+    final escudoVisitante = somosLocales ? escudoRival : escudoPropio;
 
-final partido = PartidoModel(
+    final existingMatchInstanceId = widget.initial?.matchInstanceId?.trim();
+
+    final matchInstanceId =
+        existingMatchInstanceId != null &&
+            existingMatchInstanceId.isNotEmpty &&
+            existingMatchInstanceId.toLowerCase() != 'null'
+        ? existingMatchInstanceId
+        : _generateMatchInstanceId();
+
+    final partido = PartidoModel(
       temporada: widget.temporada,
       competencia: widget.competencia,
       institutionId: widget.institutionId,
+      matchInstanceId: matchInstanceId,
       equipoPropio: equipoPropio,
-escudoPropio: escudoPropio,
-equipoLocal: equipoLocal,
-equipoVisitante: equipoVisitante,
-escudoLocal: escudoLocal,
-escudoVisitante: escudoVisitante,
+      escudoPropio: escudoPropio,
+      equipoLocal: equipoLocal,
+      equipoVisitante: equipoVisitante,
+      escudoLocal: escudoLocal,
+      escudoVisitante: escudoVisitante,
       rival: rival,
       fechaNumero: fechaNumero,
       fecha: fecha,

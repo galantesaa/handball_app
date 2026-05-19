@@ -10,10 +10,9 @@ class FixtureRepositoryV2 {
   const FixtureRepositoryV2();
 
   static String normalize(dynamic value) {
-    return PartidoRepositoryV2.normalizeValue(value)
-        .replaceAll('ü', 'u')
-        .replaceAll('ñ', 'n')
-        .replaceAll(RegExp(r'\s+'), ' ');
+    return PartidoRepositoryV2.normalizeValue(
+      value,
+    ).replaceAll('ü', 'u').replaceAll('ñ', 'n').replaceAll(RegExp(r'\s+'), ' ');
   }
 
   static bool isLooseStageAlias(String a, String b) {
@@ -44,38 +43,51 @@ class FixtureRepositoryV2 {
   }
 
   static String buildStableFixtureIdentity(PartidoModel partido) {
-  final competition = normalize(partido.competencia);
-  final tournament = normalize(partido.torneo);
+    final competition = normalize(partido.competencia);
+    final tournament = normalize(partido.torneo);
 
-  final bool isLooseMatch =
-      isLooseStageAlias(competition, tournament) ||
-      isLooseStageAlias(tournament, 'partidos sueltos') ||
-      isLooseStageAlias(competition, 'amistoso');
+    final bool isLooseMatch =
+        isLooseStageAlias(competition, tournament) ||
+        isLooseStageAlias(tournament, 'partidos sueltos') ||
+        isLooseStageAlias(competition, 'amistoso');
 
-  if (isLooseMatch) {
+    final matchInstanceId = normalize(partido.matchInstanceId);
+
+    if (isLooseMatch && matchInstanceId.isNotEmpty) {
+      return [
+        normalize(partido.institutionId ?? 'legacy_institution'),
+        normalize(partido.temporada),
+        normalize(partido.competencia),
+        normalize(partido.torneo),
+        normalize(partido.categoria),
+        matchInstanceId,
+      ].join('|');
+    }
+
+    if (isLooseMatch) {
+      return [
+        normalize(partido.institutionId ?? 'legacy_institution'),
+        normalize(partido.temporada),
+        normalize(partido.competencia),
+        normalize(partido.torneo),
+        normalize(partido.categoria),
+        normalize(partido.fecha),
+        normalize(partido.hora),
+        normalize(partido.rival),
+        normalize(partido.condicion),
+      ].join('|');
+    }
+
     return [
       normalize(partido.institutionId ?? 'legacy_institution'),
       normalize(partido.temporada),
       normalize(partido.competencia),
       normalize(partido.torneo),
       normalize(partido.categoria),
-      normalize(partido.fecha),
-      normalize(partido.hora),
       normalize(partido.rival),
       normalize(partido.condicion),
     ].join('|');
   }
-
-  return [
-    normalize(partido.institutionId ?? 'legacy_institution'),
-    normalize(partido.temporada),
-    normalize(partido.competencia),
-    normalize(partido.torneo),
-    normalize(partido.categoria),
-    normalize(partido.rival),
-    normalize(partido.condicion),
-  ].join('|');
-}
 
   static String buildLegacyStableFixtureIdentityFromMap(
     Map<String, dynamic> partido,
@@ -90,39 +102,54 @@ class FixtureRepositoryV2 {
     ].join('|');
   }
 
-  static String buildStableFixtureIdentityFromMap(Map<String, dynamic> partido) {
-  final competition = normalize(partido['competencia']);
-  final tournament = normalize(partido['torneo']);
+  static String buildStableFixtureIdentityFromMap(
+    Map<String, dynamic> partido,
+  ) {
+    final competition = normalize(partido['competencia']);
+    final tournament = normalize(partido['torneo']);
 
-  final bool isLooseMatch =
-      isLooseStageAlias(competition, tournament) ||
-      isLooseStageAlias(tournament, 'partidos sueltos') ||
-      isLooseStageAlias(competition, 'amistoso');
+    final bool isLooseMatch =
+        isLooseStageAlias(competition, tournament) ||
+        isLooseStageAlias(tournament, 'partidos sueltos') ||
+        isLooseStageAlias(competition, 'amistoso');
 
-  if (isLooseMatch) {
+    final matchInstanceId = normalize(partido['matchInstanceId']);
+
+    if (isLooseMatch && matchInstanceId.isNotEmpty) {
+      return [
+        normalize(partido['institutionId'] ?? 'legacy_institution'),
+        normalize(partido['temporada']),
+        normalize(partido['competencia']),
+        normalize(partido['torneo']),
+        normalize(partido['categoria']),
+        matchInstanceId,
+      ].join('|');
+    }
+
+    if (isLooseMatch) {
+      return [
+        normalize(partido['institutionId'] ?? 'legacy_institution'),
+        normalize(partido['temporada']),
+        normalize(partido['competencia']),
+        normalize(partido['torneo']),
+        normalize(partido['categoria']),
+        normalize(partido['fecha']),
+        normalize(partido['hora']),
+        normalize(partido['rival']),
+        normalize(partido['condicion']),
+      ].join('|');
+    }
+
     return [
       normalize(partido['institutionId'] ?? 'legacy_institution'),
       normalize(partido['temporada']),
       normalize(partido['competencia']),
       normalize(partido['torneo']),
       normalize(partido['categoria']),
-      normalize(partido['fecha']),
-      normalize(partido['hora']),
       normalize(partido['rival']),
       normalize(partido['condicion']),
     ].join('|');
   }
-
-  return [
-    normalize(partido['institutionId'] ?? 'legacy_institution'),
-    normalize(partido['temporada']),
-    normalize(partido['competencia']),
-    normalize(partido['torneo']),
-    normalize(partido['categoria']),
-    normalize(partido['rival']),
-    normalize(partido['condicion']),
-  ].join('|');
-}
 
   Future<List<PartidoModel>> readFixtures() async {
     final prefs = await SharedPreferences.getInstance();
@@ -161,46 +188,48 @@ class FixtureRepositoryV2 {
   }
 
   Future<List<PartidoModel>> readFixturesFlexible({
-  required String temporada,
-  required String competencia,
-  required String torneo,
-  required String categoria,
-  String? institutionId,
-}) async {
-  final all = await readFixtures();
+    required String temporada,
+    required String competencia,
+    required String torneo,
+    required String categoria,
+    String? institutionId,
+  }) async {
+    final all = await readFixtures();
 
-  final currentInstitutionId = normalize(institutionId);
-final isSanFernandoContext = currentInstitutionId == 'san_fernando_handball' ||
-    currentInstitutionId == 'san_fernando';
+    final currentInstitutionId = normalize(institutionId);
+    final isSanFernandoContext =
+        currentInstitutionId == 'san_fernando_handball' ||
+        currentInstitutionId == 'san_fernando';
 
-final filtered = all.where((partido) {
-  final partidoInstitutionId = normalize(partido.institutionId);
+    final filtered = all.where((partido) {
+      final partidoInstitutionId = normalize(partido.institutionId);
 
-  if (currentInstitutionId.isNotEmpty) {
-    final isLegacyFixture = partidoInstitutionId.isEmpty ||
-        partidoInstitutionId == 'legacy_institution';
+      if (currentInstitutionId.isNotEmpty) {
+        final isLegacyFixture =
+            partidoInstitutionId.isEmpty ||
+            partidoInstitutionId == 'legacy_institution';
 
-    if (isLegacyFixture && !isSanFernandoContext) return false;
+        if (isLegacyFixture && !isSanFernandoContext) return false;
 
-    if (!isLegacyFixture && partidoInstitutionId != currentInstitutionId) {
-      return false;
-    }
+        if (!isLegacyFixture && partidoInstitutionId != currentInstitutionId) {
+          return false;
+        }
+      }
+
+      final sameBase =
+          normalize(partido.temporada) == normalize(temporada) &&
+          normalize(partido.competencia) == normalize(competencia) &&
+          normalize(partido.categoria) == normalize(categoria);
+
+      if (!sameBase) return false;
+
+      return normalize(partido.torneo) == normalize(torneo) ||
+          isLooseStageAlias(partido.torneo, torneo);
+    }).toList();
+
+    filtered.sort(_sortByFechaNumero);
+    return filtered;
   }
-
-    final sameBase =
-        normalize(partido.temporada) == normalize(temporada) &&
-        normalize(partido.competencia) == normalize(competencia) &&
-        normalize(partido.categoria) == normalize(categoria);
-
-    if (!sameBase) return false;
-
-    return normalize(partido.torneo) == normalize(torneo) ||
-        isLooseStageAlias(partido.torneo, torneo);
-  }).toList();
-
-  filtered.sort(_sortByFechaNumero);
-  return filtered;
-}
 
   Future<bool> saveFixture(PartidoModel partido) async {
     final prefs = await SharedPreferences.getInstance();

@@ -170,12 +170,13 @@ class PartidoModel {
   final String temporada;
   final String competencia;
   final String? institutionId;
+  final String? matchInstanceId;
   final String? equipoPropio;
   final String? escudoPropio;
   final String? equipoLocal;
   final String? equipoVisitante;
   final String? escudoLocal;
-  final String? escudoVisitante;    
+  final String? escudoVisitante;
 
   final String estado;
   final String estadoPartido;
@@ -236,6 +237,7 @@ class PartidoModel {
     this.temporada = '2026',
     this.competencia = 'Local',
     this.institutionId,
+    this.matchInstanceId,
     this.equipoPropio,
     this.escudoPropio,
     this.equipoLocal,
@@ -251,17 +253,18 @@ class PartidoModel {
       temporada: (map['temporada'] ?? '2026').toString(),
       competencia: (map['competencia'] ?? 'Local').toString(),
       institutionId: map['institutionId']?.toString(),
+      matchInstanceId: map['matchInstanceId']?.toString(),
 
-equipoPropio: map['equipoPropio']?.toString(),
-escudoPropio: map['escudoPropio']?.toString(),
+      equipoPropio: map['equipoPropio']?.toString(),
+      escudoPropio: map['escudoPropio']?.toString(),
 
-equipoLocal: map['equipoLocal']?.toString(),
-equipoVisitante: map['equipoVisitante']?.toString(),
+      equipoLocal: map['equipoLocal']?.toString(),
+      equipoVisitante: map['equipoVisitante']?.toString(),
 
-escudoLocal: map['escudoLocal']?.toString(),
-escudoVisitante: map['escudoVisitante']?.toString(),
+      escudoLocal: map['escudoLocal']?.toString(),
+      escudoVisitante: map['escudoVisitante']?.toString(),
 
-rival: (map['rival'] ?? 'Rival').toString(),
+      rival: (map['rival'] ?? 'Rival').toString(),
       fechaNumero: map['fechaNumero'] as int?,
       fecha: (map['fecha'] ?? '').toString(),
       hora: (map['hora'] ?? '').toString(),
@@ -296,7 +299,6 @@ rival: (map['rival'] ?? 'Rival').toString(),
       matchSquad: map['matchSquad'] is Map
           ? MatchSquadModel.fromMap(
               Map<String, dynamic>.from(map['matchSquad'] as Map),
-              
             )
           : null,
     );
@@ -307,12 +309,13 @@ rival: (map['rival'] ?? 'Rival').toString(),
       'temporada': temporada,
       'competencia': competencia,
       'institutionId': institutionId,
+      'matchInstanceId': matchInstanceId,
       'equipoPropio': equipoPropio,
       'escudoPropio': escudoPropio,
       'equipoLocal': equipoLocal,
-'equipoVisitante': equipoVisitante,
-'escudoLocal': escudoLocal,
-'escudoVisitante': escudoVisitante,
+      'equipoVisitante': equipoVisitante,
+      'escudoLocal': escudoLocal,
+      'escudoVisitante': escudoVisitante,
       'rival': rival,
       'fechaNumero': fechaNumero,
       'fecha': fecha,
@@ -349,12 +352,13 @@ rival: (map['rival'] ?? 'Rival').toString(),
     String? temporada,
     String? competencia,
     String? institutionId,
+    String? matchInstanceId,
     String? equipoPropio,
     String? escudoPropio,
     String? equipoLocal,
-String? equipoVisitante,
-String? escudoLocal,
-String? escudoVisitante,
+    String? equipoVisitante,
+    String? escudoLocal,
+    String? escudoVisitante,
     String? rival,
     int? fechaNumero,
     String? fecha,
@@ -389,12 +393,13 @@ String? escudoVisitante,
       temporada: temporada ?? this.temporada,
       competencia: competencia ?? this.competencia,
       institutionId: institutionId ?? this.institutionId,
+      matchInstanceId: matchInstanceId ?? this.matchInstanceId,
       equipoPropio: equipoPropio ?? this.equipoPropio,
       escudoPropio: escudoPropio ?? this.escudoPropio,
       equipoLocal: equipoLocal ?? this.equipoLocal,
-equipoVisitante: equipoVisitante ?? this.equipoVisitante,
-escudoLocal: escudoLocal ?? this.escudoLocal,
-escudoVisitante: escudoVisitante ?? this.escudoVisitante,
+      equipoVisitante: equipoVisitante ?? this.equipoVisitante,
+      escudoLocal: escudoLocal ?? this.escudoLocal,
+      escudoVisitante: escudoVisitante ?? this.escudoVisitante,
       rival: rival ?? this.rival,
       fechaNumero: fechaNumero ?? this.fechaNumero,
       fecha: fecha ?? this.fecha,
@@ -431,6 +436,7 @@ escudoVisitante: escudoVisitante ?? this.escudoVisitante,
       matchSquad: matchSquad ?? this.matchSquad,
     );
   }
+
   bool get estaFinalizado => estadoPartido == 'finalizado';
 
   double get eficaciaArquero {
